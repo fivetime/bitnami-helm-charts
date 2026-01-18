@@ -120,20 +120,18 @@ jobs:
         run: |
           set -e
           
-          # 创建临时目录存放 chart 包
           mkdir -p .charts
           
-          # 获取所有 releases 并下载 chart 包
           echo "下载所有 chart 包..."
-          gh release list --limit 200 --json tagName,assets -q '.[] | select(.assets | length > 0) | .assets[].url' | while read url; do
-            if [[ "$url" == *.tgz ]]; then
-              echo "  下载: $(basename $url)"
-              curl -sSL -o ".charts/$(basename $url)" "$url"
-            fi
+          
+          # 用 gh api 获取所有 releases 及其 assets
+          gh api repos/${{ github.repository }}/releases --paginate -q '.[].assets[] | select(.name | endswith(".tgz")) | .browser_download_url' | while read url; do
+            filename=$(basename "$url")
+            echo "  下载: $filename"
+            curl -sSL -o ".charts/$filename" "$url"
           done
           
-          # 统计下载的包
-          count=$(ls -1 .charts/*.tgz 2>/dev/null | wc -l)
+          count=$(ls -1 .charts/*.tgz 2>/dev/null | wc -l || echo 0)
           echo "共下载 $count 个 chart 包"
           
           if [ "$count" -eq 0 ]; then
@@ -141,14 +139,11 @@ jobs:
             exit 0
           fi
           
-          # 生成新的 index.yaml
           echo "生成 index.yaml..."
-          helm repo index .charts --url https://github.com/fivetime/bitnami-helm-charts/releases/download
+          helm repo index .charts --url https://github.com/${{ github.repository }}/releases/download
           
-          # 替换旧的 index.yaml
           mv .charts/index.yaml index.yaml
           
-          # 提交更改
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add index.yaml

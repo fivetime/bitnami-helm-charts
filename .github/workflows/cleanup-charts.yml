@@ -129,7 +129,7 @@ jobs:
           # 重新生成 index.yaml
           ./cr index \
             --owner fivetime \
-            --repo bitnami-helm-charts \
+            --git-repo bitnami-helm-charts \
             --pages-branch gh-pages \
             --token "$CR_TOKEN" \
             --push

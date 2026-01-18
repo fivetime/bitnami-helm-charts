@@ -205,6 +205,109 @@ externalDatabase:
   existingSecret: ""
   existingSecretPasswordKey: "password"
 
+## @section Database Initialization parameters
+
+## Database initialization job configuration
+## This job creates the database and user before the application starts
+##
+dbInit:
+  ## @param dbInit.enabled Enable database initialization job
+  ##
+  enabled: false
+  ## Database connection settings for initialization
+  ##
+  connection:
+    ## @param dbInit.connection.maxRetries Maximum retries for database connection
+    ##
+    maxRetries: 15
+    ## @param dbInit.connection.retryInterval Retry interval in seconds
+    ##
+    retryInterval: 5
+  ## Existing secret for admin credentials
+  ## Use this to reference an external secret (e.g., from Percona PostgreSQL Operator)
+  ##
+  existingSecret:
+    ## @param dbInit.existingSecret.enabled Use existing secret for admin credentials
+    ##
+    enabled: false
+    ## @param dbInit.existingSecret.name Name of the existing secret
+    ##
+    name: ""
+    ## @param dbInit.existingSecret.adminUserKey Key for admin username in the secret
+    ##
+    adminUserKey: "user"
+    ## @param dbInit.existingSecret.adminPasswordKey Key for admin password in the secret
+    ##
+    adminPasswordKey: "password"
+  ## Admin credentials (only used if existingSecret.enabled is false)
+  ##
+  admin:
+    ## @param dbInit.admin.username Admin username for database initialization
+    ##
+    username: "postgres"
+    ## @param dbInit.admin.password Admin password for database initialization
+    ##
+    password: ""
+  ## PostgreSQL image for db-init job
+  ##
+  postgresql:
+    image:
+      ## @param dbInit.postgresql.image.registry PostgreSQL image registry
+      ##
+      registry: docker.io
+      ## @param dbInit.postgresql.image.repository PostgreSQL image repository
+      ##
+      repository: postgres
+      ## @param dbInit.postgresql.image.tag PostgreSQL image tag
+      ##
+      tag: "16-alpine"
+      ## @param dbInit.postgresql.image.pullPolicy PostgreSQL image pull policy
+      ##
+      pullPolicy: IfNotPresent
+  ## MySQL image for db-init job
+  ##
+  mysql:
+    image:
+      ## @param dbInit.mysql.image.registry MySQL image registry
+      ##
+      registry: docker.io
+      ## @param dbInit.mysql.image.repository MySQL image repository
+      ##
+      repository: mysql
+      ## @param dbInit.mysql.image.tag MySQL image tag
+      ##
+      tag: "8.0"
+      ## @param dbInit.mysql.image.pullPolicy MySQL image pull policy
+      ##
+      pullPolicy: IfNotPresent
+  ## @param dbInit.resourcesPreset Set container resources according to one common preset
+  ##
+  resourcesPreset: "nano"
+  ## @param dbInit.resources Set container requests and limits for different resources
+  ##
+  resources: {}
+  ## Pod security context
+  ##
+  podSecurityContext:
+    ## @param dbInit.podSecurityContext.enabled Enable pod security context
+    ##
+    enabled: true
+    ## @param dbInit.podSecurityContext.fsGroup Group ID for the filesystem
+    ##
+    fsGroup: 1001
+  ## Container security context
+  ##
+  containerSecurityContext:
+    ## @param dbInit.containerSecurityContext.enabled Enable container security context
+    ##
+    enabled: true
+    ## @param dbInit.containerSecurityContext.runAsUser User ID for the container
+    ##
+    runAsUser: 1001
+    ## @param dbInit.containerSecurityContext.runAsNonRoot Run container as non-root
+    ##
+    runAsNonRoot: true
+
 ## @section Authentication parameters
 
 ## Authentication configuration

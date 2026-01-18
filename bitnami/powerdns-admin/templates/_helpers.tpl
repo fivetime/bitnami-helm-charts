@@ -176,6 +176,7 @@ Compile all warnings into a single message.
 {{- $messages := list -}}
 {{- $messages := append $messages (include "powerdns-admin.validateValues.database" .) -}}
 {{- $messages := append $messages (include "powerdns-admin.validateValues.secretKey" .) -}}
+{{- $messages := append $messages (include "powerdns-admin.validateValues.sqliteReplicas" .) -}}
 {{- $messages := without $messages "" -}}
 {{- $message := join "\n" $messages -}}
 
@@ -203,6 +204,28 @@ Validate values of PowerDNS-Admin - Secret key configuration
 powerdns-admin: secretKey
     You must provide a secret key for Flask session management.
     Please set powerdnsAdmin.secretKey or powerdnsAdmin.existingSecret
+{{- end -}}
+{{- end -}}
+
+{{/*
+Validate values of PowerDNS-Admin - SQLite with multiple replicas
+*/}}
+{{- define "powerdns-admin.validateValues.sqliteReplicas" -}}
+{{- if and (eq .Values.database.type "sqlite") (gt (int .Values.replicaCount) 1) -}}
+powerdns-admin: sqlite.replicas
+    SQLite does not support multiple replicas. SQLite is a file-based database
+    that cannot handle concurrent writes from multiple processes.
+    Please either:
+    - Set replicaCount to 1, or
+    - Use PostgreSQL or MySQL for multi-replica deployments
+{{- end -}}
+{{- if and (eq .Values.database.type "sqlite") .Values.autoscaling.hpa.enabled -}}
+powerdns-admin: sqlite.autoscaling
+    SQLite does not support autoscaling. SQLite is a file-based database
+    that cannot handle concurrent writes from multiple processes.
+    Please either:
+    - Disable autoscaling (autoscaling.hpa.enabled: false), or
+    - Use PostgreSQL or MySQL for autoscaled deployments
 {{- end -}}
 {{- end -}}
 
@@ -239,4 +262,29 @@ Return true if ingress supports ingressClassName
 {{- else -}}
 {{- print "false" -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Return the db-init admin secret name
+*/}}
+{{- define "powerdns-admin.dbInit.adminSecretName" -}}
+{{- if .Values.dbInit.existingSecret.enabled -}}
+    {{- .Values.dbInit.existingSecret.name -}}
+{{- else -}}
+    {{- printf "%s-db-admin" (include "common.names.fullname" .) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the db-init PostgreSQL image
+*/}}
+{{- define "powerdns-admin.dbInit.postgresql.image" -}}
+{{- include "common.images.image" (dict "imageRoot" .Values.dbInit.postgresql.image "global" .Values.global) -}}
+{{- end -}}
+
+{{/*
+Return the db-init MySQL image
+*/}}
+{{- define "powerdns-admin.dbInit.mysql.image" -}}
+{{- include "common.images.image" (dict "imageRoot" .Values.dbInit.mysql.image "global" .Values.global) -}}
 {{- end -}}

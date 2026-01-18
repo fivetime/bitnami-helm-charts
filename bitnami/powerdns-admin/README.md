@@ -216,6 +216,24 @@ kubectl delete pvc -l app.kubernetes.io/name=powerdns-admin
 | `externalDatabase.port` | Database server port | `5432` |
 | `externalDatabase.username` | Database username | `"powerdns_admin"` |
 
+### 数据库初始化
+
+| 参数 | 描述 | 默认值 |
+|------|------|--------|
+| `dbInit.enabled` | 启用数据库初始化 Job | `false` |
+| `dbInit.connection.maxRetries` | 数据库连接最大重试次数 | `15` |
+| `dbInit.connection.retryInterval` | 重试间隔 (秒) | `5` |
+| `dbInit.existingSecret.enabled` | 使用已有 Secret (管理员凭据) | `false` |
+| `dbInit.existingSecret.name` | Secret 名称 | `""` |
+| `dbInit.existingSecret.adminUserKey` | 管理员用户名键 | `"user"` |
+| `dbInit.existingSecret.adminPasswordKey` | 管理员密码键 | `"password"` |
+| `dbInit.admin.username` | 管理员用户名 (existingSecret 禁用时) | `"postgres"` |
+| `dbInit.admin.password` | 管理员密码 (existingSecret 禁用时) | `""` |
+| `dbInit.postgresql.image.repository` | PostgreSQL 镜像仓库 | `postgres` |
+| `dbInit.postgresql.image.tag` | PostgreSQL 镜像标签 | `16-alpine` |
+| `dbInit.mysql.image.repository` | MySQL 镜像仓库 | `mysql` |
+| `dbInit.mysql.image.tag` | MySQL 镜像标签 | `8.0` |
+
 ### 本地认证
 
 | 参数 | 描述 | 默认值 |
@@ -901,6 +919,35 @@ kubectl exec -it <db-pod> -- pg_dump powerdns_admin > backup.sql
 ```bash
 helm upgrade powerdns-admin . -f values-v2.yaml
 ```
+
+## 使用 Percona PostgreSQL Operator
+
+### 使用 Percona PostgreSQL Operator 的 Secret (推荐)
+
+```yaml
+database:
+  type: postgresql
+
+externalDatabase:
+  host: percona-postgresql-pg-primary.kube-infra.svc.cluster.local
+  port: 5432
+  database: powerdns_admin
+  username: powerdns_admin
+  password: "my-secure-password"  # 应用用户密码
+
+dbInit:
+  enabled: true
+  existingSecret:
+    enabled: true
+    name: percona-postgresql-pg-pguser-postgres  # Percona 生成的管理员 Secret
+    adminUserKey: user
+    adminPasswordKey: password
+```
+
+此配置会：
+1. 使用 Percona Operator 的管理员 Secret 创建数据库和用户
+2. 应用以 `powerdns_admin` 用户连接数据库
+3. 表结构由 PowerDNS-Admin 容器启动时自动创建 (`flask db upgrade`)
 
 ## 故障排除
 

@@ -1,0 +1,98 @@
+{{- /*
+Copyright Anthropic. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if and .Values.dbInit.enabled (ne .Values.database.type "sqlite") }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "common.names.fullname" . }}-db-init
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: db-init
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation
+    {{- if .Values.commonAnnotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+spec:
+  backoffLimit: 6
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 8 }}
+        app.kubernetes.io/component: db-init
+    spec:
+      {{- include "powerdns-admin.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ template "powerdns-admin.serviceAccountName" . }}
+      restartPolicy: OnFailure
+      {{- if .Values.dbInit.podSecurityContext.enabled }}
+      securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.dbInit.podSecurityContext "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" ( dict "value" .Values.nodeSelector "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.tolerations "context" .) | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: db-init
+          {{- if eq .Values.database.type "mysql" }}
+          image: {{ include "powerdns-admin.dbInit.mysql.image" . }}
+          imagePullPolicy: {{ .Values.dbInit.mysql.image.pullPolicy }}
+          {{- else }}
+          image: {{ include "powerdns-admin.dbInit.postgresql.image" . }}
+          imagePullPolicy: {{ .Values.dbInit.postgresql.image.pullPolicy }}
+          {{- end }}
+          {{- if .Values.dbInit.containerSecurityContext.enabled }}
+          securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.dbInit.containerSecurityContext "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.dbInit.resources }}
+          resources: {{- toYaml .Values.dbInit.resources | nindent 12 }}
+          {{- else if ne .Values.dbInit.resourcesPreset "none" }}
+          resources: {{- include "common.resources.preset" (dict "type" .Values.dbInit.resourcesPreset) | nindent 12 }}
+          {{- end }}
+          env:
+            {{- if .Values.dbInit.existingSecret.enabled }}
+            - name: DB_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.dbInit.existingSecret.name }}
+                  key: {{ .Values.dbInit.existingSecret.adminUserKey | default "user" }}
+            - name: DB_ADMIN_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.dbInit.existingSecret.name }}
+                  key: {{ .Values.dbInit.existingSecret.adminPasswordKey | default "password" }}
+            {{- else }}
+            - name: DB_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns-admin.dbInit.adminSecretName" . }}
+                  key: username
+            - name: DB_ADMIN_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns-admin.dbInit.adminSecretName" . }}
+                  key: password
+            {{- end }}
+            - name: DB_USER_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns-admin.database.secretName" . }}
+                  key: {{ .Values.externalDatabase.existingSecretPasswordKey | default "password" }}
+          command:
+            - /bin/bash
+            - /scripts/db-init.sh
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+      volumes:
+        - name: scripts
+          configMap:
+            name: {{ include "common.names.fullname" . }}-scripts
+            defaultMode: 0555
+{{- end }}

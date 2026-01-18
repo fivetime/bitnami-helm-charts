@@ -82,7 +82,7 @@ jobs:
           charts_dir: bitnami
           skip_existing: true
 
-  deploy-pages:
+  deploy:
     needs: release
     runs-on: ubuntu-latest
     environment:
@@ -179,4 +179,4 @@ jobs:
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy@v4

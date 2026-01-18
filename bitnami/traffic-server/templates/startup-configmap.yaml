@@ -14,7 +14,7 @@ metadata:
   {{- end }}
 data:
   start-ats.sh: |
-    {{- if .Values.logsPersistence.toStdout }}
+    {{- if and .Values.logsPersistence .Values.logsPersistence.toStdout }}
     {{- .Values.startupScriptWithLogForwarding | nindent 4 }}
     {{- else }}
     {{- .Values.startupScript | nindent 4 }}

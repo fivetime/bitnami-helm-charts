@@ -308,7 +308,7 @@ spec:
           emptyDir: {}
           {{- end }}
         - name: logs
-          {{- if .Values.logsPersistence.enabled }}
+          {{- if and .Values.logsPersistence .Values.logsPersistence.enabled }}
           persistentVolumeClaim:
             claimName: {{ .Values.logsPersistence.existingClaim | default (printf "%s-logs" (include "common.names.fullname" .)) }}
           {{- else }}

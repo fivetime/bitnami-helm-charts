@@ -1,0 +1,1216 @@
+## @section Global parameters
+## Global Docker image parameters
+## Please, note that this will override the image parameters, including dependencies, configured to use the global value
+##
+global:
+  ## @param global.imageRegistry Global Docker image registry
+  ##
+  imageRegistry: ""
+  ## @param global.imagePullSecrets Global Docker registry secret names as an array
+  ## e.g.
+  ## imagePullSecrets:
+  ##   - myRegistryKeySecretName
+  ##
+  imagePullSecrets: []
+  ## @param global.storageClass Global StorageClass for Persistent Volume(s)
+  ##
+  storageClass: ""
+
+## @section Common parameters
+##
+## @param kubeVersion Override Kubernetes version
+##
+kubeVersion: ""
+## @param nameOverride String to partially override common.names.fullname template
+##
+nameOverride: ""
+## @param fullnameOverride String to fully override common.names.fullname template
+##
+fullnameOverride: ""
+## @param commonLabels Labels to add to all deployed objects
+##
+commonLabels: {}
+## @param commonAnnotations Annotations to add to all deployed objects
+##
+commonAnnotations: {}
+## @param clusterDomain Kubernetes cluster domain name
+##
+clusterDomain: cluster.local
+## @param extraDeploy Array of extra objects to deploy with the release
+##
+extraDeploy: []
+
+## @section Citus Image parameters
+##
+image:
+  ## @param image.registry Citus image registry
+  ##
+  registry: docker.io
+  ## @param image.repository Citus image repository
+  ##
+  repository: citusdata/citus
+  ## @param image.tag Citus image tag (immutable tags are recommended)
+  ##
+  tag: "13.0.3"
+  ## @param image.digest Citus image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+  ##
+  digest: ""
+  ## @param image.pullPolicy Citus image pull policy
+  ##
+  pullPolicy: IfNotPresent
+  ## @param image.pullSecrets Citus image pull secrets
+  ## Optionally specify an array of imagePullSecrets.
+  ## Secrets must be manually created in the namespace.
+  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+  ## e.g:
+  ## pullSecrets:
+  ##   - myRegistryKeySecretName
+  ##
+  pullSecrets: []
+
+## @section Citus Authentication parameters
+##
+auth:
+  ## @param auth.enablePostgresUser Enable postgres admin user
+  ##
+  enablePostgresUser: true
+  ## @param auth.postgresPassword Password for the "postgres" admin user
+  ##
+  postgresPassword: ""
+  ## @param auth.username Name for a custom user to create
+  ##
+  username: citus
+  ## @param auth.password Password for the custom user to create
+  ##
+  password: ""
+  ## @param auth.database Name for a custom database to create
+  ##
+  database: citus
+  ## @param auth.existingSecret Name of existing secret to use for PostgreSQL credentials
+  ## `auth.postgresPassword`, `auth.password`, and `auth.replicationPassword` will be ignored and picked up from this secret.
+  ## The secret might also be used to store the replication password if `architecture=replication`.
+  ## keys: postgres-password, password, replication-password (optional)
+  ##
+  existingSecret: ""
+  ## @param auth.secretKeys.adminPasswordKey Name of key in existing secret to use for the admin password
+  ##
+  secretKeys:
+    adminPasswordKey: postgres-password
+    userPasswordKey: password
+  ## @param auth.usePasswordFiles Mount credentials as files instead of using environment variable
+  ##
+  usePasswordFiles: false
+
+## @section Citus PostgreSQL common configuration
+##
+postgresql:
+  ## @param postgresql.sharedPreloadLibraries Shared preload libraries (comma-separated list)
+  ##
+  sharedPreloadLibraries: "citus"
+  ## @param postgresql.maxConnections Maximum number of connections
+  ##
+  maxConnections: 200
+  ## @param postgresql.walLevel WAL level for replication (logical required for rebalancing)
+  ##
+  walLevel: logical
+  ## @param postgresql.maxWalSenders Maximum number of WAL sender processes
+  ##
+  maxWalSenders: 10
+  ## @param postgresql.maxReplicationSlots Maximum number of replication slots
+  ##
+  maxReplicationSlots: 10
+  ## @param postgresql.maxWorkerProcesses Maximum number of worker processes for Citus
+  ##
+  maxWorkerProcesses: 64
+  ## @param postgresql.citusShardCount Default shard count for distributed tables
+  ##
+  citusShardCount: 32
+  ## @param postgresql.citusShardReplicationFactor Shard replication factor (1 = no replication)
+  ##
+  citusShardReplicationFactor: 1
+  ## @param postgresql.extraConfiguration Additional PostgreSQL configuration
+  ## e.g:
+  ## extraConfiguration: |
+  ##   work_mem = 256MB
+  ##   maintenance_work_mem = 512MB
+  ##
+  extraConfiguration: ""
+
+## @section Citus Coordinator configuration
+##
+coordinator:
+  ## @param coordinator.replicaCount Number of Coordinator replicas (only 1 is recommended for primary)
+  ##
+  replicaCount: 1
+  ## @param coordinator.podManagementPolicy StatefulSet pod management policy
+  ##
+  podManagementPolicy: OrderedReady
+  ## @param coordinator.updateStrategy.type Update strategy type for Coordinator StatefulSet
+  ##
+  updateStrategy:
+    type: RollingUpdate
+  ## @param coordinator.hostAliases Coordinator pods host aliases
+  ##
+  hostAliases: []
+  ## @param coordinator.podLabels Extra labels for Coordinator pods
+  ##
+  podLabels: {}
+  ## @param coordinator.podAnnotations Annotations for Coordinator pods
+  ##
+  podAnnotations: {}
+  ## @param coordinator.podAffinityPreset Pod affinity preset
+  ##
+  podAffinityPreset: ""
+  ## @param coordinator.podAntiAffinityPreset Pod anti-affinity preset
+  ##
+  podAntiAffinityPreset: soft
+  ## @param coordinator.nodeAffinityPreset.type Node affinity preset type
+  ## @param coordinator.nodeAffinityPreset.key Node label key to match
+  ## @param coordinator.nodeAffinityPreset.values Node label values to match
+  ##
+  nodeAffinityPreset:
+    type: ""
+    key: ""
+    values: []
+  ## @param coordinator.affinity Affinity for Coordinator pods assignment
+  ##
+  affinity: {}
+  ## @param coordinator.nodeSelector Node labels for Coordinator pods assignment
+  ##
+  nodeSelector: {}
+  ## @param coordinator.tolerations Tolerations for Coordinator pods assignment
+  ##
+  tolerations: []
+  ## @param coordinator.topologySpreadConstraints Topology Spread Constraints for Coordinator pods assignment
+  ##
+  topologySpreadConstraints: []
+  ## @param coordinator.priorityClassName Priority class name for Coordinator pods
+  ##
+  priorityClassName: ""
+  ## @param coordinator.schedulerName Scheduler name for Coordinator pods
+  ##
+  schedulerName: ""
+  ## @param coordinator.terminationGracePeriodSeconds Termination grace period for Coordinator pods
+  ##
+  terminationGracePeriodSeconds: 30
+  ## @param coordinator.containerPorts.postgresql Coordinator container port
+  ##
+  containerPorts:
+    postgresql: 5432
+  ## Coordinator container security context
+  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
+  ##
+  containerSecurityContext:
+    ## @param coordinator.containerSecurityContext.enabled Enabled containers' Security Context
+    ##
+    enabled: true
+    ## @param coordinator.containerSecurityContext.runAsUser Set containers' Security Context runAsUser
+    ##
+    runAsUser: 999
+    ## @param coordinator.containerSecurityContext.runAsGroup Set containers' Security Context runAsGroup
+    ##
+    runAsGroup: 999
+    ## @param coordinator.containerSecurityContext.runAsNonRoot Set containers' Security Context runAsNonRoot
+    ##
+    runAsNonRoot: true
+    ## @param coordinator.containerSecurityContext.allowPrivilegeEscalation Allow privilege escalation
+    ##
+    allowPrivilegeEscalation: false
+    ## @param coordinator.containerSecurityContext.readOnlyRootFilesystem Set containers' Security Context readOnlyRootFilesystem
+    ##
+    readOnlyRootFilesystem: false
+    ## @param coordinator.containerSecurityContext.seccompProfile.type Set containers' Security Context seccomp profile
+    ##
+    seccompProfile:
+      type: RuntimeDefault
+    ## @param coordinator.containerSecurityContext.capabilities.drop Set containers' Security Context capabilities to drop
+    ##
+    capabilities:
+      drop:
+        - ALL
+  ## Coordinator pod security context
+  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+  ##
+  podSecurityContext:
+    ## @param coordinator.podSecurityContext.enabled Enabled Coordinator pods' Security Context
+    ##
+    enabled: true
+    ## @param coordinator.podSecurityContext.fsGroup Set Coordinator pods' Security Context fsGroup
+    ##
+    fsGroup: 999
+    ## @param coordinator.podSecurityContext.fsGroupChangePolicy Set filesystem group change policy
+    ##
+    fsGroupChangePolicy: Always
+  ## Coordinator resource requests and limits
+  ## ref: https://kubernetes.io/docs/user-guide/compute-resources/
+  ##
+  resources:
+    ## @param coordinator.resources.limits The resources limits for the Coordinator containers
+    ##
+    limits:
+      cpu: 2
+      memory: 4Gi
+    ## @param coordinator.resources.requests The requested resources for the Coordinator containers
+    ##
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  ## @param coordinator.resourcesPreset Set container resources according to one common preset
+  ## Allowed values: none, nano, micro, small, medium, large, xlarge, 2xlarge
+  ##
+  resourcesPreset: "none"
+  ## Configure extra options for Coordinator containers' liveness probe
+  ##
+  livenessProbe:
+    ## @param coordinator.livenessProbe.enabled Enable livenessProbe on Coordinator containers
+    ##
+    enabled: true
+    ## @param coordinator.livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+    ##
+    initialDelaySeconds: 30
+    ## @param coordinator.livenessProbe.periodSeconds Period seconds for livenessProbe
+    ##
+    periodSeconds: 10
+    ## @param coordinator.livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+    ##
+    timeoutSeconds: 5
+    ## @param coordinator.livenessProbe.failureThreshold Failure threshold for livenessProbe
+    ##
+    failureThreshold: 6
+    ## @param coordinator.livenessProbe.successThreshold Success threshold for livenessProbe
+    ##
+    successThreshold: 1
+  ## Configure extra options for Coordinator containers' readiness probe
+  ##
+  readinessProbe:
+    ## @param coordinator.readinessProbe.enabled Enable readinessProbe on Coordinator containers
+    ##
+    enabled: true
+    ## @param coordinator.readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+    ##
+    initialDelaySeconds: 10
+    ## @param coordinator.readinessProbe.periodSeconds Period seconds for readinessProbe
+    ##
+    periodSeconds: 5
+    ## @param coordinator.readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+    ##
+    timeoutSeconds: 5
+    ## @param coordinator.readinessProbe.failureThreshold Failure threshold for readinessProbe
+    ##
+    failureThreshold: 6
+    ## @param coordinator.readinessProbe.successThreshold Success threshold for readinessProbe
+    ##
+    successThreshold: 1
+  ## Configure extra options for Coordinator containers' startup probe
+  ##
+  startupProbe:
+    ## @param coordinator.startupProbe.enabled Enable startupProbe on Coordinator containers
+    ##
+    enabled: false
+    ## @param coordinator.startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
+    ##
+    initialDelaySeconds: 30
+    ## @param coordinator.startupProbe.periodSeconds Period seconds for startupProbe
+    ##
+    periodSeconds: 10
+    ## @param coordinator.startupProbe.timeoutSeconds Timeout seconds for startupProbe
+    ##
+    timeoutSeconds: 5
+    ## @param coordinator.startupProbe.failureThreshold Failure threshold for startupProbe
+    ##
+    failureThreshold: 10
+    ## @param coordinator.startupProbe.successThreshold Success threshold for startupProbe
+    ##
+    successThreshold: 1
+  ## @param coordinator.customLivenessProbe Custom livenessProbe that overrides the default one
+  ##
+  customLivenessProbe: {}
+  ## @param coordinator.customReadinessProbe Custom readinessProbe that overrides the default one
+  ##
+  customReadinessProbe: {}
+  ## @param coordinator.customStartupProbe Custom startupProbe that overrides the default one
+  ##
+  customStartupProbe: {}
+  ## @param coordinator.lifecycleHooks for the Coordinator container(s) to automate configuration before or after startup
+  ##
+  lifecycleHooks: {}
+  ## @param coordinator.command Override default container command (useful when using custom images)
+  ##
+  command: []
+  ## @param coordinator.args Override default container args (useful when using custom images)
+  ##
+  args: []
+  ## @param coordinator.extraArgs Additional PostgreSQL startup arguments
+  ## e.g:
+  ## extraArgs:
+  ##   - "-c"
+  ##   - "work_mem=256MB"
+  ##
+  extraArgs: []
+  ## @param coordinator.extraEnvVars Array with extra environment variables to add to Coordinator containers
+  ##
+  extraEnvVars: []
+  ## @param coordinator.extraEnvVarsCM Name of existing ConfigMap containing extra env vars for Coordinator containers
+  ##
+  extraEnvVarsCM: ""
+  ## @param coordinator.extraEnvVarsSecret Name of existing Secret containing extra env vars for Coordinator containers
+  ##
+  extraEnvVarsSecret: ""
+  ## @param coordinator.extraVolumes Optionally specify extra list of additional volumes for the Coordinator pod(s)
+  ##
+  extraVolumes: []
+  ## @param coordinator.extraVolumeMounts Optionally specify extra list of additional volumeMounts for the Coordinator container(s)
+  ##
+  extraVolumeMounts: []
+  ## @param coordinator.sidecars Add additional sidecar containers to the Coordinator pod(s)
+  ##
+  sidecars: []
+  ## @param coordinator.initContainers Add additional init containers to the Coordinator pod(s)
+  ##
+  initContainers: []
+  ## Coordinator persistence configuration
+  ##
+  persistence:
+    ## @param coordinator.persistence.enabled Enable Coordinator data persistence using PVC
+    ##
+    enabled: true
+    ## @param coordinator.persistence.existingClaim Name of an existing PVC to use
+    ##
+    existingClaim: ""
+    ## @param coordinator.persistence.storageClass PVC Storage Class for Coordinator data volume
+    ##
+    storageClass: ""
+    ## @param coordinator.persistence.accessModes PVC Access Mode for Coordinator volume
+    ##
+    accessModes:
+      - ReadWriteOnce
+    ## @param coordinator.persistence.size PVC Storage Request for Coordinator volume
+    ##
+    size: 10Gi
+    ## @param coordinator.persistence.annotations Annotations for the PVC
+    ##
+    annotations: {}
+    ## @param coordinator.persistence.labels Labels for the PVC
+    ##
+    labels: {}
+    ## @param coordinator.persistence.selector Selector to match an existing Persistent Volume
+    ##
+    selector: {}
+  ## Service configuration
+  ##
+  service:
+    ## @param coordinator.service.type Coordinator service type
+    ##
+    type: ClusterIP
+    ## @param coordinator.service.ports.postgresql Coordinator service PostgreSQL port
+    ##
+    ports:
+      postgresql: 5432
+    ## @param coordinator.service.nodePorts.postgresql Node port for PostgreSQL
+    ##
+    nodePorts:
+      postgresql: ""
+    ## @param coordinator.service.clusterIP Coordinator service Cluster IP
+    ##
+    clusterIP: ""
+    ## @param coordinator.service.loadBalancerIP Coordinator service Load Balancer IP
+    ##
+    loadBalancerIP: ""
+    ## @param coordinator.service.loadBalancerSourceRanges Coordinator service Load Balancer sources
+    ##
+    loadBalancerSourceRanges: []
+    ## @param coordinator.service.externalTrafficPolicy Coordinator service external traffic policy
+    ##
+    externalTrafficPolicy: Cluster
+    ## @param coordinator.service.annotations Additional custom annotations for Coordinator service
+    ##
+    annotations: {}
+    ## @param coordinator.service.extraPorts Extra ports to expose in Coordinator service
+    ##
+    extraPorts: []
+    ## @param coordinator.service.sessionAffinity Session Affinity for Kubernetes service
+    ##
+    sessionAffinity: None
+    ## @param coordinator.service.sessionAffinityConfig Additional settings for the sessionAffinity
+    ##
+    sessionAffinityConfig: {}
+  ## Service Account configuration
+  ##
+  serviceAccount:
+    ## @param coordinator.serviceAccount.create Enable creation of ServiceAccount for Coordinator pods
+    ##
+    create: true
+    ## @param coordinator.serviceAccount.name The name of the ServiceAccount to use
+    ##
+    name: ""
+    ## @param coordinator.serviceAccount.annotations Additional custom annotations for the ServiceAccount
+    ##
+    annotations: {}
+    ## @param coordinator.serviceAccount.automountServiceAccountToken Automount service account token for the Coordinator service account
+    ##
+    automountServiceAccountToken: false
+  ## PodDisruptionBudget configuration
+  ##
+  pdb:
+    ## @param coordinator.pdb.create Enable/disable a Pod Disruption Budget creation
+    ##
+    create: true
+    ## @param coordinator.pdb.minAvailable Minimum number/percentage of pods that should remain scheduled
+    ##
+    minAvailable: 1
+    ## @param coordinator.pdb.maxUnavailable Maximum number/percentage of pods that may be made unavailable
+    ##
+    maxUnavailable: ""
+  ## Vertical Pod Autoscaler configuration
+  ## ref: https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler
+  ##
+  vpa:
+    ## @param coordinator.vpa.enabled Enable VPA for Coordinator pods
+    ##
+    enabled: false
+    ## @param coordinator.vpa.annotations Annotations for VPA resource
+    ##
+    annotations: {}
+    ## @param coordinator.vpa.updateMode VPA update mode ("Auto", "Recreate", "Initial", "Off")
+    ## Auto: VPA assigns resource requests on pod creation and updates them on existing pods
+    ## Recreate: VPA assigns resource requests on pod creation and updates them on existing pods by evicting and recreating
+    ## Initial: VPA only assigns resource requests on pod creation
+    ## Off: VPA does not automatically change resource requirements, only provides recommendations
+    ##
+    updateMode: Auto
+    ## @param coordinator.vpa.controlledResources Specifies which resource values should be controlled by VPA
+    ## e.g:
+    ## controlledResources:
+    ##   - cpu
+    ##   - memory
+    ##
+    controlledResources: []
+    ## @param coordinator.vpa.maxAllowed Maximum allowed resources for VPA
+    ## e.g:
+    ## maxAllowed:
+    ##   cpu: 4
+    ##   memory: 8Gi
+    ##
+    maxAllowed: {}
+    ## @param coordinator.vpa.minAllowed Minimum allowed resources for VPA
+    ## e.g:
+    ## minAllowed:
+    ##   cpu: 250m
+    ##   memory: 512Mi
+    ##
+    minAllowed: {}
+    ## VPA container policies (optional fine-grained control)
+    ##
+    containerPolicies:
+      ## @param coordinator.vpa.containerPolicies.main Container policy for main Citus container
+      ##
+      main: {}
+
+## @section Citus Worker configuration
+##
+worker:
+  ## @param worker.replicaCount Number of Worker replicas
+  ##
+  replicaCount: 3
+  ## @param worker.podManagementPolicy StatefulSet pod management policy
+  ##
+  podManagementPolicy: Parallel
+  ## @param worker.updateStrategy.type Update strategy type for Worker StatefulSet
+  ##
+  updateStrategy:
+    type: RollingUpdate
+  ## @param worker.hostAliases Worker pods host aliases
+  ##
+  hostAliases: []
+  ## @param worker.podLabels Extra labels for Worker pods
+  ##
+  podLabels: {}
+  ## @param worker.podAnnotations Annotations for Worker pods
+  ##
+  podAnnotations: {}
+  ## @param worker.podAffinityPreset Pod affinity preset
+  ##
+  podAffinityPreset: ""
+  ## @param worker.podAntiAffinityPreset Pod anti-affinity preset
+  ##
+  podAntiAffinityPreset: soft
+  ## @param worker.nodeAffinityPreset.type Node affinity preset type
+  ## @param worker.nodeAffinityPreset.key Node label key to match
+  ## @param worker.nodeAffinityPreset.values Node label values to match
+  ##
+  nodeAffinityPreset:
+    type: ""
+    key: ""
+    values: []
+  ## @param worker.affinity Affinity for Worker pods assignment
+  ##
+  affinity: {}
+  ## @param worker.nodeSelector Node labels for Worker pods assignment
+  ##
+  nodeSelector: {}
+  ## @param worker.tolerations Tolerations for Worker pods assignment
+  ##
+  tolerations: []
+  ## @param worker.topologySpreadConstraints Topology Spread Constraints for Worker pods assignment
+  ##
+  topologySpreadConstraints: []
+  ## @param worker.priorityClassName Priority class name for Worker pods
+  ##
+  priorityClassName: ""
+  ## @param worker.schedulerName Scheduler name for Worker pods
+  ##
+  schedulerName: ""
+  ## @param worker.terminationGracePeriodSeconds Termination grace period for Worker pods
+  ##
+  terminationGracePeriodSeconds: 30
+  ## @param worker.containerPorts.postgresql Worker container port
+  ##
+  containerPorts:
+    postgresql: 5432
+  ## Worker container security context
+  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
+  ##
+  containerSecurityContext:
+    ## @param worker.containerSecurityContext.enabled Enabled containers' Security Context
+    ##
+    enabled: true
+    ## @param worker.containerSecurityContext.runAsUser Set containers' Security Context runAsUser
+    ##
+    runAsUser: 999
+    ## @param worker.containerSecurityContext.runAsGroup Set containers' Security Context runAsGroup
+    ##
+    runAsGroup: 999
+    ## @param worker.containerSecurityContext.runAsNonRoot Set containers' Security Context runAsNonRoot
+    ##
+    runAsNonRoot: true
+    ## @param worker.containerSecurityContext.allowPrivilegeEscalation Allow privilege escalation
+    ##
+    allowPrivilegeEscalation: false
+    ## @param worker.containerSecurityContext.readOnlyRootFilesystem Set containers' Security Context readOnlyRootFilesystem
+    ##
+    readOnlyRootFilesystem: false
+    ## @param worker.containerSecurityContext.seccompProfile.type Set containers' Security Context seccomp profile
+    ##
+    seccompProfile:
+      type: RuntimeDefault
+    ## @param worker.containerSecurityContext.capabilities.drop Set containers' Security Context capabilities to drop
+    ##
+    capabilities:
+      drop:
+        - ALL
+  ## Worker pod security context
+  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+  ##
+  podSecurityContext:
+    ## @param worker.podSecurityContext.enabled Enabled Worker pods' Security Context
+    ##
+    enabled: true
+    ## @param worker.podSecurityContext.fsGroup Set Worker pods' Security Context fsGroup
+    ##
+    fsGroup: 999
+    ## @param worker.podSecurityContext.fsGroupChangePolicy Set filesystem group change policy
+    ##
+    fsGroupChangePolicy: Always
+  ## Worker resource requests and limits
+  ## ref: https://kubernetes.io/docs/user-guide/compute-resources/
+  ##
+  resources:
+    ## @param worker.resources.limits The resources limits for the Worker containers
+    ##
+    limits:
+      cpu: 2
+      memory: 4Gi
+    ## @param worker.resources.requests The requested resources for the Worker containers
+    ##
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  ## @param worker.resourcesPreset Set container resources according to one common preset
+  ## Allowed values: none, nano, micro, small, medium, large, xlarge, 2xlarge
+  ##
+  resourcesPreset: "none"
+  ## Configure extra options for Worker containers' liveness probe
+  ##
+  livenessProbe:
+    ## @param worker.livenessProbe.enabled Enable livenessProbe on Worker containers
+    ##
+    enabled: true
+    ## @param worker.livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+    ##
+    initialDelaySeconds: 30
+    ## @param worker.livenessProbe.periodSeconds Period seconds for livenessProbe
+    ##
+    periodSeconds: 10
+    ## @param worker.livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+    ##
+    timeoutSeconds: 5
+    ## @param worker.livenessProbe.failureThreshold Failure threshold for livenessProbe
+    ##
+    failureThreshold: 6
+    ## @param worker.livenessProbe.successThreshold Success threshold for livenessProbe
+    ##
+    successThreshold: 1
+  ## Configure extra options for Worker containers' readiness probe
+  ##
+  readinessProbe:
+    ## @param worker.readinessProbe.enabled Enable readinessProbe on Worker containers
+    ##
+    enabled: true
+    ## @param worker.readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+    ##
+    initialDelaySeconds: 10
+    ## @param worker.readinessProbe.periodSeconds Period seconds for readinessProbe
+    ##
+    periodSeconds: 5
+    ## @param worker.readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+    ##
+    timeoutSeconds: 5
+    ## @param worker.readinessProbe.failureThreshold Failure threshold for readinessProbe
+    ##
+    failureThreshold: 6
+    ## @param worker.readinessProbe.successThreshold Success threshold for readinessProbe
+    ##
+    successThreshold: 1
+  ## Configure extra options for Worker containers' startup probe
+  ##
+  startupProbe:
+    ## @param worker.startupProbe.enabled Enable startupProbe on Worker containers
+    ##
+    enabled: false
+    ## @param worker.startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
+    ##
+    initialDelaySeconds: 30
+    ## @param worker.startupProbe.periodSeconds Period seconds for startupProbe
+    ##
+    periodSeconds: 10
+    ## @param worker.startupProbe.timeoutSeconds Timeout seconds for startupProbe
+    ##
+    timeoutSeconds: 5
+    ## @param worker.startupProbe.failureThreshold Failure threshold for startupProbe
+    ##
+    failureThreshold: 10
+    ## @param worker.startupProbe.successThreshold Success threshold for startupProbe
+    ##
+    successThreshold: 1
+  ## @param worker.customLivenessProbe Custom livenessProbe that overrides the default one
+  ##
+  customLivenessProbe: {}
+  ## @param worker.customReadinessProbe Custom readinessProbe that overrides the default one
+  ##
+  customReadinessProbe: {}
+  ## @param worker.customStartupProbe Custom startupProbe that overrides the default one
+  ##
+  customStartupProbe: {}
+  ## @param worker.lifecycleHooks for the Worker container(s) to automate configuration before or after startup
+  ##
+  lifecycleHooks: {}
+  ## @param worker.command Override default container command (useful when using custom images)
+  ##
+  command: []
+  ## @param worker.args Override default container args (useful when using custom images)
+  ##
+  args: []
+  ## @param worker.extraArgs Additional PostgreSQL startup arguments for workers
+  ## e.g:
+  ## extraArgs:
+  ##   - "-c"
+  ##   - "work_mem=256MB"
+  ##
+  extraArgs: []
+  ## @param worker.extraEnvVars Array with extra environment variables to add to Worker containers
+  ##
+  extraEnvVars: []
+  ## @param worker.extraEnvVarsCM Name of existing ConfigMap containing extra env vars for Worker containers
+  ##
+  extraEnvVarsCM: ""
+  ## @param worker.extraEnvVarsSecret Name of existing Secret containing extra env vars for Worker containers
+  ##
+  extraEnvVarsSecret: ""
+  ## @param worker.extraVolumes Optionally specify extra list of additional volumes for the Worker pod(s)
+  ##
+  extraVolumes: []
+  ## @param worker.extraVolumeMounts Optionally specify extra list of additional volumeMounts for the Worker container(s)
+  ##
+  extraVolumeMounts: []
+  ## @param worker.sidecars Add additional sidecar containers to the Worker pod(s)
+  ##
+  sidecars: []
+  ## @param worker.initContainers Add additional init containers to the Worker pod(s)
+  ##
+  initContainers: []
+  ## Worker persistence configuration
+  ##
+  persistence:
+    ## @param worker.persistence.enabled Enable Worker data persistence using PVC
+    ##
+    enabled: true
+    ## @param worker.persistence.storageClass PVC Storage Class for Worker data volume
+    ##
+    storageClass: ""
+    ## @param worker.persistence.accessModes PVC Access Mode for Worker volume
+    ##
+    accessModes:
+      - ReadWriteOnce
+    ## @param worker.persistence.size PVC Storage Request for Worker volume
+    ##
+    size: 10Gi
+    ## @param worker.persistence.annotations Annotations for the PVC
+    ##
+    annotations: {}
+    ## @param worker.persistence.labels Labels for the PVC
+    ##
+    labels: {}
+    ## @param worker.persistence.selector Selector to match an existing Persistent Volume
+    ##
+    selector: {}
+  ## Service configuration
+  ##
+  service:
+    ## @param worker.service.type Worker service type (headless by default)
+    ##
+    type: ClusterIP
+    ## @param worker.service.ports.postgresql Worker service PostgreSQL port
+    ##
+    ports:
+      postgresql: 5432
+    ## @param worker.service.clusterIP Worker service Cluster IP (None for headless)
+    ##
+    clusterIP: None
+    ## @param worker.service.annotations Additional custom annotations for Worker service
+    ##
+    annotations: {}
+    ## @param worker.service.extraPorts Extra ports to expose in Worker service
+    ##
+    extraPorts: []
+  ## Service Account configuration
+  ##
+  serviceAccount:
+    ## @param worker.serviceAccount.create Enable creation of ServiceAccount for Worker pods
+    ##
+    create: true
+    ## @param worker.serviceAccount.name The name of the ServiceAccount to use
+    ##
+    name: ""
+    ## @param worker.serviceAccount.annotations Additional custom annotations for the ServiceAccount
+    ##
+    annotations: {}
+    ## @param worker.serviceAccount.automountServiceAccountToken Automount service account token for the Worker service account
+    ##
+    automountServiceAccountToken: false
+  ## PodDisruptionBudget configuration
+  ##
+  pdb:
+    ## @param worker.pdb.create Enable/disable a Pod Disruption Budget creation
+    ##
+    create: true
+    ## @param worker.pdb.minAvailable Minimum number/percentage of pods that should remain scheduled
+    ##
+    minAvailable: ""
+    ## @param worker.pdb.maxUnavailable Maximum number/percentage of pods that may be made unavailable
+    ##
+    maxUnavailable: 1
+  ## Horizontal Pod Autoscaler configuration
+  ##
+  autoscaling:
+    ## @param worker.autoscaling.enabled Enable horizontal pod autoscaler
+    ##
+    enabled: false
+    ## @param worker.autoscaling.minReplicas Minimum number of Worker replicas
+    ##
+    minReplicas: 3
+    ## @param worker.autoscaling.maxReplicas Maximum number of Worker replicas
+    ##
+    maxReplicas: 10
+    ## @param worker.autoscaling.targetCPU Target CPU utilization percentage
+    ##
+    targetCPU: 70
+    ## @param worker.autoscaling.targetMemory Target memory utilization percentage
+    ##
+    targetMemory: ""
+  ## Vertical Pod Autoscaler configuration
+  ## ref: https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler
+  ##
+  vpa:
+    ## @param worker.vpa.enabled Enable VPA for Worker pods
+    ##
+    enabled: false
+    ## @param worker.vpa.annotations Annotations for VPA resource
+    ##
+    annotations: {}
+    ## @param worker.vpa.updateMode VPA update mode ("Auto", "Recreate", "Initial", "Off")
+    ## Auto: VPA assigns resource requests on pod creation and updates them on existing pods
+    ## Recreate: VPA assigns resource requests on pod creation and updates them on existing pods by evicting and recreating
+    ## Initial: VPA only assigns resource requests on pod creation
+    ## Off: VPA does not automatically change resource requirements, only provides recommendations
+    ##
+    updateMode: Auto
+    ## @param worker.vpa.controlledResources Specifies which resource values should be controlled by VPA
+    ## e.g:
+    ## controlledResources:
+    ##   - cpu
+    ##   - memory
+    ##
+    controlledResources: []
+    ## @param worker.vpa.maxAllowed Maximum allowed resources for VPA
+    ## e.g:
+    ## maxAllowed:
+    ##   cpu: 8
+    ##   memory: 16Gi
+    ##
+    maxAllowed: {}
+    ## @param worker.vpa.minAllowed Minimum allowed resources for VPA
+    ## e.g:
+    ## minAllowed:
+    ##   cpu: 250m
+    ##   memory: 512Mi
+    ##
+    minAllowed: {}
+    ## VPA container policies (optional fine-grained control)
+    ##
+    containerPolicies:
+      ## @param worker.vpa.containerPolicies.main Container policy for main Citus container
+      ##
+      main: {}
+
+## @section Worker registration job configuration
+##
+workerRegistration:
+  ## @param workerRegistration.enabled Enable automatic worker registration job
+  ##
+  enabled: true
+  ## @param workerRegistration.ttlSecondsAfterFinished TTL for completed job cleanup
+  ##
+  ttlSecondsAfterFinished: 600
+  ## @param workerRegistration.backoffLimit Number of retries before considering a job as failed
+  ##
+  backoffLimit: 5
+  ## @param workerRegistration.activeDeadlineSeconds Maximum job duration
+  ##
+  activeDeadlineSeconds: 300
+  ## @param workerRegistration.podAnnotations Annotations for job pod
+  ##
+  podAnnotations: {}
+  ## @param workerRegistration.resources Resource requests and limits for job pod
+  ##
+  resources:
+    limits: {}
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+## @section Manager (membership manager) configuration
+##
+manager:
+  ## @param manager.enabled Enable Citus membership manager for auto worker registration
+  ##
+  enabled: false
+  ## Manager image configuration
+  ##
+  image:
+    ## @param manager.image.registry Manager image registry
+    ##
+    registry: docker.io
+    ## @param manager.image.repository Manager image repository
+    ##
+    repository: citusdata/membership-manager
+    ## @param manager.image.tag Manager image tag
+    ##
+    tag: "0.3.0"
+    ## @param manager.image.pullPolicy Manager image pull policy
+    ##
+    pullPolicy: IfNotPresent
+  ## @param manager.replicaCount Number of Manager replicas
+  ##
+  replicaCount: 1
+  ## Manager resource requests and limits
+  ##
+  resources:
+    ## @param manager.resources.limits The resources limits for the Manager containers
+    ##
+    limits: {}
+    ## @param manager.resources.requests The requested resources for the Manager containers
+    ##
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+## @section Network Policies configuration
+##
+networkPolicy:
+  ## @param networkPolicy.enabled Enable creation of NetworkPolicy resources
+  ##
+  enabled: false
+  ## @param networkPolicy.allowExternal Allow external connections
+  ##
+  allowExternal: true
+  ## @param networkPolicy.allowExternalEgress Allow external egress
+  ##
+  allowExternalEgress: true
+  ## @param networkPolicy.extraIngress Additional NetworkPolicy ingress rules
+  ##
+  extraIngress: []
+  ## @param networkPolicy.extraEgress Additional NetworkPolicy egress rules
+  ##
+  extraEgress: []
+  ## @param networkPolicy.ingressNSMatchLabels Labels to match for allowed ingress namespaces
+  ##
+  ingressNSMatchLabels: {}
+  ## @param networkPolicy.ingressNSPodMatchLabels Pod labels to match for allowed ingress
+  ##
+  ingressNSPodMatchLabels: {}
+
+## @section ServiceMonitor (Prometheus) configuration
+##
+metrics:
+  ## @param metrics.enabled Enable Prometheus metrics exporter
+  ##
+  enabled: false
+  ## Prometheus Exporter / Postgres Exporter image
+  ##
+  image:
+    ## @param metrics.image.registry PostgreSQL Prometheus Exporter image registry
+    ##
+    registry: docker.io
+    ## @param metrics.image.repository PostgreSQL Prometheus Exporter image repository
+    ##
+    repository: prometheuscommunity/postgres-exporter
+    ## @param metrics.image.tag PostgreSQL Prometheus Exporter image tag
+    ##
+    tag: "v0.15.0"
+    ## @param metrics.image.pullPolicy PostgreSQL Prometheus Exporter image pull policy
+    ##
+    pullPolicy: IfNotPresent
+  ## @param metrics.containerPorts.metrics Exporter container port
+  ##
+  containerPorts:
+    metrics: 9187
+  ## @param metrics.resources Resource requests and limits for metrics exporter
+  ##
+  resources:
+    limits: {}
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  ## @param metrics.containerSecurityContext.enabled Enable security context
+  ##
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop:
+        - ALL
+  ## @param metrics.livenessProbe.enabled Enable livenessProbe
+  ##
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+    successThreshold: 1
+  ## @param metrics.readinessProbe.enabled Enable readinessProbe
+  ##
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+    successThreshold: 1
+  ## ServiceMonitor configuration
+  ##
+  serviceMonitor:
+    ## @param metrics.serviceMonitor.enabled Enable ServiceMonitor
+    ##
+    enabled: false
+    ## @param metrics.serviceMonitor.namespace Namespace for ServiceMonitor
+    ##
+    namespace: ""
+    ## @param metrics.serviceMonitor.interval Interval at which metrics should be scraped
+    ##
+    interval: 30s
+    ## @param metrics.serviceMonitor.scrapeTimeout Timeout after which the scrape is ended
+    ##
+    scrapeTimeout: 10s
+    ## @param metrics.serviceMonitor.selector Selector to select Pods
+    ##
+    selector: {}
+    ## @param metrics.serviceMonitor.labels Additional labels for ServiceMonitor
+    ##
+    labels: {}
+    ## @param metrics.serviceMonitor.annotations Additional annotations for ServiceMonitor
+    ##
+    annotations: {}
+    ## @param metrics.serviceMonitor.relabelings RelabelConfigs to apply to samples before scraping
+    ##
+    relabelings: []
+    ## @param metrics.serviceMonitor.metricRelabelings MetricRelabelConfigs to apply to samples before ingestion
+    ##
+    metricRelabelings: []
+    ## @param metrics.serviceMonitor.honorLabels HonorLabels chooses the metric's labels on collisions with target labels
+    ##
+    honorLabels: false
+    ## @param metrics.serviceMonitor.jobLabel The name of the label on the target service to use as the job name in Prometheus
+    ##
+    jobLabel: ""
+  ## Prometheus Rule configuration
+  ##
+  prometheusRule:
+    ## @param metrics.prometheusRule.enabled Enable PrometheusRule
+    ##
+    enabled: false
+    ## @param metrics.prometheusRule.namespace Namespace for PrometheusRule
+    ##
+    namespace: ""
+    ## @param metrics.prometheusRule.labels Additional labels for PrometheusRule
+    ##
+    labels: {}
+    ## @param metrics.prometheusRule.rules Alert rules
+    ##
+    rules: []
+
+## @section Ingress configuration
+##
+ingress:
+  ## @param ingress.enabled Enable ingress record generation
+  ##
+  enabled: false
+  ## @param ingress.ingressClassName IngressClass that will be used
+  ##
+  ingressClassName: ""
+  ## @param ingress.hostname Default host for the ingress record
+  ##
+  hostname: citus.local
+  ## @param ingress.path Default path for the ingress record
+  ##
+  path: /
+  ## @param ingress.pathType Ingress path type
+  ##
+  pathType: ImplementationSpecific
+  ## @param ingress.annotations Additional annotations for the Ingress resource
+  ##
+  annotations: {}
+  ## @param ingress.tls Enable TLS configuration for the host
+  ##
+  tls: false
+  ## @param ingress.selfSigned Create a TLS secret using self-signed certificates
+  ##
+  selfSigned: false
+  ## @param ingress.extraHosts An array with additional hostname(s) to be covered
+  ##
+  extraHosts: []
+  ## @param ingress.extraPaths Any additional arbitrary paths that may need to be added to the ingress
+  ##
+  extraPaths: []
+  ## @param ingress.extraTls TLS configuration for additional hostnames
+  ##
+  extraTls: []
+  ## @param ingress.secrets Custom TLS certificates as secrets
+  ##
+  secrets: []
+  ## @param ingress.extraRules Additional rules to be covered
+  ##
+  extraRules: []
+
+## @section Backup configuration
+##
+backup:
+  ## @param backup.enabled Enable scheduled backups
+  ##
+  enabled: false
+  ## @param backup.schedule Cron schedule for backups
+  ##
+  schedule: "0 2 * * *"
+  ## Backup image configuration
+  ##
+  image:
+    ## @param backup.image.registry Backup image registry
+    ##
+    registry: docker.io
+    ## @param backup.image.repository Backup image repository
+    ##
+    repository: postgres
+    ## @param backup.image.tag Backup image tag
+    ##
+    tag: "17"
+    ## @param backup.image.pullPolicy Backup image pull policy
+    ##
+    pullPolicy: IfNotPresent
+  ## Backup persistence configuration
+  ##
+  persistence:
+    ## @param backup.persistence.enabled Enable backup persistence
+    ##
+    enabled: true
+    ## @param backup.persistence.storageClass PVC Storage Class
+    ##
+    storageClass: ""
+    ## @param backup.persistence.accessModes PVC Access Modes
+    ##
+    accessModes:
+      - ReadWriteOnce
+    ## @param backup.persistence.size PVC Storage Request
+    ##
+    size: 20Gi
+  ## @param backup.resources Resource requests and limits for backup job
+  ##
+  resources:
+    limits: {}
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  ## @param backup.retentionDays Number of days to retain backups
+  ##
+  retentionDays: 7
+
+## @section Volume Permissions configuration
+##
+volumePermissions:
+  ## @param volumePermissions.enabled Enable init container to set volume permissions
+  ##
+  enabled: false
+  ## Volume permissions image
+  ##
+  image:
+    ## @param volumePermissions.image.registry Volume permissions image registry
+    ##
+    registry: docker.io
+    ## @param volumePermissions.image.repository Volume permissions image repository
+    ##
+    repository: bitnami/os-shell
+    ## @param volumePermissions.image.tag Volume permissions image tag
+    ##
+    tag: 12-debian-12-r40
+    ## @param volumePermissions.image.pullPolicy Volume permissions image pull policy
+    ##
+    pullPolicy: IfNotPresent
+  ## @param volumePermissions.resources Resource requests and limits
+  ##
+  resources:
+    limits: {}
+    requests: {}
+  ## @param volumePermissions.containerSecurityContext Security context
+  ##
+  containerSecurityContext:
+    runAsUser: 0
+
+## @section Diagnostic mode configuration
+##
+diagnosticMode:
+  ## @param diagnosticMode.enabled Enable diagnostic mode (sleep infinity)
+  ##
+  enabled: false
+  ## @param diagnosticMode.command Command to override all containers
+  ##
+  command:
+    - sleep
+  ## @param diagnosticMode.args Args to override all containers
+  ##
+  args:
+    - infinity

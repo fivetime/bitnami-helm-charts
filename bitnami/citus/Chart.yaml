@@ -1,0 +1,36 @@
+annotations:
+  category: Database
+  licenses: AGPL-3.0
+apiVersion: v2
+appVersion: 13.0.3
+dependencies:
+- name: common
+  repository: file://../common
+  tags:
+  - bitnami-common
+  version: 2.x.x
+description: Citus is a PostgreSQL-based distributed RDBMS for horizontally scaling
+  PostgreSQL to handle larger data volumes and higher concurrency workloads
+home: https://www.citusdata.com
+icon: https://www.citusdata.com/favicon.ico
+keywords:
+- citus
+- postgresql
+- postgres
+- distributed
+- database
+- sql
+- sharding
+- cluster
+- coordinator
+- worker
+kubeVersion: '>=1.23.0-0'
+maintainers:
+- email: simon@example.com
+  name: Simon
+name: citus
+sources:
+- https://github.com/citusdata/citus
+- https://github.com/citusdata/docker
+type: application
+version: 1.0.0

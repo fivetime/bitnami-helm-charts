@@ -1,0 +1,84 @@
+{{- /*
+Copyright Anthropic
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if .Values.coordinator.vpa.enabled }}
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: {{ include "common.names.fullname" . }}-coordinator
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: coordinator
+  {{- if or .Values.coordinator.vpa.annotations .Values.commonAnnotations }}
+  {{- $annotations := include "common.tplvalues.merge" (dict "values" (list .Values.coordinator.vpa.annotations .Values.commonAnnotations) "context" .) }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" $annotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  resourcePolicy:
+    containerPolicies:
+      - containerName: citus
+        {{- if .Values.coordinator.vpa.controlledResources }}
+        controlledResources: {{- toYaml .Values.coordinator.vpa.controlledResources | nindent 10 }}
+        {{- end }}
+        {{- if .Values.coordinator.vpa.maxAllowed }}
+        maxAllowed: {{- toYaml .Values.coordinator.vpa.maxAllowed | nindent 10 }}
+        {{- end }}
+        {{- if .Values.coordinator.vpa.minAllowed }}
+        minAllowed: {{- toYaml .Values.coordinator.vpa.minAllowed | nindent 10 }}
+        {{- end }}
+        {{- if .Values.coordinator.vpa.containerPolicies.main }}
+        {{- toYaml .Values.coordinator.vpa.containerPolicies.main | nindent 8 }}
+        {{- end }}
+      {{- if .Values.metrics.enabled }}
+      - containerName: metrics
+        mode: "Off"
+      {{- end }}
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: {{ include "common.names.fullname" . }}-coordinator
+  updatePolicy:
+    updateMode: {{ .Values.coordinator.vpa.updateMode }}
+{{- end }}
+---
+{{- if .Values.worker.vpa.enabled }}
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: {{ include "common.names.fullname" . }}-worker
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: worker
+  {{- if or .Values.worker.vpa.annotations .Values.commonAnnotations }}
+  {{- $annotations := include "common.tplvalues.merge" (dict "values" (list .Values.worker.vpa.annotations .Values.commonAnnotations) "context" .) }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" $annotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  resourcePolicy:
+    containerPolicies:
+      - containerName: citus
+        {{- if .Values.worker.vpa.controlledResources }}
+        controlledResources: {{- toYaml .Values.worker.vpa.controlledResources | nindent 10 }}
+        {{- end }}
+        {{- if .Values.worker.vpa.maxAllowed }}
+        maxAllowed: {{- toYaml .Values.worker.vpa.maxAllowed | nindent 10 }}
+        {{- end }}
+        {{- if .Values.worker.vpa.minAllowed }}
+        minAllowed: {{- toYaml .Values.worker.vpa.minAllowed | nindent 10 }}
+        {{- end }}
+        {{- if .Values.worker.vpa.containerPolicies.main }}
+        {{- toYaml .Values.worker.vpa.containerPolicies.main | nindent 8 }}
+        {{- end }}
+      {{- if .Values.metrics.enabled }}
+      - containerName: metrics
+        mode: "Off"
+      {{- end }}
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: {{ include "common.names.fullname" . }}-worker
+  updatePolicy:
+    updateMode: {{ .Values.worker.vpa.updateMode }}
+{{- end }}

@@ -1,0 +1,354 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+apiVersion: {{ include "common.capabilities.deployment.apiVersion" . }}
+kind: Deployment
+metadata:
+  name: {{ include "common.names.fullname" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not .Values.autoscaling.hpa.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  {{- if .Values.updateStrategy }}
+  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  {{- $podLabels := include "common.tplvalues.merge" ( dict "values" ( list .Values.podLabels .Values.commonLabels ) "context" . ) }}
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" ( dict "customLabels" $podLabels "context" $ ) | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" ( dict "customLabels" $podLabels "context" $ ) | nindent 8 }}
+      annotations:
+        {{- if .Values.podAnnotations }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.podAnnotations "context" $) | nindent 8 }}
+        {{- end }}
+        {{- if and .Values.metrics.enabled .Values.metrics.podAnnotations }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.metrics.podAnnotations "context" $) | nindent 8 }}
+        {{- end }}
+        checksum/records-config: {{ include (print $.Template.BasePath "/records-configmap.yaml") . | sha256sum }}
+        checksum/remap-config: {{ include (print $.Template.BasePath "/remap-configmap.yaml") . | sha256sum }}
+        checksum/plugin-config: {{ include (print $.Template.BasePath "/plugin-configmap.yaml") . | sha256sum }}
+        checksum/storage-config: {{ include (print $.Template.BasePath "/storage-configmap.yaml") . | sha256sum }}
+        checksum/startup-script: {{ include (print $.Template.BasePath "/startup-configmap.yaml") . | sha256sum }}
+    spec:
+      {{- include "trafficserver.imagePullSecrets" . | nindent 6 }}
+      shareProcessNamespace: {{ .Values.sidecarSingleProcessNamespace }}
+      serviceAccountName: {{ template "trafficserver.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      {{- if .Values.hostAliases }}
+      hostAliases: {{- include "common.tplvalues.render" (dict "value" .Values.hostAliases "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.affinity }}
+      affinity: {{- include "common.tplvalues.render" (dict "value" .Values.affinity "context" $) | nindent 8 }}
+      {{- else }}
+      affinity:
+        podAffinity: {{- include "common.affinities.pods" (dict "type" .Values.podAffinityPreset "customLabels" $podLabels "context" $) | nindent 10 }}
+        podAntiAffinity: {{- include "common.affinities.pods" (dict "type" .Values.podAntiAffinityPreset "customLabels" $podLabels "context" $) | nindent 10 }}
+        nodeAffinity: {{- include "common.affinities.nodes" (dict "type" .Values.nodeAffinityPreset.type "key" .Values.nodeAffinityPreset.key "values" .Values.nodeAffinityPreset.values) | nindent 10 }}
+      {{- end }}
+      hostNetwork: {{ .Values.hostNetwork }}
+      {{- if .Values.dnsPolicy }}
+      dnsPolicy: {{ .Values.dnsPolicy }}
+      {{- end }}
+      {{- if .Values.dnsConfig }}
+      dnsConfig: {{- include "common.tplvalues.render" (dict "value" .Values.dnsConfig "context" $) | nindent 8 }}
+      {{- end }}
+      hostIPC: {{ .Values.hostIPC }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.nodeSelector "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.tolerations "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.schedulerName }}
+      schedulerName: {{ .Values.schedulerName | quote }}
+      {{- end }}
+      {{- if .Values.topologySpreadConstraints }}
+      topologySpreadConstraints: {{- include "common.tplvalues.render" (dict "value" .Values.topologySpreadConstraints "context" .) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.podSecurityContext.enabled }}
+      securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.podSecurityContext "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- end }}
+      {{- if .Values.initContainers }}
+      initContainers:
+        {{- include "common.tplvalues.render" (dict "value" .Values.initContainers "context" $) | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: trafficserver
+          image: {{ include "trafficserver.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.containerSecurityContext "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.diagnosticMode.enabled }}
+          command: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 12 }}
+          {{- else if .Values.command }}
+          command: {{- include "common.tplvalues.render" (dict "value" .Values.command "context" $) | nindent 12 }}
+          {{- else }}
+          command:
+            - /bin/bash
+            - /start-ats.sh
+          {{- end }}
+          {{- if .Values.diagnosticMode.enabled }}
+          args: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 12 }}
+          {{- else if .Values.args }}
+          args: {{- include "common.tplvalues.render" (dict "value" .Values.args "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "common.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+          env:
+            - name: BITNAMI_DEBUG
+              value: {{ ternary "true" "false" .Values.image.debug | quote }}
+            {{- if .Values.extraEnvVars }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
+            {{- end }}
+          envFrom:
+            {{- if .Values.extraEnvVarsCM }}
+            - configMapRef:
+                name: {{ include "common.tplvalues.render" (dict "value" .Values.extraEnvVarsCM "context" $) }}
+            {{- end }}
+            {{- if .Values.extraEnvVarsSecret }}
+            - secretRef:
+                name: {{ include "common.tplvalues.render" (dict "value" .Values.extraEnvVarsSecret "context" $) }}
+            {{- end }}
+          ports:
+            {{- if .Values.containerPorts.http }}
+            - name: http
+              containerPort: {{ .Values.containerPorts.http }}
+            {{- end }}
+            {{- if .Values.containerPorts.https }}
+            - name: https
+              containerPort: {{ .Values.containerPorts.https }}
+            {{- end }}
+            {{- if .Values.extraContainerPorts }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.extraContainerPorts "context" $) | nindent 12 }}
+            {{- end }}
+          {{- if not .Values.diagnosticMode.enabled }}
+          {{- if .Values.customLivenessProbe }}
+          livenessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customLivenessProbe "context" $) | nindent 12 }}
+          {{- else if .Values.livenessProbe.enabled }}
+          livenessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.livenessProbe "enabled") "context" $) | nindent 12 }}
+            httpGet:
+              path: /_stats
+              port: http
+              scheme: HTTP
+          {{- end }}
+          {{- if .Values.customReadinessProbe }}
+          readinessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customReadinessProbe "context" $) | nindent 12 }}
+          {{- else if .Values.readinessProbe.enabled }}
+          readinessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.readinessProbe "enabled") "context" $) | nindent 12 }}
+            httpGet:
+              path: /_stats
+              port: http
+              scheme: HTTP
+          {{- end }}
+          {{- if .Values.customStartupProbe }}
+          startupProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customStartupProbe "context" $) | nindent 12 }}
+          {{- else if .Values.startupProbe.enabled }}
+          startupProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.startupProbe "enabled") "context" $) | nindent 12 }}
+            httpGet:
+              path: /_stats
+              port: http
+              scheme: HTTP
+          {{- end }}
+          {{- end }}
+          {{- if .Values.resources }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          {{- else if ne .Values.resourcesPreset "none" }}
+          resources: {{- include "common.resources.preset" (dict "type" .Values.resourcesPreset) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: cache
+              mountPath: /opt/var/cache/trafficserver
+            - name: logs
+              mountPath: /opt/var/log/trafficserver
+            - name: records-config
+              mountPath: /opt/etc/trafficserver/records.yaml
+              subPath: records.yaml
+            - name: remap-config
+              mountPath: /opt/etc/trafficserver/remap.config
+              subPath: remap.config
+            - name: plugin-config
+              mountPath: /opt/etc/trafficserver/plugin.config
+              subPath: plugin.config
+            - name: storage-config
+              mountPath: /opt/etc/trafficserver/storage.config
+              subPath: storage.config
+            - name: ip-allow-config
+              mountPath: /opt/etc/trafficserver/ip_allow.yaml
+              subPath: ip_allow.yaml
+            {{- if or .Values.sniConfig .Values.existingSniConfigmap }}
+            - name: sni-config
+              mountPath: /opt/etc/trafficserver/sni.yaml
+              subPath: sni.yaml
+            {{- end }}
+            {{- if or .Values.loggingConfig .Values.existingLoggingConfigmap }}
+            - name: logging-config
+              mountPath: /opt/etc/trafficserver/logging.yaml
+              subPath: logging.yaml
+            {{- end }}
+            {{- if or .Values.cacheConfig .Values.existingCacheConfigmap }}
+            - name: cache-rules-config
+              mountPath: /opt/etc/trafficserver/cache.config
+              subPath: cache.config
+            {{- end }}
+            {{- if or .Values.parentConfig .Values.existingParentConfigmap }}
+            - name: parent-config
+              mountPath: /opt/etc/trafficserver/parent.config
+              subPath: parent.config
+            {{- end }}
+            {{- if or .Values.strategiesConfig .Values.existingStrategiesConfigmap }}
+            - name: strategies-config
+              mountPath: /opt/etc/trafficserver/strategies.yaml
+              subPath: strategies.yaml
+            {{- end }}
+            {{- if or .Values.sslMulticertConfig .Values.existingSslMulticertConfigmap }}
+            - name: ssl-multicert-config
+              mountPath: /opt/etc/trafficserver/ssl_multicert.config
+              subPath: ssl_multicert.config
+            {{- end }}
+            {{- if or .Values.hostingConfig .Values.existingHostingConfigmap }}
+            - name: hosting-config
+              mountPath: /opt/etc/trafficserver/hosting.config
+              subPath: hosting.config
+            {{- end }}
+            {{- if or .Values.volumeConfig .Values.existingVolumeConfigmap }}
+            - name: volume-config
+              mountPath: /opt/etc/trafficserver/volume.config
+              subPath: volume.config
+            {{- end }}
+            {{- if or .Values.splitdnsConfig .Values.existingSplitdnsConfigmap }}
+            - name: splitdns-config
+              mountPath: /opt/etc/trafficserver/splitdns.config
+              subPath: splitdns.config
+            {{- end }}
+            {{- if or .Values.socksConfig .Values.existingSocksConfigmap }}
+            - name: socks-config
+              mountPath: /opt/etc/trafficserver/socks.config
+              subPath: socks.config
+            {{- end }}
+            {{- if or .Values.jsonrpcConfig .Values.existingJsonrpcConfigmap }}
+            - name: jsonrpc-config
+              mountPath: /opt/etc/trafficserver/jsonrpc.yaml
+              subPath: jsonrpc.yaml
+            {{- end }}
+            {{- if .Values.bodyFactory.enabled }}
+            - name: body-factory
+              mountPath: /opt/etc/trafficserver/body_factory/default
+            {{- end }}
+            - name: startup-script
+              mountPath: /start-ats.sh
+              subPath: start-ats.sh
+            {{- if .Values.extraVolumeMounts }}
+            {{- include "common.tplvalues.render" ( dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+            {{- end }}
+        {{- if .Values.sidecars }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.sidecars "context" $) | nindent 8 }}
+        {{- end }}
+      volumes:
+        - name: cache
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (include "common.names.fullname" .) }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: logs
+          emptyDir: {}
+        - name: records-config
+          configMap:
+            name: {{ include "trafficserver.recordsConfigmapName" . }}
+        - name: remap-config
+          configMap:
+            name: {{ include "trafficserver.remapConfigmapName" . }}
+        - name: plugin-config
+          configMap:
+            name: {{ include "trafficserver.pluginConfigmapName" . }}
+        - name: storage-config
+          configMap:
+            name: {{ include "trafficserver.storageConfigmapName" . }}
+        - name: ip-allow-config
+          configMap:
+            name: {{ include "trafficserver.ipAllowConfigmapName" . }}
+        {{- if or .Values.sniConfig .Values.existingSniConfigmap }}
+        - name: sni-config
+          configMap:
+            name: {{ include "trafficserver.sniConfigmapName" . }}
+        {{- end }}
+        {{- if or .Values.loggingConfig .Values.existingLoggingConfigmap }}
+        - name: logging-config
+          configMap:
+            name: {{ include "trafficserver.loggingConfigmapName" . }}
+        {{- end }}
+        {{- if or .Values.cacheConfig .Values.existingCacheConfigmap }}
+        - name: cache-rules-config
+          configMap:
+            name: {{ include "trafficserver.cacheConfigmapName" . }}
+        {{- end }}
+        {{- if or .Values.parentConfig .Values.existingParentConfigmap }}
+        - name: parent-config
+          configMap:
+            name: {{ include "trafficserver.parentConfigmapName" . }}
+        {{- end }}
+        {{- if or .Values.strategiesConfig .Values.existingStrategiesConfigmap }}
+        - name: strategies-config
+          configMap:
+            name: {{ include "trafficserver.strategiesConfigmapName" . }}
+        {{- end }}
+        {{- if or .Values.sslMulticertConfig .Values.existingSslMulticertConfigmap }}
+        - name: ssl-multicert-config
+          configMap:
+            name: {{ include "trafficserver.sslMulticertConfigmapName" . }}
+        {{- end }}
+        {{- if or .Values.hostingConfig .Values.existingHostingConfigmap }}
+        - name: hosting-config
+          configMap:
+            name: {{ include "trafficserver.hostingConfigmapName" . }}
+        {{- end }}
+        {{- if or .Values.volumeConfig .Values.existingVolumeConfigmap }}
+        - name: volume-config
+          configMap:
+            name: {{ include "trafficserver.volumeConfigmapName" . }}
+        {{- end }}
+        {{- if or .Values.splitdnsConfig .Values.existingSplitdnsConfigmap }}
+        - name: splitdns-config
+          configMap:
+            name: {{ include "trafficserver.splitdnsConfigmapName" . }}
+        {{- end }}
+        {{- if or .Values.socksConfig .Values.existingSocksConfigmap }}
+        - name: socks-config
+          configMap:
+            name: {{ include "trafficserver.socksConfigmapName" . }}
+        {{- end }}
+        {{- if or .Values.jsonrpcConfig .Values.existingJsonrpcConfigmap }}
+        - name: jsonrpc-config
+          configMap:
+            name: {{ include "trafficserver.jsonrpcConfigmapName" . }}
+        {{- end }}
+        {{- if .Values.bodyFactory.enabled }}
+        - name: body-factory
+          configMap:
+            name: {{ include "common.names.fullname" . }}-body-factory
+        {{- end }}
+        - name: startup-script
+          configMap:
+            name: {{ include "trafficserver.startupScriptConfigmapName" . }}
+            defaultMode: 0755
+        {{- if .Values.extraVolumes }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $) | nindent 8 }}
+        {{- end }}

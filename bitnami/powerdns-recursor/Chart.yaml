@@ -1,0 +1,32 @@
+annotations:
+  category: Infrastructure
+  licenses: Apache-2.0
+apiVersion: v2
+appVersion: 5.3.4
+dependencies:
+- name: common
+  repository: file://../common
+  tags:
+  - bitnami-common
+  version: 2.x.x
+description: 'PowerDNS Recursor - 高性能递归 DNS 解析器，支持 DNSSEC 验证、RPZ、 Lua 脚本、ECS 和信任锚点管理。 '
+home: https://doc.powerdns.com/recursor/
+icon: https://www.powerdns.com/images/PowerDNS-logo.png
+keywords:
+- dns
+- recursor
+- resolver
+- powerdns
+- dnssec
+- rpz
+- ecs
+kubeVersion: '>=1.25.0-0'
+maintainers:
+- email: simon@example.com
+  name: Simon
+name: powerdns-recursor
+sources:
+- https://github.com/PowerDNS/pdns
+- https://doc.powerdns.com/recursor/
+type: application
+version: 1.4.0

@@ -1,0 +1,88 @@
+{{- /*
+Copyright Anthropic, Inc.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "citus.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "citus.labels" . | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- toYaml .Values.commonAnnotations | nindent 4 }}
+  {{- end }}
+spec:
+  podSelector:
+    matchLabels: {{- include "citus.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow internal communication between Citus nodes
+    - from:
+        - podSelector:
+            matchLabels: {{- include "citus.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.coordinator.containerPorts.postgresql }}
+    {{- if .Values.networkPolicy.allowExternal }}
+    # Allow external connections
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.coordinator.containerPorts.postgresql }}
+      {{- if or .Values.networkPolicy.ingressNSMatchLabels .Values.networkPolicy.ingressNSPodMatchLabels }}
+      from:
+        {{- if .Values.networkPolicy.ingressNSMatchLabels }}
+        - namespaceSelector:
+            matchLabels: {{- toYaml .Values.networkPolicy.ingressNSMatchLabels | nindent 14 }}
+          {{- if .Values.networkPolicy.ingressNSPodMatchLabels }}
+          podSelector:
+            matchLabels: {{- toYaml .Values.networkPolicy.ingressNSPodMatchLabels | nindent 14 }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.metrics.enabled }}
+    # Allow Prometheus scraping
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.metrics.containerPorts.metrics }}
+    {{- end }}
+    {{- if .Values.networkPolicy.extraIngress }}
+    {{- toYaml .Values.networkPolicy.extraIngress | nindent 4 }}
+    {{- end }}
+  egress:
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow internal communication between Citus nodes
+    - to:
+        - podSelector:
+            matchLabels: {{- include "citus.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.coordinator.containerPorts.postgresql }}
+    {{- if .Values.networkPolicy.allowExternalEgress }}
+    # Allow external egress
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+    {{- end }}
+    {{- if .Values.networkPolicy.extraEgress }}
+    {{- toYaml .Values.networkPolicy.extraEgress | nindent 4 }}
+    {{- end }}
+{{- end }}

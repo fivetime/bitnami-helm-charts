@@ -1,0 +1,85 @@
+{{/*
+Copyright Simon Li
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- if .Values.blocklist.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "common.names.fullname" . }}-blocklist
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: dnsdist
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  blocklist.txt: |
+    # DNSdist Blocklist
+    # One domain per line
+    {{- range .Values.blocklist.domains }}
+    {{ . }}
+    {{- end }}
+  blocklist.conf: |
+    --[[
+    Blocklist Configuration
+    Loads domains from /etc/dnsdist/blocklist/blocklist.txt and blocks them.
+    Uses batched loading for memory efficiency with large lists.
+    --]]
+
+    infolog("Loading domain blocklist...")
+
+    local blocklist_file = "/etc/dnsdist/blocklist/blocklist.txt"
+    local batch_size = {{ .Values.blocklist.batchSize }}
+    local action_name = "{{ .Values.blocklist.action }}"
+
+    -- Determine action based on configuration
+    local block_action
+    if action_name == "Drop" then
+        block_action = DropAction()
+    elseif action_name == "Refused" then
+        block_action = RCodeAction(DNSRCode.REFUSED)
+    elseif action_name == "NoData" then
+        block_action = RCodeAction(DNSRCode.NOERROR)
+    else
+        block_action = RCodeAction(DNSRCode.SERVFAIL)
+    end
+
+    -- Check if blocklist file exists
+    local file = io.open(blocklist_file, "r")
+    if file == nil then
+        warnlog("Blocklist file not found: " .. blocklist_file)
+    else
+        local counter = 0
+        local total = 0
+        local blocked_domains = newSuffixMatchNode()
+
+        for blocked_domain in file:lines() do
+            -- Skip empty lines and comments
+            if blocked_domain ~= "" and blocked_domain:sub(1, 1) ~= "#" then
+                -- Batch processing for memory efficiency
+                if counter >= batch_size then
+                    addAction(SuffixMatchNodeRule(blocked_domains, true), block_action)
+                    blocked_domains = newSuffixMatchNode()
+                    counter = 0
+                end
+
+                local domain = newDNSName(blocked_domain)
+                if not blocked_domains:check(domain) then
+                    blocked_domains:add(domain)
+                    counter = counter + 1
+                    total = total + 1
+                end
+            end
+        end
+
+        -- Add remaining domains
+        if counter > 0 then
+            addAction(SuffixMatchNodeRule(blocked_domains, true), block_action)
+        end
+
+        file:close()
+        infolog("Blocklist loaded: " .. total .. " domains blocked")
+    end
+{{- end }}

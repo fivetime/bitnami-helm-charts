@@ -1,0 +1,76 @@
+CHART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+** Please be patient while the chart is being deployed **
+
+{{- if .Values.diagnosticMode.enabled }}
+The chart has been deployed in diagnostic mode. All probes have been disabled and the command has been overwritten with:
+
+  command: {{- toYaml .Values.diagnosticMode.command | nindent 4 }}
+  args: {{- toYaml .Values.diagnosticMode.args | nindent 4 }}
+
+Get the list of pods by executing:
+
+  kubectl get pods --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+Access the pods by executing:
+
+  kubectl exec --namespace {{ .Release.Namespace }} -ti <NAME OF THE POD> -- bash
+
+{{- else }}
+
+Citus Distributed PostgreSQL can be accessed via port {{ .Values.coordinator.service.ports.postgresql }} on the following DNS names from within your cluster:
+
+    Coordinator: {{ include "citus.coordinator.fullname" . }}.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }}
+    Workers:     {{ include "citus.worker.fullname" . }}-<ordinal>.{{ include "citus.worker.svcHeadless" . }}.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }}
+
+To get the password for the "postgres" admin user run:
+
+    export POSTGRES_PASSWORD=$(kubectl get secret --namespace {{ .Release.Namespace }} {{ include "citus.secretName" . }} -o jsonpath="{.data.postgres-password}" | base64 -d)
+
+To connect to the Citus coordinator from outside the cluster execute the following commands:
+
+{{- if contains "NodePort" .Values.coordinator.service.type }}
+
+    export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "citus.coordinator.fullname" . }})
+    export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+    PGPASSWORD="$POSTGRES_PASSWORD" psql --host $NODE_IP --port $NODE_PORT -U postgres -d {{ .Values.auth.database }}
+
+{{- else if contains "LoadBalancer" .Values.coordinator.service.type }}
+
+    NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+    Watch the status with: 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "citus.coordinator.fullname" . }}'
+
+    export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "citus.coordinator.fullname" . }} --template "{{ "{{ range (index .status.loadBalancer.ingress 0) }}{{ . }}{{ end }}" }}")
+    PGPASSWORD="$POSTGRES_PASSWORD" psql --host $SERVICE_IP --port {{ .Values.coordinator.service.ports.postgresql }} -U postgres -d {{ .Values.auth.database }}
+
+{{- else if contains "ClusterIP" .Values.coordinator.service.type }}
+
+    kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "citus.coordinator.fullname" . }} {{ .Values.coordinator.service.ports.postgresql }}:{{ .Values.coordinator.service.ports.postgresql }} &
+    PGPASSWORD="$POSTGRES_PASSWORD" psql --host 127.0.0.1 -U postgres -d {{ .Values.auth.database }} -p {{ .Values.coordinator.service.ports.postgresql }}
+
+{{- end }}
+
+To verify the Citus cluster status, run:
+
+    kubectl exec -it {{ include "citus.coordinator.fullname" . }}-0 --namespace {{ .Release.Namespace }} -- \
+      psql -U postgres -d {{ .Values.auth.database }} -c "SELECT * FROM citus_get_active_worker_nodes();"
+
+To create a distributed table:
+
+    kubectl exec -it {{ include "citus.coordinator.fullname" . }}-0 --namespace {{ .Release.Namespace }} -- \
+      psql -U postgres -d {{ .Values.auth.database }} -c "CREATE TABLE test (id serial PRIMARY KEY, data text); SELECT create_distributed_table('test', 'id');"
+
+{{- if .Values.metrics.enabled }}
+
+Prometheus metrics are exposed at:
+
+    Coordinator: {{ include "citus.coordinator.fullname" . }}:{{ .Values.metrics.containerPorts.metrics }}/metrics
+    Workers:     {{ include "citus.worker.fullname" . }}-<ordinal>:{{ .Values.metrics.containerPorts.metrics }}/metrics
+
+{{- end }}
+
+{{- end }}
+
+{{- include "citus.validateValues" . }}

@@ -1,0 +1,116 @@
+{{- /*
+Copyright Anthropic, Inc.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- if .Values.backup.enabled }}
+{{- if .Values.backup.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "citus.fullname" . }}-backup
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "citus.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- toYaml .Values.commonAnnotations | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes: {{- toYaml .Values.backup.persistence.accessModes | nindent 4 }}
+  {{- if or .Values.backup.persistence.storageClass .Values.global.storageClass }}
+  storageClassName: {{ coalesce .Values.backup.persistence.storageClass .Values.global.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.backup.persistence.size | quote }}
+---
+{{- end }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "citus.fullname" . }}-backup
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "citus.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- toYaml .Values.commonAnnotations | nindent 4 }}
+  {{- end }}
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels: {{- include "citus.labels" . | nindent 12 }}
+            app.kubernetes.io/component: backup
+        spec:
+          {{- include "citus.imagePullSecrets" . | nindent 10 }}
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: {{ include "citus.backup.image" . }}
+              imagePullPolicy: {{ .Values.backup.image.pullPolicy | quote }}
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -e
+                  
+                  BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
+                  BACKUP_DIR="/backups/${BACKUP_DATE}"
+                  COORDINATOR_HOST="{{ include "citus.coordinator.fullname" . }}"
+                  RETENTION_DAYS={{ .Values.backup.retentionDays }}
+                  
+                  echo "=== Starting Citus Backup ==="
+                  echo "Date: ${BACKUP_DATE}"
+                  echo "Coordinator: ${COORDINATOR_HOST}"
+                  
+                  # Create backup directory
+                  mkdir -p "${BACKUP_DIR}"
+                  
+                  # Backup coordinator
+                  echo "Backing up coordinator..."
+                  pg_basebackup \
+                    -h ${COORDINATOR_HOST} \
+                    -U postgres \
+                    -D "${BACKUP_DIR}/coordinator" \
+                    -F tar \
+                    -z \
+                    -P \
+                    -X fetch
+                  
+                  echo "Coordinator backup completed"
+                  
+                  # Cleanup old backups
+                  echo "Cleaning up backups older than ${RETENTION_DAYS} days..."
+                  find /backups -type d -mtime +${RETENTION_DAYS} -exec rm -rf {} + 2>/dev/null || true
+                  
+                  # List current backups
+                  echo "=== Current Backups ==="
+                  ls -la /backups/
+                  
+                  echo "Backup completed successfully"
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "citus.secretName" . }}
+                      key: {{ include "citus.secretPasswordKey" . }}
+              {{- if .Values.backup.resources }}
+              resources: {{- toYaml .Values.backup.resources | nindent 16 }}
+              {{- end }}
+              volumeMounts:
+                - name: backup
+                  mountPath: /backups
+          volumes:
+            - name: backup
+              {{- if .Values.backup.persistence.enabled }}
+              persistentVolumeClaim:
+                claimName: {{ include "citus.fullname" . }}-backup
+              {{- else }}
+              emptyDir: {}
+              {{- end }}
+{{- end }}

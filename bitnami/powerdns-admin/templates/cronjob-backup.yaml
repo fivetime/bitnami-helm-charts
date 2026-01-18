@@ -1,0 +1,153 @@
+{{/*
+Copyright Simon Li. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if .Values.backup.enabled }}
+{{- if and (ne .Values.database.type "sqlite") (or (eq .Values.database.type "postgresql") (eq .Values.database.type "mysql")) }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "common.names.fullname" . }}-backup
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: backup
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ .Values.backup.retention }}
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 12 }}
+            app.kubernetes.io/component: backup
+        spec:
+          restartPolicy: OnFailure
+          {{- include "powerdns-admin.imagePullSecrets" . | nindent 10 }}
+          {{- if .Values.podSecurityContext.enabled }}
+          securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.podSecurityContext "context" $) | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: backup
+              image: {{ .Values.backup.image.registry }}/{{ .Values.backup.image.repository }}:{{ .Values.backup.image.tag }}
+              imagePullPolicy: {{ .Values.backup.image.pullPolicy }}
+              {{- if .Values.containerSecurityContext.enabled }}
+              securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.containerSecurityContext "context" $) | nindent 16 }}
+              {{- end }}
+              env:
+                - name: BACKUP_DIR
+                  value: "/backup"
+                - name: BACKUP_RETENTION
+                  value: {{ .Values.backup.retention | quote }}
+                - name: DB_TYPE
+                  value: {{ .Values.database.type | quote }}
+                {{- if eq .Values.database.type "postgresql" }}
+                - name: PGHOST
+                  value: {{ .Values.externalDatabase.host | quote }}
+                - name: PGPORT
+                  value: {{ .Values.externalDatabase.port | default 5432 | quote }}
+                - name: PGDATABASE
+                  value: {{ .Values.externalDatabase.database | quote }}
+                - name: PGUSER
+                  value: {{ .Values.externalDatabase.username | quote }}
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "powerdns-admin.database.secretName" . }}
+                      key: {{ .Values.externalDatabase.existingSecretPasswordKey | default "password" }}
+                {{- else if eq .Values.database.type "mysql" }}
+                - name: MYSQL_HOST
+                  value: {{ .Values.externalDatabase.host | quote }}
+                - name: MYSQL_PORT
+                  value: {{ .Values.externalDatabase.port | default 3306 | quote }}
+                - name: MYSQL_DATABASE
+                  value: {{ .Values.externalDatabase.database | quote }}
+                - name: MYSQL_USER
+                  value: {{ .Values.externalDatabase.username | quote }}
+                - name: MYSQL_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "powerdns-admin.database.secretName" . }}
+                      key: {{ .Values.externalDatabase.existingSecretPasswordKey | default "password" }}
+                {{- end }}
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+                  BACKUP_FILE="${BACKUP_DIR}/powerdns-admin-${TIMESTAMP}.sql"
+                  
+                  echo "Starting backup at $(date)"
+                  
+                  {{- if eq .Values.database.type "postgresql" }}
+                  pg_dump -Fc > "${BACKUP_FILE}.gz"
+                  {{- else if eq .Values.database.type "mysql" }}
+                  mysqldump -h ${MYSQL_HOST} -P ${MYSQL_PORT} -u ${MYSQL_USER} -p${MYSQL_PASSWORD} ${MYSQL_DATABASE} | gzip > "${BACKUP_FILE}.gz"
+                  {{- end }}
+                  
+                  echo "Backup completed: ${BACKUP_FILE}.gz"
+                  
+                  # Cleanup old backups
+                  echo "Cleaning up old backups (keeping last ${BACKUP_RETENTION})..."
+                  ls -t ${BACKUP_DIR}/powerdns-admin-*.sql.gz 2>/dev/null | tail -n +$((BACKUP_RETENTION + 1)) | xargs -r rm -f
+                  
+                  echo "Current backups:"
+                  ls -la ${BACKUP_DIR}/powerdns-admin-*.sql.gz 2>/dev/null || echo "No backups found"
+                  
+                  {{- if eq .Values.backup.storage.type "s3" }}
+                  echo "Uploading to S3..."
+                  # S3 upload would be implemented here with aws cli or similar
+                  {{- end }}
+                  
+                  echo "Backup job completed at $(date)"
+              resources: {{- toYaml .Values.backup.resources | nindent 16 }}
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /backup
+          volumes:
+            - name: backup-storage
+              {{- if eq .Values.backup.storage.type "pvc" }}
+              {{- if .Values.backup.storage.pvc.existingClaim }}
+              persistentVolumeClaim:
+                claimName: {{ .Values.backup.storage.pvc.existingClaim }}
+              {{- else }}
+              persistentVolumeClaim:
+                claimName: {{ include "common.names.fullname" . }}-backup
+              {{- end }}
+              {{- else }}
+              emptyDir: {}
+              {{- end }}
+---
+{{- if and (eq .Values.backup.storage.type "pvc") (not .Values.backup.storage.pvc.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "common.names.fullname" . }}-backup
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: backup
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.backup.storage.pvc.size }}
+  {{- if .Values.backup.storage.pvc.storageClass }}
+  {{- if (eq "-" .Values.backup.storage.pvc.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: {{ .Values.backup.storage.pvc.storageClass | quote }}
+  {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

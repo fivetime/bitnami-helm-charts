@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(helm dependency:*)",
+      "Bash(helm template:*)"
+    ]
+  }
+}

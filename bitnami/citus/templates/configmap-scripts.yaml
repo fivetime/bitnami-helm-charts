@@ -1,0 +1,187 @@
+{{- /*
+Copyright Anthropic, Inc.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "citus.fullname" . }}-scripts
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "citus.labels" . | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- toYaml .Values.commonAnnotations | nindent 4 }}
+  {{- end }}
+data:
+  init-citus.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "=== Citus Initialization Script ==="
+    echo "Node role: ${CITUS_NODE_ROLE:-unknown}"
+    
+    # Wait for PostgreSQL to be ready
+    until pg_isready -h localhost -p 5432 -U postgres; do
+      echo "Waiting for PostgreSQL to start..."
+      sleep 2
+    done
+    
+    echo "PostgreSQL is ready, creating Citus extension..."
+    
+    # Create Citus extension if not exists
+    psql -U postgres -d {{ .Values.auth.database }} <<-EOSQL
+      CREATE EXTENSION IF NOT EXISTS citus;
+    EOSQL
+    
+    # Set WAL level for logical replication (required for rebalancing)
+    psql -U postgres -c "ALTER SYSTEM SET wal_level = 'logical';"
+    psql -U postgres -c "SELECT pg_reload_conf();"
+    
+    {{- if .Values.auth.username }}
+    # Create custom user if specified
+    psql -U postgres -d {{ .Values.auth.database }} <<-EOSQL
+      DO \$\$
+      BEGIN
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '{{ .Values.auth.username }}') THEN
+          CREATE ROLE {{ .Values.auth.username }} WITH LOGIN PASSWORD '${POSTGRES_USER_PASSWORD}';
+        END IF;
+      END
+      \$\$;
+      
+      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.auth.database }} TO {{ .Values.auth.username }};
+    EOSQL
+    {{- end }}
+    
+    # Configure pg_hba.conf for cluster communication
+    echo "Configuring pg_hba.conf..."
+    cat >> ${PGDATA}/pg_hba.conf <<EOF
+    # Allow connections from cluster pods (Kubernetes networks)
+    host    all             all             10.0.0.0/8              scram-sha-256
+    host    all             all             172.16.0.0/12           scram-sha-256
+    host    all             all             192.168.0.0/16          scram-sha-256
+    EOF
+    
+    psql -U postgres -c "SELECT pg_reload_conf();"
+    
+    echo "Citus initialization completed successfully"
+
+  setup-coordinator.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "=== Coordinator Setup Script ==="
+    
+    # Configure pg_hba.conf for coordinator
+    cat >> ${PGDATA}/pg_hba.conf <<EOF
+    # Allow connections from worker nodes
+    host    all             all             10.0.0.0/8              scram-sha-256
+    host    all             all             172.16.0.0/12           scram-sha-256
+    host    all             all             192.168.0.0/16          scram-sha-256
+    EOF
+    
+    # Reload configuration
+    pg_ctl reload -D ${PGDATA}
+    
+    echo "Coordinator setup completed"
+
+  setup-worker.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "=== Worker Setup Script ==="
+    
+    # Configure pg_hba.conf for worker
+    cat >> ${PGDATA}/pg_hba.conf <<EOF
+    # Allow connections from coordinator and other workers
+    host    all             all             10.0.0.0/8              scram-sha-256
+    host    all             all             172.16.0.0/12           scram-sha-256
+    host    all             all             192.168.0.0/16          scram-sha-256
+    EOF
+    
+    # Reload configuration
+    pg_ctl reload -D ${PGDATA}
+    
+    echo "Worker setup completed"
+
+  register-workers.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "=== Worker Registration Script ==="
+    
+    COORDINATOR_HOST="{{ include "citus.coordinator.fullname" . }}"
+    WORKER_SVC="{{ include "citus.worker.svcHeadless" . }}"
+    WORKER_BASE="{{ include "citus.worker.fullname" . }}"
+    NAMESPACE="{{ .Release.Namespace }}"
+    CLUSTER_DOMAIN="{{ .Values.clusterDomain }}"
+    WORKER_COUNT={{ .Values.worker.replicaCount }}
+    
+    export PGPASSWORD="${POSTGRES_PASSWORD}"
+    
+    # Wait for coordinator to be ready
+    echo "Waiting for coordinator at ${COORDINATOR_HOST}..."
+    until pg_isready -h ${COORDINATOR_HOST} -p 5432 -U postgres -t 5; do
+      echo "Coordinator not ready, waiting..."
+      sleep 5
+    done
+    
+    echo "Coordinator is ready, waiting for workers..."
+    
+    # Wait for all workers to be ready
+    for i in $(seq 0 $((WORKER_COUNT - 1))); do
+      WORKER_HOST="${WORKER_BASE}-${i}.${WORKER_SVC}.${NAMESPACE}.svc.${CLUSTER_DOMAIN}"
+      echo "Waiting for worker ${i} at ${WORKER_HOST}..."
+      until pg_isready -h ${WORKER_HOST} -p 5432 -U postgres -t 5; do
+        echo "Worker ${i} not ready, waiting..."
+        sleep 5
+      done
+      echo "Worker ${i} is ready"
+    done
+    
+    echo "All workers are ready, registering with coordinator..."
+    
+    # Create Citus extension if not exists
+    psql -h ${COORDINATOR_HOST} -U postgres -d {{ .Values.auth.database }} -c "CREATE EXTENSION IF NOT EXISTS citus;"
+    
+    # Get currently registered workers
+    REGISTERED=$(psql -h ${COORDINATOR_HOST} -U postgres -d {{ .Values.auth.database }} -t -c "SELECT nodename FROM pg_dist_node WHERE noderole = 'primary';" | tr -d ' ')
+    
+    # Register each worker
+    for i in $(seq 0 $((WORKER_COUNT - 1))); do
+      WORKER_HOST="${WORKER_BASE}-${i}.${WORKER_SVC}.${NAMESPACE}.svc.${CLUSTER_DOMAIN}"
+      
+      if echo "${REGISTERED}" | grep -q "${WORKER_HOST}"; then
+        echo "Worker ${i} (${WORKER_HOST}) already registered"
+      else
+        echo "Registering worker ${i} (${WORKER_HOST})..."
+        psql -h ${COORDINATOR_HOST} -U postgres -d {{ .Values.auth.database }} -c "SELECT citus_add_node('${WORKER_HOST}', 5432);" || {
+          echo "Warning: Failed to register worker ${i}, it might already be registered or there was an error"
+        }
+      fi
+    done
+    
+    # Verify registration
+    echo "=== Current cluster status ==="
+    psql -h ${COORDINATOR_HOST} -U postgres -d {{ .Values.auth.database }} -c "SELECT * FROM citus_get_active_worker_nodes();"
+    
+    echo "Worker registration completed"
+
+  health-check.sh: |
+    #!/bin/bash
+    # Simple health check for pg_isready
+    exec pg_isready -h localhost -p 5432 -U postgres
+
+  readiness-check.sh: |
+    #!/bin/bash
+    # Check if PostgreSQL is ready and Citus extension is loaded
+    pg_isready -h localhost -p 5432 -U postgres || exit 1
+    
+    # Check if Citus extension exists
+    CITUS_EXISTS=$(psql -U postgres -d {{ .Values.auth.database }} -t -c "SELECT 1 FROM pg_extension WHERE extname = 'citus';" 2>/dev/null | tr -d ' ')
+    
+    if [ "${CITUS_EXISTS}" = "1" ]; then
+      exit 0
+    else
+      echo "Citus extension not yet loaded"
+      exit 1
+    fi

@@ -1,0 +1,74 @@
+CHART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+** Please be patient while the chart is being deployed **
+
+{{- if .Values.diagnosticMode.enabled }}
+The chart has been deployed in diagnostic mode. All probes have been disabled and the command has been overwritten with:
+
+  command: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 4 }}
+  args: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 4 }}
+
+Get the list of pods by executing:
+
+  kubectl get pods --namespace {{ include "common.names.namespace" . }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+Access the pod you want to debug by executing
+
+  kubectl exec --namespace {{ include "common.names.namespace" . }} -ti <NAME OF THE POD> -- bash
+
+{{- else }}
+
+PowerDNS Authoritative Server can be accessed through the following DNS endpoints:
+
+  DNS (UDP): {{ include "common.names.fullname" . }}.{{ include "common.names.namespace" . }}.svc.{{ .Values.clusterDomain }}:{{ .Values.service.ports.dns }}
+  DNS (TCP): {{ include "common.names.fullname" . }}.{{ include "common.names.namespace" . }}.svc.{{ .Values.clusterDomain }}:{{ .Values.service.ports.dnsTcp }}
+
+{{- if .Values.webserver.enabled }}
+
+The API/Webserver is available at:
+
+  API: http://{{ include "common.names.fullname" . }}.{{ include "common.names.namespace" . }}.svc.{{ .Values.clusterDomain }}:{{ .Values.service.ports.api }}/api/v1
+
+To get the API key, run:
+
+  kubectl get secret --namespace {{ include "common.names.namespace" . }} {{ include "powerdns-auth.configSecretName" . }} -o jsonpath="{.data.pdns\.conf}" | base64 -d | grep api-key
+
+{{- if .Values.ingress.enabled }}
+
+The API is also accessible via Ingress:
+
+  URL: http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.hostname }}{{ .Values.ingress.path }}
+
+{{- end }}
+{{- end }}
+
+{{- if eq .Values.service.type "LoadBalancer" }}
+
+  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+        Watch the status with: 'kubectl get svc --namespace {{ include "common.names.namespace" . }} -w {{ include "common.names.fullname" . }}'
+
+{{- end }}
+
+To verify the installation:
+
+  # Test DNS query
+  dig @$(kubectl get svc --namespace {{ include "common.names.namespace" . }} {{ include "common.names.fullname" . }} -o jsonpath='{.spec.clusterIP}') version.bind TXT CH
+
+{{- if and .Values.dbInit.enabled .Values.dbSync.enabled }}
+
+Database jobs are configured to run on install/upgrade:
+  - db-init: Creates database and user
+  - db-sync: Initializes schema if not present
+
+To check job status:
+
+  kubectl get jobs --namespace {{ include "common.names.namespace" . }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+{{- end }}
+
+{{- end }}
+
+{{- include "common.warnings.rollingTag" .Values.image }}
+{{- include "powerdns-auth.validateValues" . }}

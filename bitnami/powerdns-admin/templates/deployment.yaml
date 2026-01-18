@@ -1,0 +1,708 @@
+{{- /*
+Copyright Anthropic. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+apiVersion: {{ include "common.capabilities.deployment.apiVersion" . }}
+kind: Deployment
+metadata:
+  name: {{ include "common.names.fullname" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not .Values.autoscaling.hpa.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  {{- if .Values.updateStrategy }}
+  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  {{- $podLabels := include "common.tplvalues.merge" ( dict "values" ( list .Values.podLabels .Values.commonLabels ) "context" . ) }}
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" ( dict "customLabels" $podLabels "context" $ ) | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        checksum/configmap: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- if .Values.podAnnotations }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.podAnnotations "context" $) | nindent 8 }}
+        {{- end }}
+      labels: {{- include "common.labels.standard" ( dict "customLabels" $podLabels "context" $ ) | nindent 8 }}
+    spec:
+      {{- include "common.images.pullSecrets" (dict "images" (list .Values.image) "global" .Values.global) | nindent 6 }}
+      serviceAccountName: {{ include "powerdns-admin.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+      {{- if .Values.hostNetwork }}
+      hostNetwork: {{ .Values.hostNetwork }}
+      {{- end }}
+      {{- if .Values.hostIPC }}
+      hostIPC: {{ .Values.hostIPC }}
+      {{- end }}
+      {{- if .Values.dnsPolicy }}
+      dnsPolicy: {{ .Values.dnsPolicy }}
+      {{- end }}
+      {{- if .Values.dnsConfig }}
+      dnsConfig: {{- include "common.tplvalues.render" (dict "value" .Values.dnsConfig "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.hostAliases }}
+      hostAliases: {{- include "common.tplvalues.render" (dict "value" .Values.hostAliases "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.runtimeClassName }}
+      runtimeClassName: {{ .Values.runtimeClassName | quote }}
+      {{- end }}
+      {{- if .Values.affinity }}
+      affinity: {{- include "common.tplvalues.render" (dict "value" .Values.affinity "context" $) | nindent 8 }}
+      {{- else }}
+      affinity:
+        podAffinity: {{- include "common.affinities.pods" (dict "type" .Values.podAffinityPreset "customLabels" $podLabels "context" $) | nindent 10 }}
+        podAntiAffinity: {{- include "common.affinities.pods" (dict "type" .Values.podAntiAffinityPreset "customLabels" $podLabels "context" $) | nindent 10 }}
+        nodeAffinity: {{- include "common.affinities.nodes" (dict "type" .Values.nodeAffinityPreset.type "key" .Values.nodeAffinityPreset.key "values" .Values.nodeAffinityPreset.values) | nindent 10 }}
+      {{- end }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.nodeSelector "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.tolerations "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.topologySpreadConstraints }}
+      topologySpreadConstraints: {{- include "common.tplvalues.render" (dict "value" .Values.topologySpreadConstraints "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
+      {{- if .Values.schedulerName }}
+      schedulerName: {{ .Values.schedulerName | quote }}
+      {{- end }}
+      {{- if .Values.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- end }}
+      {{- if .Values.podSecurityContext.enabled }}
+      securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.podSecurityContext "context" $) | nindent 8 }}
+      {{- end }}
+      initContainers:
+        {{- if and .Values.defaultInitContainers.waitForDatabase.enabled (ne .Values.database.type "sqlite") }}
+        - name: wait-for-db
+          image: {{ printf "%s/%s:%s" .Values.defaultInitContainers.waitForDatabase.image.registry .Values.defaultInitContainers.waitForDatabase.image.repository .Values.defaultInitContainers.waitForDatabase.image.tag }}
+          imagePullPolicy: {{ .Values.defaultInitContainers.waitForDatabase.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              {{- if eq .Values.database.type "postgresql" }}
+              until nc -z -v -w30 {{ .Values.externalDatabase.host }} {{ .Values.externalDatabase.port | default 5432 }}; do
+              {{- else if eq .Values.database.type "mysql" }}
+              until nc -z -v -w30 {{ .Values.externalDatabase.host }} {{ .Values.externalDatabase.port | default 3306 }}; do
+              {{- end }}
+                echo "Waiting for database connection..."
+                sleep 5
+              done
+              echo "Database is up!"
+          {{- if .Values.defaultInitContainers.waitForDatabase.resources }}
+          resources: {{- toYaml .Values.defaultInitContainers.waitForDatabase.resources | nindent 12 }}
+          {{- end }}
+        {{- end }}
+        {{- if .Values.initContainers }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.initContainers "context" $) | nindent 8 }}
+        {{- end }}
+      containers:
+        - name: powerdns-admin
+          image: {{ include "powerdns-admin.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.containerSecurityContext "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.diagnosticMode.enabled }}
+          command: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 12 }}
+          {{- else if .Values.command }}
+          command: {{- include "common.tplvalues.render" (dict "value" .Values.command "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.diagnosticMode.enabled }}
+          args: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 12 }}
+          {{- else if .Values.args }}
+          args: {{- include "common.tplvalues.render" (dict "value" .Values.args "context" $) | nindent 12 }}
+          {{- end }}
+          env:
+            - name: FLASK_APP
+              value: "powerdnsadmin/__init__.py"
+            # Application configuration
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns-admin.secretName" . }}
+                  key: SECRET_KEY
+            - name: SALT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns-admin.secretName" . }}
+                  key: SALT
+            - name: BIND_ADDRESS
+              value: {{ .Values.powerdnsAdmin.bindAddress | quote }}
+            - name: PORT
+              value: {{ .Values.powerdnsAdmin.port | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.powerdnsAdmin.logLevel | quote }}
+            {{- if .Values.powerdnsAdmin.offlineMode }}
+            - name: OFFLINE_MODE
+              value: "True"
+            {{- end }}
+            - name: SIGNUP_ENABLED
+              value: {{ .Values.powerdnsAdmin.signupEnabled | quote }}
+            - name: SESSION_TYPE
+              value: {{ .Values.powerdnsAdmin.sessionType | quote }}
+            - name: SQLALCHEMY_TRACK_MODIFICATIONS
+              value: {{ .Values.powerdnsAdmin.sqlalchemyTrackModifications | quote }}
+            {{- if .Values.powerdnsAdmin.sqlalchemyEngineOptions }}
+            - name: SQLALCHEMY_ENGINE_OPTIONS
+              value: {{ .Values.powerdnsAdmin.sqlalchemyEngineOptions | quote }}
+            {{- end }}
+            {{- if .Values.powerdnsAdmin.csrfCookieSecure }}
+            - name: CSRF_COOKIE_SECURE
+              value: "True"
+            {{- end }}
+            {{- if .Values.powerdnsAdmin.sessionCookieSecure }}
+            - name: SESSION_COOKIE_SECURE
+              value: "True"
+            {{- end }}
+            {{- if .Values.powerdnsAdmin.hstsEnabled }}
+            - name: HSTS_ENABLED
+              value: "True"
+            {{- end }}
+            {{- if .Values.powerdnsAdmin.serverExternalSsl }}
+            - name: SERVER_EXTERNAL_SSL
+              value: "True"
+            {{- end }}
+            {{- if .Values.powerdnsAdmin.scriptName }}
+            - name: SCRIPT_NAME
+              value: {{ .Values.powerdnsAdmin.scriptName | quote }}
+            {{- end }}
+            # Database configuration
+            {{- if eq .Values.database.type "sqlite" }}
+            - name: SQLALCHEMY_DATABASE_URI
+              value: "sqlite:///{{ .Values.sqlite.path }}"
+            {{- else if eq .Values.database.type "postgresql" }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns-admin.database.secretName" . }}
+                  key: {{ .Values.externalDatabase.existingSecretPasswordKey | default "password" }}
+            - name: SQLALCHEMY_DATABASE_URI
+              value: "postgresql://{{ .Values.externalDatabase.username }}:$(DB_PASSWORD)@{{ .Values.externalDatabase.host }}:{{ .Values.externalDatabase.port | default 5432 }}/{{ .Values.externalDatabase.database }}"
+            {{- else if eq .Values.database.type "mysql" }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns-admin.database.secretName" . }}
+                  key: {{ .Values.externalDatabase.existingSecretPasswordKey | default "password" }}
+            - name: SQLALCHEMY_DATABASE_URI
+              value: "mysql://{{ .Values.externalDatabase.username }}:$(DB_PASSWORD)@{{ .Values.externalDatabase.host }}:{{ .Values.externalDatabase.port | default 3306 }}/{{ .Values.externalDatabase.database }}"
+            {{- end }}
+            # Gunicorn configuration
+            - name: GUNICORN_TIMEOUT
+              value: {{ .Values.gunicorn.timeout | quote }}
+            - name: GUNICORN_WORKERS
+              value: {{ .Values.gunicorn.workers | quote }}
+            - name: GUNICORN_LOGLEVEL
+              value: {{ .Values.gunicorn.loglevel | quote }}
+            # CAPTCHA configuration
+            {{- if .Values.captcha.enabled }}
+            - name: CAPTCHA_ENABLE
+              value: "True"
+            - name: CAPTCHA_LENGTH
+              value: {{ .Values.captcha.length | quote }}
+            - name: CAPTCHA_WIDTH
+              value: {{ .Values.captcha.width | quote }}
+            - name: CAPTCHA_HEIGHT
+              value: {{ .Values.captcha.height | quote }}
+            {{- if .Values.captcha.sessionKey }}
+            - name: CAPTCHA_SESSION_KEY
+              value: {{ .Values.captcha.sessionKey | quote }}
+            {{- end }}
+            {{- else }}
+            - name: CAPTCHA_ENABLE
+              value: "False"
+            {{- end }}
+            # PowerDNS API configuration
+            {{- if .Values.powerdnsApi.enabled }}
+            - name: PDNS_API_URL
+              value: {{ .Values.powerdnsApi.url | quote }}
+            {{- if or .Values.powerdnsApi.key .Values.powerdnsApi.existingSecret }}
+            - name: PDNS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns-admin.powerdnsApi.secretName" . }}
+                  key: api-key
+            {{- end }}
+            - name: PDNS_VERSION
+              value: {{ .Values.powerdnsApi.version | quote }}
+            {{- end }}
+            # Two-Factor Authentication (TOTP) configuration
+            {{- if .Values.auth.twoFactor.enabled }}
+            - name: TOTP_ENABLED
+              value: "True"
+            {{- if .Values.auth.twoFactor.issuerName }}
+            - name: TOTP_ISSUER_NAME
+              value: {{ .Values.auth.twoFactor.issuerName | quote }}
+            {{- end }}
+            {{- end }}
+            # Local authentication
+            - name: LOCAL_DB_ENABLED
+              value: {{ .Values.auth.local.enabled | quote }}
+            # LDAP configuration
+            {{- if .Values.auth.ldap.enabled }}
+            - name: LDAP_ENABLED
+              value: "True"
+            - name: LDAP_TYPE
+              value: {{ .Values.auth.ldap.type | quote }}
+            - name: LDAP_URI
+              value: {{ .Values.auth.ldap.uri | quote }}
+            - name: LDAP_BASE_DN
+              value: {{ .Values.auth.ldap.baseDn | quote }}
+            - name: LDAP_ADMIN_USERNAME
+              value: {{ .Values.auth.ldap.adminUsername | quote }}
+            {{- if or .Values.auth.ldap.adminPassword .Values.auth.ldap.existingSecret }}
+            - name: LDAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns-admin.auth.ldap.secretName" . }}
+                  key: bind-password
+            {{- end }}
+            {{- if .Values.auth.ldap.filterBasic }}
+            - name: LDAP_FILTER_BASIC
+              value: {{ .Values.auth.ldap.filterBasic | quote }}
+            {{- end }}
+            {{- if .Values.auth.ldap.filterUsername }}
+            - name: LDAP_FILTER_USERNAME
+              value: {{ .Values.auth.ldap.filterUsername | quote }}
+            {{- end }}
+            {{- if .Values.auth.ldap.filterGroup }}
+            - name: LDAP_FILTER_GROUP
+              value: {{ .Values.auth.ldap.filterGroup | quote }}
+            {{- end }}
+            {{- if .Values.auth.ldap.sgEnabled }}
+            - name: LDAP_SG_ENABLED
+              value: "True"
+            {{- if .Values.auth.ldap.adminGroup }}
+            - name: LDAP_ADMIN_GROUP
+              value: {{ .Values.auth.ldap.adminGroup | quote }}
+            {{- end }}
+            {{- if .Values.auth.ldap.operatorGroup }}
+            - name: LDAP_OPERATOR_GROUP
+              value: {{ .Values.auth.ldap.operatorGroup | quote }}
+            {{- end }}
+            {{- if .Values.auth.ldap.userGroup }}
+            - name: LDAP_USER_GROUP
+              value: {{ .Values.auth.ldap.userGroup | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.auth.ldap.domain }}
+            - name: LDAP_DOMAIN
+              value: {{ .Values.auth.ldap.domain | quote }}
+            {{- end }}
+            {{- end }}
+            # SAML configuration
+            {{- if .Values.auth.saml.enabled }}
+            - name: SAML_ENABLED
+              value: "True"
+            {{- if .Values.auth.saml.debug }}
+            - name: SAML_DEBUG
+              value: "True"
+            {{- end }}
+            {{- if .Values.auth.saml.path }}
+            - name: SAML_PATH
+              value: {{ .Values.auth.saml.path | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.metadataUrl }}
+            - name: SAML_METADATA_URL
+              value: {{ .Values.auth.saml.metadataUrl | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.metadataCacheLifetime }}
+            - name: SAML_METADATA_CACHE_LIFETIME
+              value: {{ .Values.auth.saml.metadataCacheLifetime | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.idpSsoBinding }}
+            - name: SAML_IDP_SSO_BINDING
+              value: {{ .Values.auth.saml.idpSsoBinding | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.idpEntityId }}
+            - name: SAML_IDP_ENTITY_ID
+              value: {{ .Values.auth.saml.idpEntityId | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.nameidFormat }}
+            - name: SAML_NAMEID_FORMAT
+              value: {{ .Values.auth.saml.nameidFormat | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.spEntityId }}
+            - name: SAML_SP_ENTITY_ID
+              value: {{ .Values.auth.saml.spEntityId | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.spContactName }}
+            - name: SAML_SP_CONTACT_NAME
+              value: {{ .Values.auth.saml.spContactName | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.spContactMail }}
+            - name: SAML_SP_CONTACT_MAIL
+              value: {{ .Values.auth.saml.spContactMail | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.spRequestedAttributes }}
+            - name: SAML_SP_REQUESTED_ATTRIBUTES
+              value: {{ .Values.auth.saml.spRequestedAttributes | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.certPath }}
+            - name: SAML_CERT
+              value: {{ .Values.auth.saml.certPath | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.keyPath }}
+            - name: SAML_KEY
+              value: {{ .Values.auth.saml.keyPath | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.certData }}
+            - name: SAML_CERT_DATA
+              value: {{ .Values.auth.saml.certData | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.keyData }}
+            - name: SAML_KEY_DATA
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns-admin.auth.saml.secretName" . }}
+                  key: saml-key
+            {{- end }}
+            {{- if .Values.auth.saml.signRequest }}
+            - name: SAML_SIGN_REQUEST
+              value: "True"
+            {{- end }}
+            {{- if .Values.auth.saml.logout }}
+            - name: SAML_LOGOUT
+              value: "True"
+            {{- end }}
+            {{- if .Values.auth.saml.logoutUrl }}
+            - name: SAML_LOGOUT_URL
+              value: {{ .Values.auth.saml.logoutUrl | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.assertionEncrypted }}
+            - name: SAML_ASSERTION_ENCRYPTED
+              value: "True"
+            {{- end }}
+            {{- if .Values.auth.saml.wantMessageSigned }}
+            - name: SAML_WANT_MESSAGE_SIGNED
+              value: "True"
+            {{- end }}
+            {{- if not .Values.auth.saml.wantAttributeStatement }}
+            - name: SAML_WANT_ATTRIBUTE_STATEMENT
+              value: "False"
+            {{- end }}
+            {{- if .Values.auth.saml.attributeEmail }}
+            - name: SAML_ATTRIBUTE_EMAIL
+              value: {{ .Values.auth.saml.attributeEmail | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.attributeGivenname }}
+            - name: SAML_ATTRIBUTE_GIVENNAME
+              value: {{ .Values.auth.saml.attributeGivenname | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.attributeSurname }}
+            - name: SAML_ATTRIBUTE_SURNAME
+              value: {{ .Values.auth.saml.attributeSurname | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.attributeUsername }}
+            - name: SAML_ATTRIBUTE_USERNAME
+              value: {{ .Values.auth.saml.attributeUsername | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.attributeAdmin }}
+            - name: SAML_ATTRIBUTE_ADMIN
+              value: {{ .Values.auth.saml.attributeAdmin | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.attributeAccount }}
+            - name: SAML_ATTRIBUTE_ACCOUNT
+              value: {{ .Values.auth.saml.attributeAccount | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.attributeGroup }}
+            - name: SAML_ATTRIBUTE_GROUP
+              value: {{ .Values.auth.saml.attributeGroup | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.groupAdminName }}
+            - name: SAML_GROUP_ADMIN_NAME
+              value: {{ .Values.auth.saml.groupAdminName | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.groupOperatorName }}
+            - name: SAML_GROUP_OPERATOR_NAME
+              value: {{ .Values.auth.saml.groupOperatorName | quote }}
+            {{- end }}
+            {{- if .Values.auth.saml.groupToAccountMapping }}
+            - name: SAML_GROUP_TO_ACCOUNT_MAPPING
+              value: {{ .Values.auth.saml.groupToAccountMapping | quote }}
+            {{- end }}
+            {{- end }}
+            # OIDC configuration
+            {{- if .Values.auth.oidc.enabled }}
+            - name: OIDC_OAUTH_ENABLED
+              value: "True"
+            - name: OIDC_OAUTH_KEY
+              value: {{ .Values.auth.oidc.clientId | quote }}
+            {{- if or .Values.auth.oidc.clientSecret .Values.auth.oidc.existingSecret }}
+            - name: OIDC_OAUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns-admin.auth.oidc.secretName" . }}
+                  key: client-secret
+            {{- end }}
+            - name: OIDC_OAUTH_SCOPE
+              value: {{ .Values.auth.oidc.scope | quote }}
+            {{- if .Values.auth.oidc.apiUrl }}
+            - name: OIDC_OAUTH_API_URL
+              value: {{ .Values.auth.oidc.apiUrl | quote }}
+            {{- end }}
+            {{- if .Values.auth.oidc.tokenUrl }}
+            - name: OIDC_OAUTH_TOKEN_URL
+              value: {{ .Values.auth.oidc.tokenUrl | quote }}
+            {{- end }}
+            {{- if .Values.auth.oidc.authorizeUrl }}
+            - name: OIDC_OAUTH_AUTHORIZE_URL
+              value: {{ .Values.auth.oidc.authorizeUrl | quote }}
+            {{- end }}
+            {{- if .Values.auth.oidc.metadataUrl }}
+            - name: OIDC_OAUTH_METADATA_URL
+              value: {{ .Values.auth.oidc.metadataUrl | quote }}
+            {{- end }}
+            {{- if .Values.auth.oidc.logoutUrl }}
+            - name: OIDC_OAUTH_LOGOUT_URL
+              value: {{ .Values.auth.oidc.logoutUrl | quote }}
+            {{- end }}
+            {{- if .Values.auth.oidc.username }}
+            - name: OIDC_OAUTH_USERNAME
+              value: {{ .Values.auth.oidc.username | quote }}
+            {{- end }}
+            {{- if .Values.auth.oidc.email }}
+            - name: OIDC_OAUTH_EMAIL
+              value: {{ .Values.auth.oidc.email | quote }}
+            {{- end }}
+            {{- if .Values.auth.oidc.firstName }}
+            - name: OIDC_OAUTH_FIRST_NAME
+              value: {{ .Values.auth.oidc.firstName | quote }}
+            {{- end }}
+            {{- if .Values.auth.oidc.lastName }}
+            - name: OIDC_OAUTH_LAST_NAME
+              value: {{ .Values.auth.oidc.lastName | quote }}
+            {{- end }}
+            {{- if .Values.auth.oidc.accountNameProperty }}
+            - name: OIDC_OAUTH_ACCOUNT_NAME_PROPERTY
+              value: {{ .Values.auth.oidc.accountNameProperty | quote }}
+            {{- end }}
+            {{- if .Values.auth.oidc.accountDescriptionProperty }}
+            - name: OIDC_OAUTH_ACCOUNT_DESCRIPTION_PROPERTY
+              value: {{ .Values.auth.oidc.accountDescriptionProperty | quote }}
+            {{- end }}
+            {{- end }}
+            # Google OAuth configuration
+            {{- if .Values.auth.google.enabled }}
+            - name: GOOGLE_OAUTH_ENABLED
+              value: "True"
+            - name: GOOGLE_OAUTH_CLIENT_ID
+              value: {{ .Values.auth.google.clientId | quote }}
+            {{- if or .Values.auth.google.clientSecret .Values.auth.google.existingSecret }}
+            - name: GOOGLE_OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns-admin.auth.google.secretName" . }}
+                  key: client-secret
+            {{- end }}
+            - name: GOOGLE_OAUTH_SCOPE
+              value: {{ .Values.auth.google.scope | quote }}
+            {{- end }}
+            # GitHub OAuth configuration
+            {{- if .Values.auth.github.enabled }}
+            - name: GITHUB_OAUTH_ENABLED
+              value: "True"
+            - name: GITHUB_OAUTH_KEY
+              value: {{ .Values.auth.github.clientId | quote }}
+            {{- if or .Values.auth.github.clientSecret .Values.auth.github.existingSecret }}
+            - name: GITHUB_OAUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns-admin.auth.github.secretName" . }}
+                  key: client-secret
+            {{- end }}
+            - name: GITHUB_OAUTH_SCOPE
+              value: {{ .Values.auth.github.scope | quote }}
+            {{- end }}
+            # Azure AD OAuth configuration
+            {{- if .Values.auth.azure.enabled }}
+            - name: AZURE_OAUTH_ENABLED
+              value: "True"
+            - name: AZURE_OAUTH_KEY
+              value: {{ .Values.auth.azure.clientId | quote }}
+            {{- if or .Values.auth.azure.clientSecret .Values.auth.azure.existingSecret }}
+            - name: AZURE_OAUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns-admin.auth.azure.secretName" . }}
+                  key: client-secret
+            {{- end }}
+            {{- if .Values.auth.azure.tenantId }}
+            - name: AZURE_OAUTH_TENANT_ID
+              value: {{ .Values.auth.azure.tenantId | quote }}
+            {{- end }}
+            - name: AZURE_OAUTH_SCOPE
+              value: {{ .Values.auth.azure.scope | quote }}
+            {{- if .Values.auth.azure.authorizeUrl }}
+            - name: AZURE_OAUTH_AUTHORIZE_URL
+              value: {{ .Values.auth.azure.authorizeUrl | quote }}
+            {{- end }}
+            {{- if .Values.auth.azure.tokenUrl }}
+            - name: AZURE_OAUTH_TOKEN_URL
+              value: {{ .Values.auth.azure.tokenUrl | quote }}
+            {{- end }}
+            {{- if .Values.auth.azure.apiUrl }}
+            - name: AZURE_OAUTH_API_URL
+              value: {{ .Values.auth.azure.apiUrl | quote }}
+            {{- end }}
+            {{- end }}
+            # Remote user configuration
+            {{- if .Values.auth.remoteUser.enabled }}
+            - name: REMOTE_USER_ENABLED
+              value: "True"
+            {{- if .Values.auth.remoteUser.logoutUrl }}
+            - name: REMOTE_USER_LOGOUT_URL
+              value: {{ .Values.auth.remoteUser.logoutUrl | quote }}
+            {{- end }}
+            {{- if .Values.auth.remoteUser.cookies }}
+            - name: REMOTE_USER_COOKIES
+              value: {{ .Values.auth.remoteUser.cookies | quote }}
+            {{- end }}
+            {{- end }}
+            # Mail configuration
+            {{- if .Values.mail.enabled }}
+            - name: MAIL_SERVER
+              value: {{ .Values.mail.server | quote }}
+            - name: MAIL_PORT
+              value: {{ .Values.mail.port | quote }}
+            {{- if .Values.mail.useTls }}
+            - name: MAIL_USE_TLS
+              value: "True"
+            {{- end }}
+            {{- if .Values.mail.useSsl }}
+            - name: MAIL_USE_SSL
+              value: "True"
+            {{- end }}
+            {{- if .Values.mail.username }}
+            - name: MAIL_USERNAME
+              value: {{ .Values.mail.username | quote }}
+            {{- if or .Values.mail.password .Values.mail.existingSecret }}
+            - name: MAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns-admin.mail.secretName" . }}
+                  key: smtp-password
+            {{- end }}
+            {{- end }}
+            - name: MAIL_DEFAULT_SENDER
+              value: {{ .Values.mail.defaultSender | quote }}
+            {{- if .Values.mail.debug }}
+            - name: MAIL_DEBUG
+              value: "True"
+            {{- end }}
+            {{- end }}
+            # OpenTelemetry configuration
+            {{- if .Values.opentelemetry.enabled }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.opentelemetry.endpoint | quote }}
+            - name: OTEL_SERVICE_NAME
+              value: {{ .Values.opentelemetry.serviceName | quote }}
+            - name: OTEL_TRACES_SAMPLER
+              value: {{ .Values.opentelemetry.sampler.type | quote }}
+            - name: OTEL_TRACES_SAMPLER_ARG
+              value: {{ .Values.opentelemetry.sampler.ratio | quote }}
+            - name: OTEL_PROPAGATORS
+              value: {{ join "," .Values.opentelemetry.propagators | quote }}
+            - name: OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED
+              value: "true"
+            {{- end }}
+            {{- if .Values.extraEnvVars }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
+            {{- end }}
+          {{- if or .Values.extraEnvVarsCM .Values.extraEnvVarsSecret }}
+          envFrom:
+            {{- if .Values.extraEnvVarsCM }}
+            - configMapRef:
+                name: {{ include "common.tplvalues.render" (dict "value" .Values.extraEnvVarsCM "context" $) }}
+            {{- end }}
+            {{- if .Values.extraEnvVarsSecret }}
+            - secretRef:
+                name: {{ include "common.tplvalues.render" (dict "value" .Values.extraEnvVarsSecret "context" $) }}
+            {{- end }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPorts.http }}
+              protocol: TCP
+          {{- if not .Values.diagnosticMode.enabled }}
+          {{- if .Values.customLivenessProbe }}
+          livenessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customLivenessProbe "context" $) | nindent 12 }}
+          {{- else if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbe.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+            successThreshold: {{ .Values.livenessProbe.successThreshold }}
+          {{- end }}
+          {{- if .Values.customReadinessProbe }}
+          readinessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customReadinessProbe "context" $) | nindent 12 }}
+          {{- else if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.readinessProbe.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+            successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          {{- end }}
+          {{- if .Values.customStartupProbe }}
+          startupProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customStartupProbe "context" $) | nindent 12 }}
+          {{- else if .Values.startupProbe.enabled }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.startupProbe.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+            successThreshold: {{ .Values.startupProbe.successThreshold }}
+          {{- end }}
+          {{- end }}
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "common.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.resources }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          {{- else if ne .Values.resourcesPreset "none" }}
+          resources: {{- include "common.resources.preset" (dict "type" .Values.resourcesPreset) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            {{- if .Values.extraVolumeMounts }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+            {{- end }}
+        {{- if .Values.sidecars }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.sidecars "context" $) | nindent 8 }}
+        {{- end }}
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "powerdns-admin.pvcName" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- if .Values.extraVolumes }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumes "context" $) | nindent 8 }}
+        {{- end }}

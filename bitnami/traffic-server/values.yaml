@@ -1,0 +1,1386 @@
+# Copyright Broadcom, Inc. All Rights Reserved.
+# SPDX-License-Identifier: APACHE-2.0
+
+## @section Global parameters
+## Global Docker image parameters
+## Please, note that this will override the image parameters, including dependencies, configured to use the global value
+## Current available global Docker image parameters: imageRegistry, imagePullSecrets and storageClass
+
+## @param global.imageRegistry Global Docker image registry
+## @param global.imagePullSecrets Global Docker registry secret names as an array
+##
+global:
+  imageRegistry: ""
+  ## E.g.
+  ## imagePullSecrets:
+  ##   - myRegistryKeySecretName
+  ##
+  imagePullSecrets: []
+  ## Security parameters
+  ##
+  security:
+    ## @param global.security.allowInsecureImages Allows skipping image verification
+    ##
+    allowInsecureImages: false
+  ## Compatibility adaptations for Kubernetes platforms
+  ##
+  compatibility:
+    ## Compatibility adaptations for Openshift
+    ##
+    openshift:
+      ## @param global.compatibility.openshift.adaptSecurityContext Adapt the securityContext sections of the deployment to make them compatible with Openshift restricted-v2 SCC: remove runAsUser, runAsGroup and fsGroup and let the platform use their allowed default IDs. Possible values: auto (apply if the detected running cluster is Openshift), force (perform the adaptation always), disabled (do not perform adaptation)
+      ##
+      adaptSecurityContext: auto
+
+## @section Common parameters
+
+## @param nameOverride String to partially override trafficserver.fullname template (will maintain the release name)
+##
+nameOverride: ""
+## @param fullnameOverride String to fully override trafficserver.fullname template
+##
+fullnameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+##
+namespaceOverride: ""
+## @param kubeVersion Force target Kubernetes version (using Helm capabilities if not set)
+##
+kubeVersion: ""
+## @param clusterDomain Kubernetes Cluster Domain
+##
+clusterDomain: cluster.local
+## @param extraDeploy Extra objects to deploy (value evaluated as a template)
+##
+extraDeploy: []
+## @param commonLabels Add labels to all the deployed resources
+##
+commonLabels: {}
+## @param commonAnnotations Add annotations to all the deployed resources
+##
+commonAnnotations: {}
+## Enable diagnostic mode in the deployment(s)/statefulset(s)
+##
+diagnosticMode:
+  ## @param diagnosticMode.enabled Enable diagnostic mode (all probes will be disabled and the command will be overridden)
+  ##
+  enabled: false
+  ## @param diagnosticMode.command Command to override all containers in the deployment(s)/statefulset(s)
+  ##
+  command:
+    - sleep
+  ## @param diagnosticMode.args Args to override all containers in the deployment(s)/statefulset(s)
+  ##
+  args:
+    - infinity
+
+## @section Apache Traffic Server parameters
+
+## Apache Traffic Server image version
+## ref: https://hub.docker.com/r/trafficserver/trafficserver
+## @param image.registry [default: REGISTRY_NAME] Apache Traffic Server image registry
+## @param image.repository [default: REPOSITORY_NAME/trafficserver] Apache Traffic Server image repository
+## @skip image.tag Apache Traffic Server image tag (immutable tags are recommended)
+## @param image.digest Apache Traffic Server image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+## @param image.pullPolicy Apache Traffic Server image pull policy
+## @param image.pullSecrets Specify docker-registry secret names as an array
+## @param image.debug Set to true if you would like to see extra information on logs
+##
+image:
+  registry: docker.io
+  repository: trafficserver/trafficserver
+  tag: latest
+  digest: ""
+  ## Specify a imagePullPolicy
+  ## ref: https://kubernetes.io/docs/concepts/containers/images/#pre-pulled-images
+  ##
+  pullPolicy: IfNotPresent
+  ## Optionally specify an array of imagePullSecrets.
+  ## Secrets must be manually created in the namespace.
+  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+  ## E.g.:
+  ## pullSecrets:
+  ##   - myRegistryKeySecretName
+  ##
+  pullSecrets: []
+  ## Set to true if you would like to see extra information on logs
+  ##
+  debug: false
+
+## @param automountServiceAccountToken Mount Service Account token in pod
+##
+automountServiceAccountToken: false
+## @param hostAliases Deployment pod host aliases
+## https://kubernetes.io/docs/concepts/services-networking/add-entries-to-pod-etc-hosts-with-host-aliases/
+##
+hostAliases: []
+## Command and args for running the container (set to default if not set). Use array form
+## @param command Override default container command (useful when using custom images)
+## @param args Override default container args (useful when using custom images)
+##
+command: []
+args: []
+## @param extraEnvVars Extra environment variables to be set on Apache Traffic Server containers
+## E.g:
+## extraEnvVars:
+##   - name: FOO
+##     value: BAR
+##
+extraEnvVars: []
+## @param extraEnvVarsCM ConfigMap with extra environment variables
+##
+extraEnvVarsCM: ""
+## @param extraEnvVarsSecret Secret with extra environment variables
+##
+extraEnvVarsSecret: ""
+
+## @section Apache Traffic Server deployment parameters
+
+## @param replicaCount Number of Apache Traffic Server replicas to deploy
+##
+replicaCount: 1
+## @param revisionHistoryLimit The number of old history to retain to allow rollback
+##
+revisionHistoryLimit: 10
+## @param updateStrategy.type Apache Traffic Server deployment strategy type
+## @param updateStrategy.rollingUpdate Apache Traffic Server deployment rolling update configuration parameters
+## ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
+##
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+## @param podLabels Additional labels for Apache Traffic Server pods
+## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+##
+podLabels: {}
+## @param podAnnotations Annotations for Apache Traffic Server pods
+## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+##
+podAnnotations: {}
+## @param podAffinityPreset Pod affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
+##
+podAffinityPreset: ""
+## @param podAntiAffinityPreset Pod anti-affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+## Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
+##
+podAntiAffinityPreset: soft
+## Node affinity preset
+## Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity
+##
+nodeAffinityPreset:
+  ## @param nodeAffinityPreset.type Node affinity preset type. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+  ##
+  type: ""
+  ## @param nodeAffinityPreset.key Node label key to match Ignored if `affinity` is set.
+  ## E.g.
+  ## key: "kubernetes.io/e2e-az-name"
+  ##
+  key: ""
+  ## @param nodeAffinityPreset.values Node label values to match. Ignored if `affinity` is set.
+  ## E.g.
+  ## values:
+  ##   - e2e-az1
+  ##   - e2e-az2
+  ##
+  values: []
+## @param affinity Affinity for pod assignment
+## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+## Note: podAffinityPreset, podAntiAffinityPreset, and nodeAffinityPreset will be ignored when it's set
+##
+affinity: {}
+## @param hostNetwork Specify if host network should be enabled for Apache Traffic Server pod
+##
+hostNetwork: false
+## @param hostIPC Specify if host IPC should be enabled for Apache Traffic Server pod
+##
+hostIPC: false
+## DNS-Pod services
+## Ref: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/
+## @param dnsPolicy Specifies the DNS policy for the Apache Traffic Server pod
+## DNS policies can be set on a per-Pod basis. Currently Kubernetes supports the following Pod-specific DNS policies.
+## Available options: Default, ClusterFirst, ClusterFirstWithHostNet, None
+## Ref: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+dnsPolicy: ""
+## @param dnsConfig Allows users more control on the DNS settings for a Pod. Required if `dnsPolicy` is set to `None`
+## The dnsConfig field is optional and it can work with any dnsPolicy settings.
+## Ref: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
+## E.g.
+## dnsConfig:
+##   nameservers:
+##     - 192.0.2.1 # this is an example
+##   searches:
+##     - ns1.svc.cluster-domain.example
+##     - my.dns.search.suffix
+##   options:
+##     - name: ndots
+##       value: "2"
+##     - name: edns0
+dnsConfig: {}
+## @param nodeSelector Node labels for pod assignment. Evaluated as a template.
+## Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+##
+nodeSelector: {}
+## @param tolerations Tolerations for pod assignment. Evaluated as a template.
+## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+##
+tolerations: []
+## @param priorityClassName Apache Traffic Server pods' priorityClassName
+##
+priorityClassName: ""
+## @param schedulerName Name of the k8s scheduler (other than default)
+## ref: https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/
+##
+schedulerName: ""
+## @param terminationGracePeriodSeconds In seconds, time the given to the Apache Traffic Server pod needs to terminate gracefully
+## ref: https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods
+##
+terminationGracePeriodSeconds: ""
+## @param topologySpreadConstraints Topology Spread Constraints for pod assignment
+## https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+## The value is evaluated as a template
+##
+topologySpreadConstraints: []
+
+## Apache Traffic Server pods' Security Context.
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+## @param podSecurityContext.enabled Enabled Apache Traffic Server pods' Security Context
+## @param podSecurityContext.fsGroupChangePolicy Set filesystem group change policy
+## @param podSecurityContext.supplementalGroups Set filesystem extra groups
+## @param podSecurityContext.fsGroup Set Apache Traffic Server pod's Security Context fsGroup
+## @param podSecurityContext.sysctls sysctl settings of the Apache Traffic Server pods
+##
+podSecurityContext:
+  enabled: true
+  fsGroupChangePolicy: Always
+  supplementalGroups: []
+  fsGroup: 1001
+  ## sysctl settings
+  ## Example:
+  ## sysctls:
+  ## - name: net.core.somaxconn
+  ##   value: "10000"
+  ##
+  sysctls: []
+
+## Apache Traffic Server containers' Security Context.
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
+## @param containerSecurityContext.enabled Enabled containers' Security Context
+## @param containerSecurityContext.seLinuxOptions [object,nullable] Set SELinux options in container
+## @param containerSecurityContext.runAsUser Set containers' Security Context runAsUser
+## @param containerSecurityContext.runAsGroup Set containers' Security Context runAsGroup
+## @param containerSecurityContext.runAsNonRoot Set container's Security Context runAsNonRoot
+## @param containerSecurityContext.privileged Set container's Security Context privileged
+## @param containerSecurityContext.readOnlyRootFilesystem Set container's Security Context readOnlyRootFilesystem
+## @param containerSecurityContext.allowPrivilegeEscalation Set container's Security Context allowPrivilegeEscalation
+## @param containerSecurityContext.capabilities.drop List of capabilities to be dropped
+## @param containerSecurityContext.seccompProfile.type Set container's Security Context seccomp profile
+##
+containerSecurityContext:
+  enabled: true
+  seLinuxOptions: {}
+  runAsUser: 1001
+  runAsGroup: 1001
+  runAsNonRoot: true
+  privileged: false
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+  seccompProfile:
+    type: "RuntimeDefault"
+
+## Configures the ports Apache Traffic Server listens on
+## @param containerPorts.http Sets http port inside Apache Traffic Server container
+## @param containerPorts.https Sets https port inside Apache Traffic Server container
+##
+containerPorts:
+  http: 8080
+  https: 8443
+
+## @param extraContainerPorts Array of additional container ports for the Apache Traffic Server container
+## e.g:
+## extraContainerPorts:
+##   - name: stats
+##     containerPort: 8083
+##
+extraContainerPorts: []
+
+## Apache Traffic Server containers' resource requests and limits
+## ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+## We usually recommend not to specify default resources and to leave this as a conscious
+## choice for the user. This also increases chances charts run on environments with little
+## resources, such as Minikube. If you do want to specify resources, uncomment the following
+## lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+## @param resourcesPreset Set container resources according to one common preset (allowed values: none, nano, micro, small, medium, large, xlarge, 2xlarge). This is ignored if resources is set (resources is recommended for production).
+## More information: https://github.com/bitnami/charts/blob/main/bitnami/common/templates/_resources.tpl#L15
+##
+resourcesPreset: "small"
+## @param resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+## Example:
+## resources:
+##   requests:
+##     cpu: 2
+##     memory: 512Mi
+##   limits:
+##     cpu: 3
+##     memory: 1024Mi
+##
+resources: {}
+
+## Apache Traffic Server containers' lifecycleHooks
+## ref: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/
+## If you do want to specify lifecycleHooks, uncomment the following
+## lines, adjust them as necessary, and remove the curly braces on 'lifecycle:{}'.
+## @param lifecycleHooks Optional lifecycleHooks for the Apache Traffic Server container
+lifecycleHooks: {}
+
+## Apache Traffic Server containers' startup probe.
+## ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
+## @param startupProbe.enabled Enable startupProbe
+## @param startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
+## @param startupProbe.periodSeconds Period seconds for startupProbe
+## @param startupProbe.timeoutSeconds Timeout seconds for startupProbe
+## @param startupProbe.failureThreshold Failure threshold for startupProbe
+## @param startupProbe.successThreshold Success threshold for startupProbe
+##
+startupProbe:
+  enabled: false
+  initialDelaySeconds: 30
+  timeoutSeconds: 5
+  periodSeconds: 10
+  failureThreshold: 6
+  successThreshold: 1
+
+## Apache Traffic Server containers' liveness probe.
+## ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
+## @param livenessProbe.enabled Enable livenessProbe
+## @param livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+## @param livenessProbe.periodSeconds Period seconds for livenessProbe
+## @param livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+## @param livenessProbe.failureThreshold Failure threshold for livenessProbe
+## @param livenessProbe.successThreshold Success threshold for livenessProbe
+##
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  timeoutSeconds: 5
+  periodSeconds: 10
+  failureThreshold: 6
+  successThreshold: 1
+
+## Apache Traffic Server containers' readiness probe.
+## ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
+## @param readinessProbe.enabled Enable readinessProbe
+## @param readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+## @param readinessProbe.periodSeconds Period seconds for readinessProbe
+## @param readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+## @param readinessProbe.failureThreshold Failure threshold for readinessProbe
+## @param readinessProbe.successThreshold Success threshold for readinessProbe
+##
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 5
+  timeoutSeconds: 3
+  periodSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+## @param customStartupProbe Custom liveness probe for the Web component
+##
+customStartupProbe: {}
+## @param customLivenessProbe Override default liveness probe
+##
+customLivenessProbe: {}
+## @param customReadinessProbe Override default readiness probe
+##
+customReadinessProbe: {}
+
+## Autoscaling parameters
+## @param autoscaling.enabled Enable autoscaling for Apache Traffic Server deployment
+## @param autoscaling.minReplicas Minimum number of replicas to scale back
+## @param autoscaling.maxReplicas Maximum number of replicas to scale out
+## @param autoscaling.targetCPU Target CPU utilization percentage
+## @param autoscaling.targetMemory Target Memory utilization percentage
+##
+autoscaling:
+  ## Vertical Pod Autoscaler configuration
+  ## ref: https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler
+  ##
+  vpa:
+    ## @param autoscaling.vpa.enabled Enable VPA for Apache Traffic Server
+    ##
+    enabled: false
+    ## @param autoscaling.vpa.annotations Annotations for VPA resource
+    ##
+    annotations: {}
+    ## @param autoscaling.vpa.controlledResources VPA controlled resources (cpu, memory)
+    ## e.g:
+    ## controlledResources:
+    ##   - cpu
+    ##   - memory
+    ##
+    controlledResources: []
+    ## @param autoscaling.vpa.maxAllowed VPA max resources limits
+    ## e.g:
+    ## maxAllowed:
+    ##   cpu: 4
+    ##   memory: 8Gi
+    ##
+    maxAllowed: {}
+    ## @param autoscaling.vpa.minAllowed VPA min resources limits
+    ## e.g:
+    ## minAllowed:
+    ##   cpu: 100m
+    ##   memory: 128Mi
+    ##
+    minAllowed: {}
+    ## @param autoscaling.vpa.controlledValues VPA controlled values (RequestsAndLimits, RequestsOnly)
+    ## controlledValues: RequestsAndLimits
+    ##
+    controlledValues: ""
+    ## @param autoscaling.vpa.updatePolicy.updateMode Autoscaling update policy (Off, Initial, Recreate, Auto)
+    ## Specifies whether recommended updates are applied when a Pod is started and whether recommended updates
+    ## are applied during the life of a Pod. Possible values are "Off", "Initial", "Recreate", and "Auto".
+    ##
+    updatePolicy:
+      updateMode: Auto
+  ## Horizontal Pod Autoscaler configuration
+  ## ref: https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
+  ##
+  hpa:
+    ## @param autoscaling.hpa.enabled Enable HPA for Apache Traffic Server pods
+    ##
+    enabled: false
+    ## @param autoscaling.hpa.minReplicas Minimum number of Apache Traffic Server replicas
+    ##
+    minReplicas: 3
+    ## @param autoscaling.hpa.maxReplicas Maximum number of Apache Traffic Server replicas
+    ##
+    maxReplicas: 10
+    ## @param autoscaling.hpa.targetCPU Target CPU utilization percentage
+    ##
+    targetCPU: 70
+    ## @param autoscaling.hpa.targetMemory Target Memory utilization percentage
+    ##
+    targetMemory: 80
+
+## @param extraVolumes Array to add extra volumes
+##
+extraVolumes: []
+## @param extraVolumeMounts Array to add extra mount
+##
+extraVolumeMounts: []
+
+## Pods Service Account
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+##
+serviceAccount:
+  ## @param serviceAccount.create Enable creation of ServiceAccount for Apache Traffic Server pod
+  ##
+  create: true
+  ## @param serviceAccount.name The name of the ServiceAccount to use.
+  ## If not set and create is true, a name is generated using the `common.names.fullname` template
+  name: ""
+  ## @param serviceAccount.annotations Annotations for service account. Evaluated as a template.
+  ## Only used if `create` is `true`.
+  ##
+  annotations: {}
+  ## @param serviceAccount.automountServiceAccountToken Auto-mount the service account token in the pod
+  ##
+  automountServiceAccountToken: false
+
+## @param sidecars Sidecar parameters
+## e.g:
+## sidecars:
+##   - name: your-image-name
+##     image: your-image
+##     imagePullPolicy: Always
+##     ports:
+##       - name: portname
+##         containerPort: 1234
+##
+sidecars: []
+## @param sidecarSingleProcessNamespace Enable sharing the process namespace with sidecars
+## This will switch pod.spec.shareProcessNamespace parameter
+##
+sidecarSingleProcessNamespace: false
+## @param initContainers Extra init containers
+##
+initContainers: []
+
+## Pod Disruption Budget configuration
+## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+##
+pdb:
+  ## @param pdb.create Created a PodDisruptionBudget
+  ##
+  create: true
+  ## @param pdb.minAvailable Min number of pods that must still be available after the eviction.
+  ## You can specify an integer or a percentage by setting the value to a string representation of a percentage (eg. "50%"). It will be disabled if set to 0
+  ##
+  minAvailable: ""
+  ## @param pdb.maxUnavailable Max number of pods that can be unavailable after the eviction.
+  ## You can specify an integer or a percentage by setting the value to a string representation of a percentage (eg. "50%"). It will be disabled if set to 0. Defaults to `1` if both `pdb.minAvailable` and `pdb.maxUnavailable` are empty.
+  ##
+  maxUnavailable: ""
+
+## @section Apache Traffic Server Configuration parameters
+## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/
+
+## @param recordsConfig Apache Traffic Server records.yaml configuration
+## This will be rendered as YAML and used for /opt/etc/trafficserver/records.yaml
+## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/records.yaml.en.html
+## Note: This follows the official ATS 10.x YAML format (records.yaml, not legacy records.config)
+##
+recordsConfig:
+  records:
+    ## Thread configuration
+    accept_threads: 1
+    task_threads: 2
+    exec_thread:
+      affinity: 1
+      autoconfig:
+        enabled: 1
+        scale: 1.0
+      limit: 2
+    ## Cache configuration
+    cache:
+      limits:
+        http:
+          max_alts: 5
+      log:
+        alternate:
+          eviction: 0
+      max_doc_size: 0
+      min_average_object_size: 8000
+      ram_cache:
+        size: -1
+      ram_cache_cutoff: 4194304
+      threads_per_disk: 8
+    ## Diagnostics
+    diags:
+      debug:
+        enabled: 0
+        tags: "http|dns"
+    dump_mem_info_frequency: 0
+    ## HTTP configuration
+    http:
+      accept_no_activity_timeout: 120
+      cache:
+        cache_responses_to_cookies: 1
+        cache_urls_that_look_dynamic: 1
+        heuristic_lm_factor: 0.1
+        heuristic_max_lifetime: 86400
+        heuristic_min_lifetime: 3600
+        http: 1
+        ignore_client_cc_max_age: 1
+        required_headers: 2
+        when_to_revalidate: 0
+      connect_attempts_max_retries: 3
+      connect_attempts_max_retries_down_server: 1
+      connect_attempts_rr_retries: 3
+      connect_attempts_timeout: 30
+      down_server:
+        cache_time: 60
+      forward:
+        proxy_auth_to_parent: 0
+      insert_client_ip: 1
+      insert_request_via_str: 1
+      insert_response_via_str: 0
+      insert_squid_x_forwarded_for: 1
+      keep_alive_no_activity_timeout_in: 120
+      keep_alive_no_activity_timeout_out: 120
+      negative_caching_enabled: 0
+      negative_caching_lifetime: 1800
+      normalize_ae: 1
+      parent_proxy:
+        retry_time: 300
+        consistent_hash_algorithm: siphash24
+      push_method_enabled: 0
+      server_ports: "8080 8080:ipv6"
+      slow:
+        log:
+          threshold: 0
+      transaction_active_timeout_in: 900
+      transaction_active_timeout_out: 0
+      transaction_no_activity_timeout_in: 30
+      transaction_no_activity_timeout_out: 30
+      uncacheable_requests_bypass_parent: 1
+    ## Logging configuration
+    log:
+      auto_delete_rolled_files: 1
+      logging_enabled: 3
+      max_space_mb_for_logs: 25000
+      max_space_mb_headroom: 1000
+      periodic_tasks_interval: 5
+      rolling_enabled: 1
+      rolling_interval_sec: 86400
+      rolling_size_mb: 10
+    ## Network configuration
+    net:
+      connections_throttle: 30000
+      default_inactivity_timeout: 86400
+      max_connections_in: 30000
+      max_requests_in: 0
+    res_track_memory: 0
+    ## Reverse proxy
+    reverse_proxy:
+      enabled: 1
+    ## SSL configuration
+    ssl:
+      client:
+        CA:
+          cert:
+            filename: null
+        verify:
+          server:
+            policy: PERMISSIVE
+            properties: ALL
+    ## URL remap
+    url_remap:
+      pristine_host_hdr: 0
+      remap_required: 1
+      acl_behavior_policy: 0
+
+## @param remapConfig Apache Traffic Server remap.config configuration
+## This will be used for /opt/etc/trafficserver/remap.config
+## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/remap.config.en.html
+##
+remapConfig: |
+  # Example remap rules
+  # Ubuntu mirror
+  # map http://ubuntu.mirrors.example.local/ http://jp.archive.ubuntu.com/ubuntu/
+  # Debian mirror
+  # map http://debian.mirrors.example.local/ http://deb.debian.org/debian/
+
+## @param pluginConfig Apache Traffic Server plugin.config configuration
+## This will be used for /opt/etc/trafficserver/plugin.config
+## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/plugin.config.en.html
+##
+pluginConfig: |
+  # Statistics plugin - provides monitoring metrics
+  stats_over_http.so
+
+## @param storageConfig Apache Traffic Server storage.config configuration
+## This will be used for /opt/etc/trafficserver/storage.config
+## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/storage.config.en.html
+##
+storageConfig: |
+  /opt/var/cache/trafficserver 256M
+
+## @param ipAllowConfig Apache Traffic Server ip_allow.yaml configuration
+## This will be used for /opt/etc/trafficserver/ip_allow.yaml
+## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/ip_allow.yaml.en.html
+##
+ipAllowConfig: |
+  ip_allow:
+    - apply: in
+      ip_addrs: 127.0.0.1
+      action: allow
+      methods: ALL
+    - apply: in
+      ip_addrs: ::1
+      action: allow
+      methods: ALL
+    - apply: in
+      ip_addrs: 0/0
+      action: deny
+      methods:
+        - PURGE
+        - PUSH
+        - DELETE
+        - TRACE
+    - apply: in
+      ip_addrs: ::/0
+      action: deny
+      methods:
+        - PURGE
+        - PUSH
+        - DELETE
+        - TRACE
+
+## @param sniConfig Apache Traffic Server sni.yaml configuration
+## This will be used for /opt/etc/trafficserver/sni.yaml
+## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/sni.yaml.en.html
+## Example:
+## sniConfig: |
+##   sni:
+##     - fqdn: example.com
+##       http2: off
+##       verify_server_policy: ENFORCED
+##       client_cert: client.pem
+##       verify_client: MODERATE
+##     - fqdn: tunnel.example.com
+##       tunnel_route: backend.example.com:443
+##       ip_allow: '10.0.0.0/8'
+##
+sniConfig: ""
+
+## @param loggingConfig Apache Traffic Server logging.yaml configuration
+## This will be used for /opt/etc/trafficserver/logging.yaml
+## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/logging.yaml.en.html
+##
+loggingConfig: |
+  logging:
+    formats:
+      - name: squid
+        format: '%<cqtq> %<ttms> %<chi> %<crc>/%<pssc> %<psql> %<cqhm> %<pquc> %<caun> %<phr>/%<shn> %<psct>'
+      - name: common
+        format: '%<chi> - %<caun> [%<cqtn>] "%<cqhm> %<pqu> %<cqpv>" %<pssc> %<pscl>'
+      - name: extended
+        format: '%<chi> - %<caun> [%<cqtn>] "%<cqhm> %<pqu> %<cqpv>" %<pssc> %<pscl> %<sssc> %<sscl> %<cqcl> %<pqcl> %<cqhl> %<pshl> %<pqhl> %<sshl> %<tts>'
+    logs:
+      - filename: squid
+        format: squid
+        mode: binary
+
+## @param cacheConfig Apache Traffic Server cache.config configuration
+## This will be used for /opt/etc/trafficserver/cache.config
+## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/cache.config.en.html
+## Example:
+## cacheConfig: |
+##   dest_domain=www.example.com scheme=http revalidate=2h
+##   dest_domain=static.example.com ttl-in-cache=7d
+##   url_regex=\.jpg$ ttl-in-cache=30d
+##
+cacheConfig: ""
+
+## @param parentConfig Apache Traffic Server parent.config configuration
+## This will be used for /opt/etc/trafficserver/parent.config
+## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/parent.config.en.html
+## Example:
+## parentConfig: |
+##   dest_domain=. parent="proxy1.example.com:8080; proxy2.example.com:8080" round_robin=strict
+##
+parentConfig: ""
+
+## @param strategiesConfig Apache Traffic Server strategies.yaml configuration
+## This will be used for /opt/etc/trafficserver/strategies.yaml
+## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/strategies.yaml.en.html
+## Example:
+## strategiesConfig: |
+##   hosts:
+##     - &p1
+##       host: upstream1.example.com
+##       protocol:
+##         - scheme: http
+##           port: 80
+##   groups:
+##     - &g1
+##       - <<: *p1
+##         weight: 1.0
+##   strategies:
+##     - strategy: 'default'
+##       policy: rr_strict
+##       groups:
+##         - *g1
+##
+strategiesConfig: ""
+
+## @param sslMulticertConfig Apache Traffic Server ssl_multicert.config configuration
+## This will be used for /opt/etc/trafficserver/ssl_multicert.config
+## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/ssl_multicert.config.en.html
+## Example:
+## sslMulticertConfig: |
+##   dest_ip=* ssl_cert_name=server.pem ssl_key_name=server.key
+##
+sslMulticertConfig: ""
+
+## @param hostingConfig Apache Traffic Server hosting.config configuration
+## This will be used for /opt/etc/trafficserver/hosting.config
+## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/hosting.config.en.html
+## Example:
+## hostingConfig: |
+##   hostname=www.example.com volume=1
+##   hostname=* volume=2
+##
+hostingConfig: ""
+
+## @param volumeConfig Apache Traffic Server volume.config configuration
+## This will be used for /opt/etc/trafficserver/volume.config
+## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/volume.config.en.html
+## Example:
+## volumeConfig: |
+##   volume=1 scheme=http size=20%
+##   volume=2 scheme=http size=80%
+##
+volumeConfig: ""
+
+## @param splitdnsConfig Apache Traffic Server splitdns.config configuration
+## This will be used for /opt/etc/trafficserver/splitdns.config
+## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/splitdns.config.en.html
+## Example:
+## splitdnsConfig: |
+##   dest_domain=internal.example.com named="10.0.0.53" def_domain="internal.example.com"
+##
+splitdnsConfig: ""
+
+## @param socksConfig Apache Traffic Server socks.config configuration
+## This will be used for /opt/etc/trafficserver/socks.config
+## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/socks.config.en.html
+## Example:
+## socksConfig: |
+##   no_socks 10.0.0.0-10.255.255.255
+##   dest_ip=0.0.0.0-255.255.255.255 parent="socks.example.com:1080"
+##
+socksConfig: ""
+
+## @param jsonrpcConfig Apache Traffic Server jsonrpc.yaml configuration
+## This will be used for /opt/etc/trafficserver/jsonrpc.yaml
+## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/jsonrpc.yaml.en.html
+##
+jsonrpcConfig: |
+  rpc:
+    enabled: true
+    unix:
+      restricted_api: false
+
+## @section Body Factory (Error Pages) Configuration
+## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/body_factory.en.html
+##
+bodyFactory:
+  ## @param bodyFactory.enabled Enable custom error pages
+  ##
+  enabled: false
+  ## @param bodyFactory.templates Custom error page templates
+  ## Each key is the template name (e.g., "default", "connect#dns_failed")
+  ## Available template names:
+  ##   - default (generic error)
+  ##   - access#denied, access#proxy_auth_required, access#redirect_url, access#ssl_forbidden
+  ##   - cache#not_in_cache, cache#read_error
+  ##   - connect#all_down, connect#dns_failed, connect#failed_connect, connect#hangup
+  ##   - interception#no_host
+  ##   - redirect#moved_permanently, redirect#moved_temporarily
+  ##   - request#cycle_detected, request#invalid_content_length, request#no_content_length
+  ##   - request#no_host, request#scheme_unsupported, request#syntax_error, request#uri_len_too_long
+  ##   - response#bad_response, response#bad_version
+  ##   - timeout#activity, timeout#inactivity
+  ##   - transcoding#unsupported
+  ##   - urlrouting#no_mapping
+  ##
+  templates:
+    default: |
+      <HTML>
+      <HEAD>
+      <TITLE>Error</TITLE>
+      </HEAD>
+      <BODY BGCOLOR="white" FGCOLOR="black">
+      <H1>Error</H1>
+      <HR>
+      <FONT FACE="Helvetica,Arial"><B>
+      Description: Could not process this request.
+      </B></FONT>
+      <HR>
+      </BODY>
+      </HTML>
+    "connect#dns_failed": |
+      <HTML>
+      <HEAD>
+      <TITLE>Unknown Host</TITLE>
+      </HEAD>
+      <BODY BGCOLOR="white" FGCOLOR="black">
+      <H1>Unknown Host</H1>
+      <HR>
+      <FONT FACE="Helvetica,Arial"><B>
+      Description: Unable to locate the server requested ---
+      the server does not have a DNS entry. Perhaps there is a misspelling
+      in the server name, or the server no longer exists. Double-check the
+      name and try again.
+      </B></FONT>
+      <HR>
+      </BODY>
+      </HTML>
+    "connect#failed_connect": |
+      <HTML>
+      <HEAD>
+      <TITLE>Connection Failed</TITLE>
+      </HEAD>
+      <BODY BGCOLOR="white" FGCOLOR="black">
+      <H1>Connection Failed</H1>
+      <HR>
+      <FONT FACE="Helvetica,Arial"><B>
+      Description: Could not connect to the server.
+      </B></FONT>
+      <HR>
+      </BODY>
+      </HTML>
+    "urlrouting#no_mapping": |
+      <HTML>
+      <HEAD>
+      <TITLE>Not Found</TITLE>
+      </HEAD>
+      <BODY BGCOLOR="white" FGCOLOR="black">
+      <H1>Not Found</H1>
+      <HR>
+      <FONT FACE="Helvetica,Arial"><B>
+      Description: No mapping rule found for this request.
+      </B></FONT>
+      <HR>
+      </BODY>
+      </HTML>
+
+## @section Existing ConfigMap references
+## Use these to provide configuration from existing ConfigMaps
+
+## @param existingRecordsConfigmap Name of existing ConfigMap with records.yaml configuration
+## NOTE: This will override recordsConfig
+##
+existingRecordsConfigmap: ""
+## @param existingRemapConfigmap Name of existing ConfigMap with remap.config configuration
+## NOTE: This will override remapConfig
+##
+existingRemapConfigmap: ""
+## @param existingPluginConfigmap Name of existing ConfigMap with plugin.config configuration
+## NOTE: This will override pluginConfig
+##
+existingPluginConfigmap: ""
+## @param existingStorageConfigmap Name of existing ConfigMap with storage.config configuration
+## NOTE: This will override storageConfig
+##
+existingStorageConfigmap: ""
+## @param existingIpAllowConfigmap Name of existing ConfigMap with ip_allow.yaml configuration
+## NOTE: This will override ipAllowConfig
+##
+existingIpAllowConfigmap: ""
+## @param existingSniConfigmap Name of existing ConfigMap with sni.yaml configuration
+## NOTE: This will override sniConfig
+##
+existingSniConfigmap: ""
+## @param existingLoggingConfigmap Name of existing ConfigMap with logging.yaml configuration
+## NOTE: This will override loggingConfig
+##
+existingLoggingConfigmap: ""
+## @param existingCacheConfigmap Name of existing ConfigMap with cache.config configuration
+## NOTE: This will override cacheConfig
+##
+existingCacheConfigmap: ""
+## @param existingParentConfigmap Name of existing ConfigMap with parent.config configuration
+## NOTE: This will override parentConfig
+##
+existingParentConfigmap: ""
+## @param existingStrategiesConfigmap Name of existing ConfigMap with strategies.yaml configuration
+## NOTE: This will override strategiesConfig
+##
+existingStrategiesConfigmap: ""
+## @param existingSslMulticertConfigmap Name of existing ConfigMap with ssl_multicert.config configuration
+## NOTE: This will override sslMulticertConfig
+##
+existingSslMulticertConfigmap: ""
+## @param existingHostingConfigmap Name of existing ConfigMap with hosting.config configuration
+## NOTE: This will override hostingConfig
+##
+existingHostingConfigmap: ""
+## @param existingVolumeConfigmap Name of existing ConfigMap with volume.config configuration
+## NOTE: This will override volumeConfig
+##
+existingVolumeConfigmap: ""
+## @param existingSplitdnsConfigmap Name of existing ConfigMap with splitdns.config configuration
+## NOTE: This will override splitdnsConfig
+##
+existingSplitdnsConfigmap: ""
+## @param existingSocksConfigmap Name of existing ConfigMap with socks.config configuration
+## NOTE: This will override socksConfig
+##
+existingSocksConfigmap: ""
+## @param existingJsonrpcConfigmap Name of existing ConfigMap with jsonrpc.yaml configuration
+## NOTE: This will override jsonrpcConfig
+##
+existingJsonrpcConfigmap: ""
+
+## @param startupScript Custom startup script for Apache Traffic Server
+## This script will be executed before starting traffic_server
+##
+startupScript: |
+  #!/bin/bash
+  set -e
+  
+  echo "Starting Apache Traffic Server..."
+  
+  # Ensure directories exist
+  mkdir -p /opt/var/cache/trafficserver
+  mkdir -p /opt/var/log/trafficserver
+  mkdir -p /opt/var/trafficserver
+  
+  # Remove legacy records.config if exists (ATS 10.x uses records.yaml)
+  if [ -f /opt/etc/trafficserver/records.config ]; then
+    echo "Removing legacy records.config"
+    rm -f /opt/etc/trafficserver/records.config
+  fi
+  
+  # Show configuration
+  echo "Current configuration:"
+  ls -la /opt/etc/trafficserver/
+  
+  # Start traffic_server
+  echo "Starting traffic_server..."
+  /opt/bin/traffic_server &
+  
+  # Wait for startup
+  sleep 5
+  
+  # Keep container running and tail logs
+  echo "ATS started, tailing logs..."
+  mkdir -p /opt/var/log/trafficserver
+  touch /opt/var/log/trafficserver/error.log
+  tail -f /opt/var/log/trafficserver/error.log
+
+## @section Traffic Exposure parameters
+
+## Apache Traffic Server Service properties
+##
+service:
+  ## @param service.type Service type
+  ##
+  type: LoadBalancer
+  ## @param service.ports.http Service HTTP port
+  ## @param service.ports.https Service HTTPS port
+  ##
+  ports:
+    http: 80
+    https: 443
+  ##
+  ## @param service.nodePorts [object] Specify the nodePort(s) value(s) for the LoadBalancer and NodePort service types.
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport
+  ##
+  nodePorts:
+    http: ""
+    https: ""
+  ## @param service.targetPort [object] Target port reference value for the Loadbalancer service types can be specified explicitly.
+  ## Listeners for the Loadbalancer can be custom mapped to the http or https service.
+  ## Example: Mapping the https listener to targetPort http [http: https]
+  ##
+  targetPort:
+    http: http
+    https: https
+  ## @param service.clusterIP Apache Traffic Server service Cluster IP
+  ## e.g.:
+  ## clusterIP: None
+  ##
+  clusterIP: ""
+  ## @param service.loadBalancerIP LoadBalancer service IP address
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#internal-load-balancer
+  ##
+  loadBalancerIP: ""
+  ## @param service.loadBalancerSourceRanges Apache Traffic Server service Load Balancer sources
+  ## ref: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/#restrict-access-for-loadbalancer-service
+  ## e.g:
+  ## loadBalancerSourceRanges:
+  ##   - 10.10.10.0/24
+  ##
+  loadBalancerSourceRanges: []
+  ## @param service.loadBalancerClass service Load Balancer class if service type is `LoadBalancer` (optional, cloud specific)
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#type-loadbalancer
+  ##
+  loadBalancerClass: ""
+  ## @param service.extraPorts Extra ports to expose (normally used with the `sidecar` value)
+  ##
+  extraPorts: []
+  ## @param service.sessionAffinity Session Affinity for Kubernetes service, can be "None" or "ClientIP"
+  ## If "ClientIP", consecutive client requests will be directed to the same Pod
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
+  ##
+  sessionAffinity: None
+  ## @param service.sessionAffinityConfig Additional settings for the sessionAffinity
+  ## sessionAffinityConfig:
+  ##   clientIP:
+  ##     timeoutSeconds: 300
+  ##
+  sessionAffinityConfig: {}
+  ## @param service.annotations Service annotations
+  ## This can be used to set the LoadBalancer service type to internal only.
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#internal-load-balancer
+  ##
+  annotations: {}
+  ## @param service.externalTrafficPolicy Enable client source IP preservation
+  ## ref https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip
+  ##
+  externalTrafficPolicy: Cluster
+
+## Network Policies
+## Ref: https://kubernetes.io/docs/concepts/services-networking/network-policies/
+##
+networkPolicy:
+  ## @param networkPolicy.enabled Specifies whether a NetworkPolicy should be created
+  ##
+  enabled: true
+  ## @param networkPolicy.allowExternal Don't require server label for connections
+  ## The Policy model to apply. When set to false, only pods with the correct
+  ## server label will have network access to the ports server is listening
+  ## on. When true, server will accept connections from any source
+  ## (with the correct destination port).
+  ##
+  allowExternal: true
+  ## @param networkPolicy.allowExternalEgress Allow the pod to access any range of port and all destinations.
+  ##
+  allowExternalEgress: true
+  ## @param networkPolicy.extraIngress [array] Add extra ingress rules to the NetworkPolicy
+  ## e.g:
+  ## extraIngress:
+  ##   - ports:
+  ##       - port: 1234
+  ##     from:
+  ##       - podSelector:
+  ##           - matchLabels:
+  ##               - role: frontend
+  ##       - podSelector:
+  ##           - matchExpressions:
+  ##               - key: role
+  ##                 operator: In
+  ##                 values:
+  ##                   - frontend
+  extraIngress: []
+  ## @param networkPolicy.extraEgress [array] Add extra ingress rules to the NetworkPolicy (ignored if allowExternalEgress=true)
+  ## e.g:
+  ## extraEgress:
+  ##   - ports:
+  ##       - port: 1234
+  ##     to:
+  ##       - podSelector:
+  ##           - matchLabels:
+  ##               - role: frontend
+  ##       - podSelector:
+  ##           - matchExpressions:
+  ##               - key: role
+  ##                 operator: In
+  ##                 values:
+  ##                   - frontend
+  ##
+  extraEgress: []
+  ## @param networkPolicy.ingressNSMatchLabels [object] Labels to match to allow traffic from other namespaces
+  ## @param networkPolicy.ingressNSPodMatchLabels [object] Pod labels to match to allow traffic from other namespaces
+  ##
+  ingressNSMatchLabels: {}
+  ingressNSPodMatchLabels: {}
+
+## Configure the ingress resource that allows you to access the
+## Apache Traffic Server installation. Set up the URL
+## ref: https://kubernetes.io/docs/concepts/services-networking/ingress/
+##
+ingress:
+  ## @param ingress.enabled Set to true to enable ingress record generation
+  ##
+  enabled: false
+  ## @param ingress.selfSigned Create a TLS secret for this ingress record using self-signed certificates generated by Helm
+  ##
+  selfSigned: false
+  ## @param ingress.pathType Ingress path type
+  ##
+  pathType: ImplementationSpecific
+  ## @param ingress.apiVersion Force Ingress API version (automatically detected if not set)
+  ##
+  apiVersion: ""
+  ## @param ingress.hostname Default host for the ingress resource
+  ##
+  hostname: trafficserver.local
+  ## @param ingress.path The Path to Apache Traffic Server. You may need to set this to '/*' in order to use this
+  ## with ALB ingress controllers.
+  ##
+  path: /
+  ## @param ingress.annotations Additional annotations for the Ingress resource. To enable certificate autogeneration, place here your cert-manager annotations.
+  ## For a full list of possible ingress annotations, please see
+  ## ref: https://github.com/kubernetes/ingress-nginx/blob/main/docs/user-guide/nginx-configuration/annotations.md
+  ## Use this parameter to set the required annotations for cert-manager, see
+  ## ref: https://cert-manager.io/docs/usage/ingress/#supported-annotations
+  ##
+  ## e.g:
+  ## annotations:
+  ##   kubernetes.io/ingress.class: nginx
+  ##   cert-manager.io/cluster-issuer: cluster-issuer-name
+  ##
+  annotations: {}
+  ## @param ingress.ingressClassName Set the ingressClassName on the ingress record for k8s 1.18+
+  ## This is supported in Kubernetes 1.18+ and required if you have more than one IngressClass marked as the default for your cluster .
+  ## ref: https://kubernetes.io/blog/2020/04/02/improvements-to-the-ingress-api-in-kubernetes-1.18/
+  ##
+  ingressClassName: ""
+  ## @param ingress.tls Create TLS Secret
+  ## TLS certificates will be retrieved from a TLS secret with name: {{- printf "%s-tls" .Values.ingress.hostname }}
+  ## You can use the ingress.secrets parameter to create this TLS secret or relay on cert-manager to create it
+  ##
+  tls: false
+  ## @param ingress.extraHosts The list of additional hostnames to be covered with this ingress record.
+  ## Most likely the hostname above will be enough, but in the event more hosts are needed, this is an array
+  ## extraHosts:
+  ## - name: trafficserver.local
+  ##   path: /
+  ##
+  extraHosts: []
+  ## @param ingress.extraPaths Any additional arbitrary paths that may need to be added to the ingress under the main host.
+  ## For example: The ALB ingress controller requires a special rule for handling SSL redirection.
+  ## extraPaths:
+  ## - path: /*
+  ##   backend:
+  ##     serviceName: ssl-redirect
+  ##     servicePort: use-annotation
+  ##
+  extraPaths: []
+  ## @param ingress.extraTls The tls configuration for additional hostnames to be covered with this ingress record.
+  ## see: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
+  ## extraTls:
+  ## - hosts:
+  ##     - trafficserver.local
+  ##   secretName: trafficserver.local-tls
+  ##
+  extraTls: []
+  ## @param ingress.secrets If you're providing your own certificates, please use this to add the certificates as secrets
+  ## key and certificate should start with -----BEGIN CERTIFICATE----- or
+  ## -----BEGIN RSA PRIVATE KEY-----
+  ##
+  ## name should line up with a tlsSecret set further up
+  ## If you're using cert-manager, this is unneeded, as it will create the secret for you if it is not set
+  ##
+  ## It is also possible to create and manage the certificates outside of this helm chart
+  ## Please see README.md for more information
+  ## e.g:
+  ## - name: trafficserver.local-tls
+  ##   key:
+  ##   certificate:
+  ##
+  secrets: []
+  ## @param ingress.extraRules The list of additional rules to be added to this ingress record. Evaluated as a template
+  ## Useful when looking for additional customization, such as using different backend
+  ##
+  extraRules: []
+
+## @section Persistence parameters
+
+## Persistence Parameters
+## ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+##
+persistence:
+  ## @param persistence.enabled Enable Apache Traffic Server data persistence using PVC
+  ##
+  enabled: true
+  ## @param persistence.storageClass PVC Storage Class for Apache Traffic Server data volume
+  ## If defined, storageClassName: <storageClass>
+  ## If set to "-", storageClassName: "", which disables dynamic provisioning
+  ## If undefined (the default) or set to null, no storageClassName spec is
+  ## set, choosing the default provisioner.
+  ##
+  storageClass: ""
+  ## @param persistence.accessModes PVC Access Modes for Apache Traffic Server data volume
+  ##
+  accessModes:
+    - ReadWriteMany
+  ## @param persistence.size PVC Storage Request for Apache Traffic Server data volume
+  ##
+  size: 100Gi
+  ## @param persistence.annotations Annotations for the PVC
+  ##
+  annotations: {}
+  ## @param persistence.selector Selector to match an existing Persistent Volume (this value is evaluated as a template)
+  ## selector:
+  ##   matchLabels:
+  ##     app: my-app
+  ##
+  selector: {}
+  ## @param persistence.existingClaim Name of an existing PVC to use (only in `standalone` mode)
+  ##
+  existingClaim: ""
+
+## @section RBAC parameter
+## Specifies whether a ServiceAccount should be created
+##
+rbac:
+  ## @param rbac.create Whether to create and use RBAC resources or not
+  ##
+  create: false
+  ## @param rbac.rules Custom RBAC rules
+  ## Example:
+  ## rules:
+  ##   - apiGroups:
+  ##       - ""
+  ##     resources:
+  ##       - pods
+  ##     verbs:
+  ##       - get
+  ##       - list
+  ##
+  rules: []
+
+## @section Metrics parameters
+
+## Prometheus Exporter / Metrics
+##
+metrics:
+  ## @param metrics.enabled Start a Prometheus exporter sidecar container
+  ##
+  enabled: false
+  ## @param metrics.port Prometheus metrics port
+  ##
+  port: 8083
+  ## @param metrics.path Prometheus metrics path
+  ##
+  path: /_stats
+  ## @param metrics.podAnnotations Additional annotations for metrics exporter pod
+  ##
+  podAnnotations: {}
+  ## Prometheus Operator ServiceMonitor configuration
+  ##
+  serviceMonitor:
+    ## @param metrics.serviceMonitor.enabled Creates a Prometheus Operator ServiceMonitor (also requires `metrics.enabled` to be `true`)
+    ##
+    enabled: false
+    ## @param metrics.serviceMonitor.namespace Namespace in which Prometheus is running
+    ##
+    namespace: ""
+    ## @param metrics.serviceMonitor.jobLabel The name of the label on the target service to use as the job name in prometheus.
+    ##
+    jobLabel: ""
+    ## @param metrics.serviceMonitor.interval Interval at which metrics should be scraped.
+    ## ref: https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#endpoint
+    ## e.g:
+    ## interval: 10s
+    ##
+    interval: ""
+    ## @param metrics.serviceMonitor.scrapeTimeout Timeout after which the scrape is ended
+    ## ref: https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#endpoint
+    ## e.g:
+    ## scrapeTimeout: 10s
+    ##
+    scrapeTimeout: ""
+    ## @param metrics.serviceMonitor.selector Prometheus instance selector labels
+    ## ref: https://github.com/bitnami/charts/tree/main/bitnami/prometheus-operator#prometheus-configuration
+    ##
+    ## selector:
+    ##   prometheus: my-prometheus
+    ##
+    selector: {}
+    ## @param metrics.serviceMonitor.labels Additional labels that can be used so PodMonitor will be discovered by Prometheus
+    ##
+    labels: {}
+    ## @param metrics.serviceMonitor.relabelings RelabelConfigs to apply to samples before scraping
+    ##
+    relabelings: []
+    ## @param metrics.serviceMonitor.metricRelabelings MetricRelabelConfigs to apply to samples before ingestion
+    ##
+    metricRelabelings: []
+    ## @param metrics.serviceMonitor.honorLabels honorLabels chooses the metric's labels on collisions with target labels
+    ##
+    honorLabels: false
+  ## Prometheus Operator PrometheusRule configuration
+  ##
+  prometheusRule:
+    ## @param metrics.prometheusRule.enabled if `true`, creates a Prometheus Operator PrometheusRule (also requires `metrics.enabled` to be `true` and `metrics.prometheusRule.rules`)
+    ##
+    enabled: false
+    ## @param metrics.prometheusRule.namespace Namespace for the PrometheusRule Resource (defaults to the Release Namespace)
+    ##
+    namespace: ""
+    ## @param metrics.prometheusRule.additionalLabels Additional labels that can be used so PrometheusRule will be discovered by Prometheus
+    ##
+    additionalLabels: {}
+    ## @param metrics.prometheusRule.rules Prometheus Rule definitions
+    ##   - alert: LowInstance
+    ##     expr: up{service="{{ template "common.names.fullname" . }}"} < 1
+    ##     for: 1m
+    ##     labels:
+    ##       severity: critical
+    ##     annotations:
+    ##       description: Service {{ template "common.names.fullname" . }} Apache Traffic Server is down since 1m.
+    ##       summary: Apache Traffic Server instance is down.
+    ##
+    rules: []

@@ -1,0 +1,75 @@
+{{- /*
+Copyright Simon Li. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if .Values.dbSync.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "common.names.fullname" . }}-db-sync
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: db-sync
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "-4"
+    "helm.sh/hook-delete-policy": before-hook-creation
+    {{- if .Values.commonAnnotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+spec:
+  backoffLimit: 6
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 8 }}
+        app.kubernetes.io/component: db-sync
+    spec:
+      {{- include "powerdns-auth.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ template "powerdns-auth.serviceAccountName" . }}
+      restartPolicy: OnFailure
+      {{- if .Values.dbSync.podSecurityContext.enabled }}
+      securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.dbSync.podSecurityContext "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" ( dict "value" .Values.nodeSelector "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.tolerations "context" .) | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: db-sync
+          image: {{ template "powerdns-auth.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.dbSync.containerSecurityContext.enabled }}
+          securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.dbSync.containerSecurityContext "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.dbSync.resources }}
+          resources: {{- toYaml .Values.dbSync.resources | nindent 12 }}
+          {{- else if ne .Values.dbSync.resourcesPreset "none" }}
+          resources: {{- include "common.resources.preset" (dict "type" .Values.dbSync.resourcesPreset) | nindent 12 }}
+          {{- end }}
+          env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns-auth.databaseSecretName" . }}
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns-auth.databaseSecretName" . }}
+                  key: DB_PASSWORD
+          command:
+            - /bin/bash
+            - /scripts/db-sync.sh
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+      volumes:
+        - name: scripts
+          configMap:
+            name: {{ include "common.names.fullname" . }}-scripts
+            defaultMode: 0555
+{{- end }}

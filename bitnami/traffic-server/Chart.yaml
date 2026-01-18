@@ -1,0 +1,38 @@
+# Copyright Broadcom, Inc. All Rights Reserved.
+# SPDX-License-Identifier: APACHE-2.0
+
+annotations:
+  images: |
+    - name: trafficserver
+      image: docker.io/trafficserver/trafficserver:latest
+  licenses: Apache-2.0
+apiVersion: v2
+appVersion: 10.0.0
+dependencies:
+- name: common
+  repository: file://../common
+  tags:
+  - bitnami-common
+  version: 2.x.x
+description: Apache Traffic Server (ATS) is a high-performance HTTP proxy and caching
+  server that can be used as a forward proxy, reverse proxy, and CDN. Ideal for building
+  enterprise-grade caching infrastructure and mirror services.
+home: https://trafficserver.apache.org
+icon: https://trafficserver.apache.org/images/ts_logo.svg
+keywords:
+- trafficserver
+- ats
+- http
+- proxy
+- cache
+- cdn
+- reverse proxy
+- mirror
+maintainers:
+- name: Broadcom, Inc. All Rights Reserved.
+  url: https://github.com/bitnami/charts
+name: trafficserver
+sources:
+- https://github.com/apache/trafficserver
+- https://trafficserver.apache.org/docs/
+version: 1.0.0

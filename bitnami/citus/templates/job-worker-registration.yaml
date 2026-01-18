@@ -1,0 +1,116 @@
+{{- /*
+Copyright Anthropic, Inc.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- if .Values.workerRegistration.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "citus.fullname" . }}-worker-registration
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "citus.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-registration
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    {{- if .Values.commonAnnotations }}
+    {{- toYaml .Values.commonAnnotations | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.workerRegistration.ttlSecondsAfterFinished }}
+  ttlSecondsAfterFinished: {{ .Values.workerRegistration.ttlSecondsAfterFinished }}
+  {{- end }}
+  {{- if .Values.workerRegistration.activeDeadlineSeconds }}
+  activeDeadlineSeconds: {{ .Values.workerRegistration.activeDeadlineSeconds }}
+  {{- end }}
+  backoffLimit: {{ .Values.workerRegistration.backoffLimit }}
+  template:
+    metadata:
+      labels: {{- include "citus.labels" . | nindent 8 }}
+        app.kubernetes.io/component: worker-registration
+      {{- if .Values.workerRegistration.podAnnotations }}
+      annotations: {{- toYaml .Values.workerRegistration.podAnnotations | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- include "citus.imagePullSecrets" . | nindent 6 }}
+      restartPolicy: OnFailure
+      containers:
+        - name: register-workers
+          image: {{ include "citus.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              
+              echo "=== Citus Worker Registration Job ==="
+              
+              COORDINATOR_HOST="{{ include "citus.coordinator.fullname" . }}"
+              WORKER_SVC="{{ include "citus.worker.svcHeadless" . }}"
+              WORKER_BASE="{{ include "citus.worker.fullname" . }}"
+              NAMESPACE="{{ .Release.Namespace }}"
+              CLUSTER_DOMAIN="{{ .Values.clusterDomain }}"
+              WORKER_COUNT={{ .Values.worker.replicaCount }}
+              DATABASE="{{ .Values.auth.database }}"
+              
+              # Wait for coordinator to be ready
+              echo "Waiting for coordinator at ${COORDINATOR_HOST}..."
+              until pg_isready -h ${COORDINATOR_HOST} -p 5432 -U postgres -t 5; do
+                echo "Coordinator not ready, waiting..."
+                sleep 5
+              done
+              
+              echo "Coordinator is ready, waiting for workers..."
+              
+              # Wait for all workers to be ready
+              for i in $(seq 0 $((WORKER_COUNT - 1))); do
+                WORKER_HOST="${WORKER_BASE}-${i}.${WORKER_SVC}.${NAMESPACE}.svc.${CLUSTER_DOMAIN}"
+                echo "Waiting for worker ${i} at ${WORKER_HOST}..."
+                until pg_isready -h ${WORKER_HOST} -p 5432 -U postgres -t 5; do
+                  echo "Worker ${i} not ready, waiting..."
+                  sleep 5
+                done
+                echo "Worker ${i} is ready"
+              done
+              
+              echo "All workers are ready, registering with coordinator..."
+              
+              # Create Citus extension if not exists
+              psql -h ${COORDINATOR_HOST} -U postgres -d ${DATABASE} -c "CREATE EXTENSION IF NOT EXISTS citus;" || true
+              
+              # Get currently registered workers
+              REGISTERED=$(psql -h ${COORDINATOR_HOST} -U postgres -d ${DATABASE} -t -c "SELECT nodename FROM pg_dist_node WHERE noderole = 'primary';" 2>/dev/null | tr -d ' ' || echo "")
+              
+              # Register each worker
+              for i in $(seq 0 $((WORKER_COUNT - 1))); do
+                WORKER_HOST="${WORKER_BASE}-${i}.${WORKER_SVC}.${NAMESPACE}.svc.${CLUSTER_DOMAIN}"
+                
+                if echo "${REGISTERED}" | grep -q "${WORKER_HOST}"; then
+                  echo "Worker ${i} (${WORKER_HOST}) already registered"
+                else
+                  echo "Registering worker ${i} (${WORKER_HOST})..."
+                  psql -h ${COORDINATOR_HOST} -U postgres -d ${DATABASE} -c "SELECT citus_add_node('${WORKER_HOST}', 5432);" || {
+                    echo "Warning: Failed to register worker ${i}, attempting to set node..."
+                    psql -h ${COORDINATOR_HOST} -U postgres -d ${DATABASE} -c "SELECT citus_set_node_property('${WORKER_HOST}', 5432, 'shouldhaveshards', true);" || true
+                  }
+                fi
+              done
+              
+              # Verify registration
+              echo "=== Current cluster status ==="
+              psql -h ${COORDINATOR_HOST} -U postgres -d ${DATABASE} -c "SELECT * FROM citus_get_active_worker_nodes();"
+              
+              echo "Worker registration completed successfully"
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "citus.secretName" . }}
+                  key: {{ include "citus.secretPasswordKey" . }}
+          {{- if .Values.workerRegistration.resources }}
+          resources: {{- toYaml .Values.workerRegistration.resources | nindent 12 }}
+          {{- end }}
+{{- end }}

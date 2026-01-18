@@ -1,0 +1,1118 @@
+# Copyright Simon Li. All Rights Reserved.
+# SPDX-License-Identifier: APACHE-2.0
+
+## @section Global parameters
+## Global Docker image parameters
+## Please, note that this will override the image parameters, including dependencies, configured to use the global value
+
+## @param global.imageRegistry Global Docker image registry
+## @param global.imagePullSecrets Global Docker registry secret names as an array
+## @param global.defaultStorageClass Global default StorageClass for Persistent Volume(s)
+##
+global:
+  imageRegistry: ""
+  ## E.g.
+  ## imagePullSecrets:
+  ##   - myRegistryKeySecretName
+  ##
+  imagePullSecrets: []
+  defaultStorageClass: ""
+  ## Security parameters
+  ##
+  security:
+    ## @param global.security.allowInsecureImages Allows skipping image verification
+    ##
+    allowInsecureImages: false
+  ## Compatibility adaptations for Kubernetes platforms
+  ##
+  compatibility:
+    ## Compatibility adaptations for Openshift
+    ##
+    openshift:
+      ## @param global.compatibility.openshift.adaptSecurityContext Adapt the securityContext sections of the deployment to make them compatible with Openshift restricted-v2 SCC
+      ##
+      adaptSecurityContext: auto
+
+## @section Common parameters
+
+## @param kubeVersion Override Kubernetes version
+##
+kubeVersion: ""
+## @param nameOverride String to partially override common.names.fullname
+##
+nameOverride: ""
+## @param fullnameOverride String to fully override common.names.fullname
+##
+fullnameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+##
+namespaceOverride: ""
+## @param commonLabels Labels to add to all deployed objects
+##
+commonLabels: {}
+## @param commonAnnotations Annotations to add to all deployed objects
+##
+commonAnnotations: {}
+## @param clusterDomain Kubernetes cluster domain name
+##
+clusterDomain: cluster.local
+## @param extraDeploy Array of extra objects to deploy with the release
+##
+extraDeploy: []
+## Enable diagnostic mode in the deployment
+##
+diagnosticMode:
+  ## @param diagnosticMode.enabled Enable diagnostic mode (all probes will be disabled and the command will be overridden)
+  ##
+  enabled: false
+  ## @param diagnosticMode.command Command to override all containers in the deployment
+  ##
+  command:
+    - sleep
+  ## @param diagnosticMode.args Args to override all containers in the deployment
+  ##
+  args:
+    - infinity
+
+## @section PowerDNS Authoritative Server Parameters
+
+## PowerDNS Authoritative Server image
+## ref: https://hub.docker.com/r/powerdns/pdns-auth-50
+## @param image.registry [default: docker.io] PowerDNS Auth image registry
+## @param image.repository [default: powerdns/pdns-auth-50] PowerDNS Auth image repository
+## @param image.tag PowerDNS Auth image tag (immutable tags are recommended)
+## @param image.digest PowerDNS Auth image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+## @param image.pullPolicy PowerDNS Auth image pull policy
+## @param image.pullSecrets PowerDNS Auth image pull secrets
+##
+image:
+  registry: docker.io
+  repository: powerdns/pdns-auth-50
+  tag: 5.0.2
+  digest: ""
+  pullPolicy: IfNotPresent
+  ## Optionally specify an array of imagePullSecrets.
+  ## Secrets must be manually created in the namespace.
+  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+  ## e.g:
+  ## pullSecrets:
+  ##   - myRegistryKeySecretName
+  ##
+  pullSecrets: []
+
+## @param replicaCount Number of PowerDNS Auth replicas to deploy
+##
+replicaCount: 2
+
+## Configure extra options for containers' liveness and readiness probes
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+## @param livenessProbe.enabled Enable livenessProbe on containers
+## @param livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+## @param livenessProbe.periodSeconds Period seconds for livenessProbe
+## @param livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+## @param livenessProbe.failureThreshold Failure threshold for livenessProbe
+## @param livenessProbe.successThreshold Success threshold for livenessProbe
+##
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 20
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+## @param readinessProbe.enabled Enable readinessProbe on containers
+## @param readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+## @param readinessProbe.periodSeconds Period seconds for readinessProbe
+## @param readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+## @param readinessProbe.failureThreshold Failure threshold for readinessProbe
+## @param readinessProbe.successThreshold Success threshold for readinessProbe
+##
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+## @param startupProbe.enabled Enable startupProbe on containers
+## @param startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
+## @param startupProbe.periodSeconds Period seconds for startupProbe
+## @param startupProbe.timeoutSeconds Timeout seconds for startupProbe
+## @param startupProbe.failureThreshold Failure threshold for startupProbe
+## @param startupProbe.successThreshold Success threshold for startupProbe
+##
+startupProbe:
+  enabled: true
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 30
+  successThreshold: 1
+## @param customLivenessProbe Custom livenessProbe that overrides the default one
+##
+customLivenessProbe: {}
+## @param customReadinessProbe Custom readinessProbe that overrides the default one
+##
+customReadinessProbe: {}
+## @param customStartupProbe Custom startupProbe that overrides the default one
+##
+customStartupProbe: {}
+## PowerDNS Auth resource requests and limits
+## ref: http://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+## @param resourcesPreset Set container resources according to one common preset (allowed values: none, nano, micro, small, medium, large, xlarge, 2xlarge). This is ignored if resources is set (resources is recommended for production).
+## More information: https://github.com/bitnami/charts/blob/main/bitnami/common/templates/_resources.tpl#L15
+##
+resourcesPreset: "small"
+## @param resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+## Example:
+## resources:
+##   requests:
+##     cpu: 250m
+##     memory: 256Mi
+##   limits:
+##     cpu: 1000m
+##     memory: 512Mi
+##
+resources: {}
+## Configure Pods Security Context
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+## @param podSecurityContext.enabled Enable pods' Security Context
+## @param podSecurityContext.fsGroupChangePolicy Set filesystem group change policy
+## @param podSecurityContext.sysctls Set kernel settings using the sysctl interface
+## @param podSecurityContext.supplementalGroups Set filesystem extra groups
+## @param podSecurityContext.fsGroup Set PowerDNS Auth pod's Security Context fsGroup
+##
+podSecurityContext:
+  enabled: true
+  fsGroupChangePolicy: Always
+  sysctls: []
+  supplementalGroups: []
+  fsGroup: 953
+## Configure Container Security Context
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
+## @param containerSecurityContext.enabled Enable container Security Context
+## @param containerSecurityContext.seLinuxOptions [object,nullable] Set SELinux options in container
+## @param containerSecurityContext.runAsUser Set container's Security Context runAsUser
+## @param containerSecurityContext.runAsGroup Set container's Security Context runAsGroup
+## @param containerSecurityContext.runAsNonRoot Set container's Security Context runAsNonRoot
+## @param containerSecurityContext.readOnlyRootFilesystem Set container's Security Context readOnlyRootFilesystem
+## @param containerSecurityContext.privileged Set container's Security Context privileged
+## @param containerSecurityContext.allowPrivilegeEscalation Set container's Security Context allowPrivilegeEscalation
+## @param containerSecurityContext.capabilities.drop List of capabilities to be dropped
+## @param containerSecurityContext.seccompProfile.type Set container's Security Context seccomp profile
+##
+containerSecurityContext:
+  enabled: true
+  seLinuxOptions: {}
+  runAsUser: 953
+  runAsGroup: 953
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  privileged: false
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+## @param automountServiceAccountToken Mount Service Account token in pod
+##
+automountServiceAccountToken: false
+## @param hostNetwork Specify if host network should be enabled for pod
+##
+hostNetwork: false
+## @param hostIPC Specify if host IPC should be enabled for pod
+##
+hostIPC: false
+## @param dnsPolicy DNS policy for pod
+##
+dnsPolicy: ""
+## @param dnsConfig DNS configuration for pod
+##
+dnsConfig: {}
+
+## @param command Override default container command (useful when using custom images)
+##
+command: []
+## @param args Override default container args (useful when using custom images)
+##
+args: []
+## @param hostAliases PowerDNS Auth pods host aliases
+## https://kubernetes.io/docs/concepts/services-networking/add-entries-to-pod-etc-hosts-with-host-aliases/
+##
+hostAliases: []
+## @param podLabels Extra labels for pods
+## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+##
+podLabels: {}
+## @param podAnnotations Annotations for pods
+## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+##
+podAnnotations: {}
+## @param podAffinityPreset Pod affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
+##
+podAffinityPreset: ""
+## @param podAntiAffinityPreset Pod anti-affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
+##
+podAntiAffinityPreset: soft
+## Node affinity preset
+## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity
+##
+nodeAffinityPreset:
+  ## @param nodeAffinityPreset.type Node affinity preset type. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+  ##
+  type: ""
+  ## @param nodeAffinityPreset.key Node label key to match. Ignored if `affinity` is set
+  ##
+  key: ""
+  ## @param nodeAffinityPreset.values Node label values to match. Ignored if `affinity` is set
+  ## E.g.
+  ## values:
+  ##   - e2e-az1
+  ##   - e2e-az2
+  ##
+  values: []
+## @param affinity Affinity for pods assignment
+## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+## NOTE: `podAffinityPreset`, `podAntiAffinityPreset`, and `nodeAffinityPreset` will be ignored when it's set
+##
+affinity: {}
+## @param nodeSelector Node labels for pods assignment
+## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+##
+nodeSelector: {}
+## @param tolerations Tolerations for pods assignment
+## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+##
+tolerations: []
+## @param updateStrategy.type Deployment strategy type
+## ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
+##
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 1
+## @param priorityClassName Pods' priorityClassName
+##
+priorityClassName: ""
+## @param topologySpreadConstraints Topology Spread Constraints for pod assignment spread across your cluster among failure-domains
+## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/#spread-constraints-for-pods
+##
+topologySpreadConstraints: []
+## @param revisionHistoryLimit Number of old ReplicaSets to retain
+##
+revisionHistoryLimit: 10
+## @param schedulerName Name of the k8s scheduler (other than default) for pods
+## ref: https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/
+##
+schedulerName: ""
+## @param runtimeClassName Runtime class name for pod
+##
+runtimeClassName: ""
+## @param terminationGracePeriodSeconds Seconds pod needs to terminate gracefully
+## ref: https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods
+##
+terminationGracePeriodSeconds: 30
+## @param lifecycleHooks for containers to automate configuration before or after startup
+##
+lifecycleHooks: {}
+## @param extraEnvVars Array with extra environment variables to add to containers
+## e.g:
+## extraEnvVars:
+##   - name: FOO
+##     value: "bar"
+##
+extraEnvVars: []
+## @param extraEnvVarsCM Name of existing ConfigMap containing extra env vars for containers
+##
+extraEnvVarsCM: ""
+## @param extraEnvVarsSecret Name of existing Secret containing extra env vars for containers
+##
+extraEnvVarsSecret: ""
+## @param extraVolumes Optionally specify extra list of additional volumes for the pods
+##
+extraVolumes: []
+## @param extraVolumeMounts Optionally specify extra list of additional volumeMounts for the containers
+##
+extraVolumeMounts: []
+## @param sidecars Add additional sidecar containers to the pods
+## e.g:
+## sidecars:
+##   - name: your-image-name
+##     image: your-image
+##     imagePullPolicy: Always
+##     ports:
+##       - name: portname
+##         containerPort: 1234
+##
+sidecars: []
+## @param initContainers Add additional init containers to the pods
+## ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+##
+initContainers: []
+
+## @section PowerDNS Configuration
+
+## PowerDNS Authoritative Server configuration
+## @param config.localAddress Local address to bind to (default: 0.0.0.0, ::)
+## @param config.localPort Local port to bind to (default: 53)
+## @param config.loglevel Log level (0-9)
+## @param config.logDnsDetails Log DNS details
+## @param config.logDnsQueries Log DNS queries
+## @param config.queryLogging Enable query logging
+## @param config.disableAxfr Disable AXFR transfers
+## @param config.allowAxfrIps Allow AXFR from these IPs
+## @param config.allowNotifyFrom Allow NOTIFY from these IPs
+## @param config.primary Run as primary/master
+## @param config.secondary Run as secondary/slave
+## @param config.alsoNotify Comma-separated list of IP[:port] to send NOTIFY to
+## @param config.onlyNotify Only send NOTIFY to these IPs (instead of all NS records)
+## @param config.autosecondary Automatically provision zones from autoprimary servers
+## @param config.allowUnsignedAutoprimary Allow autoprimary without TSIG
+## @param config.allowUnsignedNotify Allow NOTIFY without TSIG
+## @param config.receiverThreads Number of receiver threads
+## @param config.retrievalThreads Number of retrieval threads
+## @param config.signingThreads Number of signing threads
+## @param config.reuseport Enable SO_REUSEPORT
+## @param config.maxTcpConnectionDuration Max TCP connection duration
+## @param config.maxTcpConnections Max TCP connections
+## @param config.tcpFastOpen TCP Fast Open queue size
+## @param config.defaultKskAlgorithm Default KSK algorithm
+## @param config.defaultKskSize Default KSK size
+## @param config.defaultZskAlgorithm Default ZSK algorithm
+## @param config.defaultZskSize Default ZSK size
+## @param config.dnameProcessing Enable DNAME processing
+## @param config.expandAlias Enable alias expansion
+## @param config.versionString Version string to return
+## @param config.securityPollSuffix Security poll suffix (empty to disable)
+## @param config.cacheTtl Seconds to cache backend results (packet cache)
+## @param config.negqueryCacheTtl Seconds to cache negative query results
+## @param config.queryCacheEnabled Enable query cache
+## @param config.defaultSoaContent Default SOA content for new zones
+## @param config.defaultSoaMail Default SOA mail for new zones
+## @param config.defaultSoaName Default SOA name for new zones
+## @param config.defaultTtl Default TTL for records
+## @param config.allowDnsupdateFrom IPs allowed to send DNS UPDATE (empty to disable)
+## @param config.dnsupdateRequireTsig Require TSIG for DNS UPDATE
+## @param config.forwardDnsupdate Forward DNS UPDATE to primary
+## @param config.enableLuaRecords Enable LUA records (experimental)
+## @param config.extra Additional configuration options
+##
+config:
+  localAddress: "0.0.0.0, ::"
+  localPort: 53
+  loglevel: 4
+  logDnsDetails: false
+  logDnsQueries: false
+  queryLogging: false
+  
+  ## AXFR / Replication
+  disableAxfr: true
+  allowAxfrIps: "127.0.0.0/8,::1"
+  allowNotifyFrom: "0.0.0.0/0,::/0"
+  
+  ## Primary/Secondary mode
+  primary: false
+  secondary: false
+  ## @param config.alsoNotify - IPs to notify on zone changes (for primary)
+  ## e.g: "192.0.2.1, 192.0.2.2:5300"
+  alsoNotify: ""
+  ## @param config.onlyNotify - Only notify these IPs (skip NS record lookup)
+  onlyNotify: ""
+  
+  ## Autoprimary/Autosecondary
+  autosecondary: false
+  allowUnsignedAutoprimary: false
+  allowUnsignedNotify: false
+  
+  ## Performance
+  receiverThreads: 2
+  retrievalThreads: 2
+  signingThreads: 3
+  reuseport: true
+  
+  ## TCP settings
+  maxTcpConnectionDuration: 0
+  maxTcpConnections: 20
+  tcpFastOpen: 64
+  
+  ## DNSSEC defaults
+  defaultKskAlgorithm: "ecdsa256"
+  defaultKskSize: 0
+  defaultZskAlgorithm: ""
+  defaultZskSize: 0
+  
+  ## DNAME processing
+  dnameProcessing: false
+  expandAlias: false
+  
+  ## Security
+  versionString: "anonymous"
+  securityPollSuffix: ""
+  
+  ## Cache settings
+  cacheTtl: 20
+  negqueryCacheTtl: 60
+  queryCacheEnabled: true
+  
+  ## SOA defaults (for new zones created via API)
+  ## @param config.defaultSoaContent - Format: "primary hostmaster serial refresh retry expire minimum"
+  ## e.g: "ns1.example.com hostmaster.example.com 0 10800 3600 604800 3600"
+  defaultSoaContent: ""
+  defaultSoaMail: ""
+  defaultSoaName: ""
+  defaultTtl: 3600
+  
+  ## DNS UPDATE (RFC 2136)
+  ## @param config.allowDnsupdateFrom - IPs allowed to send updates
+  ## e.g: "192.0.2.0/24, 2001:db8::/32"
+  allowDnsupdateFrom: ""
+  dnsupdateRequireTsig: true
+  forwardDnsupdate: false
+  
+  ## LUA records (experimental)
+  enableLuaRecords: false
+  
+  ## @param config.extra Additional configuration as key-value pairs
+  ## e.g:
+  ## extra:
+  ##   axfr-fetch-timeout: 10
+  ##   xfr-max-received-mbytes: 100
+  ##
+  extra: {}
+
+## @section Database Configuration
+
+## @param database.type Database type (postgresql or mysql)
+##
+database:
+  type: postgresql
+  ## Database connection settings
+  ##
+  connection:
+    ## @param database.connection.maxRetries Maximum number of connection retries
+    ##
+    maxRetries: 15
+    ## @param database.connection.retryInterval Retry interval in seconds
+    ##
+    retryInterval: 5
+  ## Use existing secret for database credentials
+  ##
+  existingSecret:
+    ## @param database.existingSecret.enabled Enable using existing secret
+    ##
+    enabled: false
+    ## @param database.existingSecret.name Secret name
+    ##
+    name: ""
+    ## @param database.existingSecret.adminPasswordKey Key for admin password
+    ##
+    adminPasswordKey: "admin-password"
+    ## @param database.existingSecret.userPasswordKey Key for user password
+    ##
+    userPasswordKey: "user-password"
+  ## PostgreSQL configuration
+  ##
+  postgresql:
+    ## @param database.postgresql.host PostgreSQL host
+    ##
+    host: ""
+    ## @param database.postgresql.port PostgreSQL port
+    ##
+    port: 5432
+    ## @param database.postgresql.database Database name
+    ##
+    database: pdns
+    ## @param database.postgresql.username Database username
+    ##
+    username: pdns
+    ## @param database.postgresql.password Database password (ignored if existingSecret.enabled)
+    ##
+    password: pdns
+    ## @param database.postgresql.adminUsername Admin username for db-init job
+    ##
+    adminUsername: postgres
+    ## @param database.postgresql.adminPassword Admin password for db-init job (ignored if existingSecret.enabled)
+    ##
+    adminPassword: ""
+  ## MySQL configuration
+  ##
+  mysql:
+    ## @param database.mysql.host MySQL host
+    ##
+    host: ""
+    ## @param database.mysql.port MySQL port
+    ##
+    port: 3306
+    ## @param database.mysql.database Database name
+    ##
+    database: pdns
+    ## @param database.mysql.username Database username
+    ##
+    username: pdns
+    ## @param database.mysql.password Database password (ignored if existingSecret.enabled)
+    ##
+    password: pdns
+    ## @param database.mysql.timeout Connection timeout
+    ##
+    timeout: 10
+    ## @param database.mysql.adminUsername Admin username for db-init job
+    ##
+    adminUsername: root
+    ## @param database.mysql.adminPassword Admin password for db-init job (ignored if existingSecret.enabled)
+    ##
+    adminPassword: ""
+
+## @section API / Webserver Configuration
+
+## @param webserver.enabled Enable webserver/API
+## @param webserver.address Webserver bind address
+## @param webserver.port Webserver port
+## @param webserver.allowFrom Allowed IPs for webserver
+## @param webserver.password Webserver password (auto-generated if empty)
+## @param webserver.apiKey API key (auto-generated if empty)
+##
+webserver:
+  enabled: true
+  address: "0.0.0.0"
+  port: 8081
+  allowFrom: "0.0.0.0/0,::/0"
+  password: ""
+  apiKey: ""
+
+## @section GeoIP Backend Configuration
+
+## @param geoip.enabled Enable GeoIP backend
+## @param geoip.databases List of GeoIP database paths
+## @param geoip.zonesFile Path to GeoIP zones file
+## @param geoip.ednsSubnetProcessing Enable EDNS Client Subnet processing
+## @param geoip.dnssecKeydir DNSSEC key directory
+##
+geoip:
+  enabled: false
+  databases:
+    - /usr/share/GeoIP/GeoLite2-City.mmdb
+    - /usr/share/GeoIP/GeoLite2-Country.mmdb
+  zonesFile: /etc/pdns/geo-zones.yaml
+  ednsSubnetProcessing: true
+  dnssecKeydir: ""
+
+## GeoIP Zones Configuration
+##
+geoipZones:
+  ## @param geoipZones.enabled Enable GeoIP zones ConfigMap
+  ##
+  enabled: false
+  ## @param geoipZones.domains Domain configurations for GeoIP
+  ## Example:
+  ## domains:
+  ##   - domain: geo.example.com
+  ##     ttl: 300
+  ##     records:
+  ##       geo.example.com:
+  ##         - soa: ns1.example.com hostmaster.example.com 2024010101 7200 3600 1209600 3600
+  ##         - ns: ns1.example.com
+  ##       us.cdn.example.com:
+  ##         - a: 192.0.2.1
+  ##       eu.cdn.example.com:
+  ##         - a: 198.51.100.1
+  ##     services:
+  ##       www.example.com: '%co.cdn.example.com'
+  ##
+  domains: []
+
+## GeoIP Volume Configuration
+##
+geoipVolume:
+  ## @param geoipVolume.enabled Enable GeoIP volume
+  ##
+  enabled: false
+  ## @param geoipVolume.type Volume type (pvc, configMap, hostPath, existingClaim)
+  ##
+  type: pvc
+  ## PVC configuration
+  ##
+  pvc:
+    ## @param geoipVolume.pvc.claimName PVC claim name
+    ##
+    claimName: geoip-data
+    ## @param geoipVolume.pvc.readOnly Mount as read-only
+    ##
+    readOnly: true
+  ## ConfigMap configuration
+  ##
+  configMap:
+    ## @param geoipVolume.configMap.name ConfigMap name
+    ##
+    name: geoip-data
+  ## HostPath configuration
+  ##
+  hostPath:
+    ## @param geoipVolume.hostPath.path Host path
+    ##
+    path: /var/lib/GeoIP
+
+## @section TSIG Keys Configuration
+
+## TSIG keys for secure zone transfers and DNS UPDATE
+## ref: https://doc.powerdns.com/authoritative/tsig.html
+##
+tsig:
+  ## @param tsig.enabled Enable TSIG key configuration
+  ##
+  enabled: false
+  ## @param tsig.keys List of TSIG keys to configure
+  ## Keys will be added to the database during db-sync
+  ## Example:
+  ## keys:
+  ##   - name: transfer-key
+  ##     algorithm: hmac-sha256
+  ##     secret: "base64-encoded-secret"
+  ##   - name: update-key
+  ##     algorithm: hmac-sha512
+  ##     secret: "another-base64-secret"
+  ##
+  keys: []
+  ## Use existing secret for TSIG keys
+  ##
+  existingSecret:
+    ## @param tsig.existingSecret.enabled Use existing secret for TSIG keys
+    ##
+    enabled: false
+    ## @param tsig.existingSecret.name Secret name containing TSIG keys
+    ## Secret should have keys in format: tsig-<keyname>=<base64-secret>
+    ##
+    name: ""
+
+## @section Traffic Exposure Parameters
+
+## Service configuration
+##
+service:
+  ## @param service.type Kubernetes Service type
+  ##
+  type: ClusterIP
+  ## @param service.ports.dns DNS service port (UDP)
+  ## @param service.ports.dnsTcp DNS service port (TCP)
+  ## @param service.ports.api API service port
+  ##
+  ports:
+    dns: 53
+    dnsTcp: 53
+    api: 8081
+  ## @param service.nodePorts.dns Node port for DNS (UDP)
+  ## @param service.nodePorts.dnsTcp Node port for DNS (TCP)
+  ## @param service.nodePorts.api Node port for API
+  ## NOTE: choose port between <30000-32767>
+  ##
+  nodePorts:
+    dns: ""
+    dnsTcp: ""
+    api: ""
+  ## @param service.clusterIP Service Cluster IP
+  ## e.g.:
+  ## clusterIP: None
+  ##
+  clusterIP: ""
+  ## @param service.loadBalancerIP Service Load Balancer IP
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#type-loadbalancer
+  ##
+  loadBalancerIP: ""
+  ## @param service.loadBalancerSourceRanges Service Load Balancer sources
+  ## ref: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/#restrict-access-for-loadbalancer-service
+  ## e.g:
+  ## loadBalancerSourceRanges:
+  ##   - 10.10.10.0/24
+  ##
+  loadBalancerSourceRanges: []
+  ## @param service.externalTrafficPolicy Service external traffic policy
+  ## ref https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip
+  ##
+  externalTrafficPolicy: Local
+  ## @param service.annotations Additional custom annotations for Service
+  ##
+  annotations: {}
+  ## @param service.extraPorts Extra ports to expose in Service
+  ##
+  extraPorts: []
+  ## @param service.sessionAffinity Session Affinity for Kubernetes service, can be "None" or "ClientIP"
+  ## If "ClientIP", consecutive client requests will be directed to the same Pod
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
+  ##
+  sessionAffinity: None
+  ## @param service.sessionAffinityConfig Additional settings for the sessionAffinity
+  ## sessionAffinityConfig:
+  ##   clientIP:
+  ##     timeoutSeconds: 300
+  ##
+  sessionAffinityConfig: {}
+
+## Ingress configuration for API
+##
+ingress:
+  ## @param ingress.enabled Enable ingress record generation for API
+  ##
+  enabled: false
+  ## @param ingress.pathType Ingress path type
+  ##
+  pathType: Prefix
+  ## @param ingress.apiVersion Force Ingress API version (automatically detected if not set)
+  ##
+  apiVersion: ""
+  ## @param ingress.hostname Default host for the ingress record
+  ##
+  hostname: pdns-api.local
+  ## @param ingress.ingressClassName IngressClass that will be used to implement the Ingress (Kubernetes 1.18+)
+  ## This is supported in Kubernetes 1.18+ and required if you have more than one IngressClass marked as the default for your cluster
+  ## ref: https://kubernetes.io/blog/2020/04/02/improvements-to-the-ingress-api-in-kubernetes-1.18/
+  ##
+  ingressClassName: ""
+  ## @param ingress.path Default path for the ingress record
+  ##
+  path: /api
+  ## @param ingress.annotations Additional annotations for the Ingress resource
+  ## For a full list of possible ingress annotations, please see
+  ## ref: https://github.com/kubernetes/ingress-nginx/blob/main/docs/user-guide/nginx-configuration/annotations.md
+  ##
+  annotations: {}
+  ## @param ingress.tls Enable TLS configuration for the host defined at `ingress.hostname`
+  ##
+  tls: false
+  ## @param ingress.selfSigned Create a TLS secret for this ingress record using self-signed certificates generated by Helm
+  ##
+  selfSigned: false
+  ## @param ingress.extraHosts An array with additional hostname(s) to be covered with the ingress record
+  ## e.g:
+  ## extraHosts:
+  ##   - name: pdns.local
+  ##     path: /
+  ##
+  extraHosts: []
+  ## @param ingress.extraPaths An array with additional arbitrary paths that may need to be added to the ingress under the main host
+  ## e.g:
+  ## extraPaths:
+  ## - path: /*
+  ##   backend:
+  ##     serviceName: ssl-redirect
+  ##     servicePort: use-annotation
+  ##
+  extraPaths: []
+  ## @param ingress.extraTls TLS configuration for additional hostname(s) to be covered with this ingress record
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
+  ## e.g:
+  ## extraTls:
+  ## - hosts:
+  ##     - pdns.local
+  ##   secretName: pdns.local-tls
+  ##
+  extraTls: []
+  ## @param ingress.secrets Custom TLS certificates as secrets
+  ## NOTE: 'key' and 'certificate' are expected in PEM format
+  ## NOTE: 'name' should line up with a 'secretName' set further up
+  ## If it is not set and you're using cert-manager, this is unneeded, as it will create a secret for you with valid certificates
+  ## If it is not set and you're NOT using cert-manager either, self-signed certificates will be created valid for 365 days
+  ## It is also possible to create and manage the certificates outside of this helm chart
+  ## Please see README.md for more information
+  ## e.g:
+  ## secrets:
+  ##   - name: pdns.local-tls
+  ##     key: |-
+  ##       -----BEGIN RSA PRIVATE KEY-----
+  ##       ...
+  ##       -----END RSA PRIVATE KEY-----
+  ##     certificate: |-
+  ##       -----BEGIN CERTIFICATE-----
+  ##       ...
+  ##       -----END CERTIFICATE-----
+  ##
+  secrets: []
+  ## @param ingress.extraRules Additional rules to be covered with this ingress record
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-rules
+  ## e.g:
+  ## extraRules:
+  ## - host: pdns.local
+  ##     http:
+  ##       path: /
+  ##       backend:
+  ##         service:
+  ##           name: pdns-svc
+  ##           port:
+  ##             name: http
+  ##
+  extraRules: []
+
+## @section Persistence Parameters
+
+## @param persistence.enabled Enable persistence using Persistent Volume Claims (for dnssec keys, etc.)
+## @param persistence.mountPath Path to mount the volume at
+## @param persistence.storageClass Storage class of backing PVC
+## @param persistence.annotations Persistent Volume Claim annotations
+## @param persistence.accessModes Persistent Volume Access Modes
+## @param persistence.size Size of data volume
+## @param persistence.existingClaim The name of an existing PVC to use for persistence
+## @param persistence.selector Selector to match an existing Persistent Volume for data PVC
+##
+persistence:
+  enabled: false
+  mountPath: /var/lib/powerdns
+  storageClass: ""
+  annotations: {}
+  accessModes:
+    - ReadWriteOnce
+  size: 1Gi
+  existingClaim: ""
+  selector: {}
+
+## @section Database Init Job
+
+## Database initialization job
+##
+dbInit:
+  ## @param dbInit.enabled Enable database initialization job
+  ##
+  enabled: true
+  ## MySQL image for db-init job
+  ## @param dbInit.mysql.image.registry MySQL image registry
+  ## @param dbInit.mysql.image.repository MySQL image repository
+  ## @param dbInit.mysql.image.tag MySQL image tag
+  ## @param dbInit.mysql.image.pullPolicy MySQL image pull policy
+  ##
+  mysql:
+    image:
+      registry: docker.io
+      repository: library/mysql
+      tag: "8.0"
+      pullPolicy: IfNotPresent
+  ## PostgreSQL image for db-init job
+  ## @param dbInit.postgresql.image.registry PostgreSQL image registry
+  ## @param dbInit.postgresql.image.repository PostgreSQL image repository
+  ## @param dbInit.postgresql.image.tag PostgreSQL image tag
+  ## @param dbInit.postgresql.image.pullPolicy PostgreSQL image pull policy
+  ##
+  postgresql:
+    image:
+      registry: docker.io
+      repository: library/postgres
+      tag: "16-alpine"
+      pullPolicy: IfNotPresent
+  ## @param dbInit.resources Set container requests and limits for db-init job
+  ## @param dbInit.resourcesPreset Set container resources according to one common preset
+  ##
+  resourcesPreset: "micro"
+  resources: {}
+  ## @param dbInit.podSecurityContext.enabled Enable pods' Security Context
+  ## @param dbInit.podSecurityContext.fsGroup Set db-init pod's Security Context fsGroup
+  ##
+  podSecurityContext:
+    enabled: true
+    fsGroup: 999
+  ## @param dbInit.containerSecurityContext.enabled Enable container Security Context
+  ## @param dbInit.containerSecurityContext.runAsUser Set container's Security Context runAsUser
+  ## @param dbInit.containerSecurityContext.runAsNonRoot Set container's Security Context runAsNonRoot
+  ##
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 999
+    runAsNonRoot: true
+
+## @section Database Sync Job
+
+## Database schema synchronization job
+##
+dbSync:
+  ## @param dbSync.enabled Enable database sync job
+  ##
+  enabled: true
+  ## @param dbSync.resources Set container requests and limits for db-sync job
+  ## @param dbSync.resourcesPreset Set container resources according to one common preset
+  ##
+  resourcesPreset: "micro"
+  resources: {}
+  ## @param dbSync.podSecurityContext.enabled Enable pods' Security Context
+  ## @param dbSync.podSecurityContext.fsGroup Set db-sync pod's Security Context fsGroup
+  ##
+  podSecurityContext:
+    enabled: true
+    fsGroup: 999
+  ## @param dbSync.containerSecurityContext.enabled Enable container Security Context
+  ## @param dbSync.containerSecurityContext.runAsUser Set container's Security Context runAsUser
+  ## @param dbSync.containerSecurityContext.runAsNonRoot Set container's Security Context runAsNonRoot
+  ##
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 999
+    runAsNonRoot: true
+
+## @section RBAC Parameters
+
+## ServiceAccount configuration
+##
+serviceAccount:
+  ## @param serviceAccount.create Specifies whether a ServiceAccount should be created
+  ##
+  create: true
+  ## @param serviceAccount.name The name of the ServiceAccount to use
+  ## If not set and create is true, a name is generated using the fullname template
+  ##
+  name: ""
+  ## @param serviceAccount.annotations Additional Service Account annotations (evaluated as a template)
+  ##
+  annotations: {}
+  ## @param serviceAccount.automountServiceAccountToken Automount service account token for the server service account
+  ##
+  automountServiceAccountToken: false
+
+## @section Network Policies
+
+## Network Policy configuration
+## ref: https://kubernetes.io/docs/concepts/services-networking/network-policies/
+##
+networkPolicy:
+  ## @param networkPolicy.enabled Specifies whether a NetworkPolicy should be created
+  ##
+  enabled: true
+  ## @param networkPolicy.allowExternal Don't require client label for connections
+  ## When set to false, only pods with the correct client label will have network access to the port
+  ##
+  allowExternal: true
+  ## @param networkPolicy.allowExternalEgress Allow the pod to access any range of port and all destinations
+  ##
+  allowExternalEgress: true
+  ## @param networkPolicy.extraIngress Add extra ingress rules to the NetworkPolicy
+  ## e.g:
+  ## extraIngress:
+  ##   - ports:
+  ##       - port: 1234
+  ##     from:
+  ##       - podSelector:
+  ##           matchLabels:
+  ##             - role: frontend
+  ##       - podSelector:
+  ##           matchExpressions:
+  ##             - key: role
+  ##               operator: In
+  ##               values:
+  ##                 - frontend
+  ##
+  extraIngress: []
+  ## @param networkPolicy.extraEgress Add extra egress rules to the NetworkPolicy
+  ## e.g:
+  ## extraEgress:
+  ##   - ports:
+  ##       - port: 1234
+  ##     to:
+  ##       - podSelector:
+  ##           matchLabels:
+  ##             - role: frontend
+  ##
+  extraEgress: []
+  ## @param networkPolicy.ingressNSMatchLabels Labels to match to allow traffic from other namespaces
+  ## @param networkPolicy.ingressNSPodMatchLabels Pod labels to match to allow traffic from other namespaces
+  ##
+  ingressNSMatchLabels: {}
+  ingressNSPodMatchLabels: {}
+
+## @section Pod Disruption Budget Parameters
+
+## Pod Disruption Budget configuration
+## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb
+##
+pdb:
+  ## @param pdb.create Enable/disable a Pod Disruption Budget creation
+  ##
+  create: true
+  ## @param pdb.minAvailable Minimum number/percentage of pods that should remain scheduled
+  ##
+  minAvailable: 1
+  ## @param pdb.maxUnavailable Maximum number/percentage of pods that may be made unavailable
+  ##
+  maxUnavailable: ""
+
+## @section Autoscaling Parameters
+
+## Autoscaling configuration
+##
+autoscaling:
+  vpa:
+    ## @param autoscaling.vpa.enabled Enable VPA
+    ##
+    enabled: false
+    ## @param autoscaling.vpa.annotations Annotations for VPA resource
+    ##
+    annotations: {}
+    ## @param autoscaling.vpa.controlledResources VPA List of resources that the vertical pod autoscaler can control
+    ##
+    controlledResources: []
+    ## @param autoscaling.vpa.maxAllowed VPA Max allowed resources for the pod
+    ##
+    maxAllowed: {}
+    ## @param autoscaling.vpa.minAllowed VPA Min allowed resources for the pod
+    ##
+    minAllowed: {}
+    ## @param autoscaling.vpa.updatePolicy.updateMode Autoscaling update policy
+    ##
+    updatePolicy:
+      updateMode: Auto
+  hpa:
+    ## @param autoscaling.hpa.enabled Enable HPA
+    ##
+    enabled: false
+    ## @param autoscaling.hpa.minReplicas Minimum number of replicas
+    ##
+    minReplicas: 2
+    ## @param autoscaling.hpa.maxReplicas Maximum number of replicas
+    ##
+    maxReplicas: 5
+    ## @param autoscaling.hpa.targetCPU Target CPU utilization percentage
+    ##
+    targetCPU: 75
+    ## @param autoscaling.hpa.targetMemory Target Memory utilization percentage
+    ##
+    targetMemory: ""
+
+## @section Metrics Parameters
+
+## Prometheus metrics
+##
+metrics:
+  ## @param metrics.enabled Enable Prometheus metrics endpoint
+  ##
+  enabled: false
+  ## ServiceMonitor configuration
+  ##
+  serviceMonitor:
+    ## @param metrics.serviceMonitor.enabled Create ServiceMonitor resource(s) for scraping metrics using Prometheus Operator
+    ##
+    enabled: false
+    ## @param metrics.serviceMonitor.namespace The namespace in which the ServiceMonitor will be created
+    ##
+    namespace: ""
+    ## @param metrics.serviceMonitor.interval The interval at which metrics should be scraped
+    ##
+    interval: 30s
+    ## @param metrics.serviceMonitor.scrapeTimeout The timeout after which the scrape is ended
+    ##
+    scrapeTimeout: 10s
+    ## @param metrics.serviceMonitor.relabelings RelabelConfigs to apply to samples before scraping
+    ##
+    relabelings: []
+    ## @param metrics.serviceMonitor.metricRelabelings MetricRelabelConfigs to apply to samples before ingestion
+    ##
+    metricRelabelings: []
+    ## @param metrics.serviceMonitor.selector Prometheus instance selector labels
+    ## ref: https://github.com/bitnami/charts/tree/main/bitnami/prometheus-operator#prometheus-configuration
+    ##
+    selector: {}
+    ## @param metrics.serviceMonitor.labels Additional labels that can be used so ServiceMonitor will be discovered by Prometheus
+    ##
+    labels: {}
+    ## @param metrics.serviceMonitor.honorLabels Honor metrics labels
+    ##
+    honorLabels: false
+    ## @param metrics.serviceMonitor.jobLabel The name of the label on the target service to use as the job name in Prometheus
+    ##
+    jobLabel: ""

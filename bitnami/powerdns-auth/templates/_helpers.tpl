@@ -1,0 +1,384 @@
+{{/*
+Copyright Simon Li. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{/* vim: set filetype=mustache: */}}
+
+{{/*
+Return the proper PowerDNS Auth image name
+*/}}
+{{- define "powerdns-auth.image" -}}
+{{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+{{- end -}}
+
+{{/*
+Return the proper MySQL image name for db-init
+*/}}
+{{- define "powerdns-auth.dbInit.mysql.image" -}}
+{{ include "common.images.image" (dict "imageRoot" .Values.dbInit.mysql.image "global" .Values.global) }}
+{{- end -}}
+
+{{/*
+Return the proper PostgreSQL image name for db-init
+*/}}
+{{- define "powerdns-auth.dbInit.postgresql.image" -}}
+{{ include "common.images.image" (dict "imageRoot" .Values.dbInit.postgresql.image "global" .Values.global) }}
+{{- end -}}
+
+{{/*
+Return the proper Docker Image Registry Secret Names
+*/}}
+{{- define "powerdns-auth.imagePullSecrets" -}}
+{{- include "common.images.pullSecrets" (dict "images" (list .Values.image .Values.dbInit.mysql.image .Values.dbInit.postgresql.image) "global" .Values.global) -}}
+{{- end -}}
+
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "powerdns-auth.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create -}}
+    {{ default (include "common.names.fullname" .) .Values.serviceAccount.name }}
+{{- else -}}
+    {{ default "default" .Values.serviceAccount.name }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the PowerDNS Auth configuration secret name
+*/}}
+{{- define "powerdns-auth.configSecretName" -}}
+{{- printf "%s-config" (include "common.names.fullname" .) -}}
+{{- end -}}
+
+{{/*
+Return the database credentials secret name
+*/}}
+{{- define "powerdns-auth.databaseSecretName" -}}
+{{- if .Values.database.existingSecret.enabled -}}
+    {{- .Values.database.existingSecret.name -}}
+{{- else -}}
+    {{- printf "%s-db" (include "common.names.fullname" .) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the database admin credentials secret name
+*/}}
+{{- define "powerdns-auth.databaseAdminSecretName" -}}
+{{- if .Values.database.existingSecret.enabled -}}
+    {{- .Values.database.existingSecret.name -}}
+{{- else -}}
+    {{- printf "%s-db-admin" (include "common.names.fullname" .) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the database host
+*/}}
+{{- define "powerdns-auth.databaseHost" -}}
+{{- if eq .Values.database.type "postgresql" -}}
+    {{- .Values.database.postgresql.host -}}
+{{- else -}}
+    {{- .Values.database.mysql.host -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the database port
+*/}}
+{{- define "powerdns-auth.databasePort" -}}
+{{- if eq .Values.database.type "postgresql" -}}
+    {{- .Values.database.postgresql.port -}}
+{{- else -}}
+    {{- .Values.database.mysql.port -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the database name
+*/}}
+{{- define "powerdns-auth.databaseName" -}}
+{{- if eq .Values.database.type "postgresql" -}}
+    {{- .Values.database.postgresql.database -}}
+{{- else -}}
+    {{- .Values.database.mysql.database -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the database username
+*/}}
+{{- define "powerdns-auth.databaseUsername" -}}
+{{- if eq .Values.database.type "postgresql" -}}
+    {{- .Values.database.postgresql.username -}}
+{{- else -}}
+    {{- .Values.database.mysql.username -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the database password
+*/}}
+{{- define "powerdns-auth.databasePassword" -}}
+{{- if eq .Values.database.type "postgresql" -}}
+    {{- .Values.database.postgresql.password -}}
+{{- else -}}
+    {{- .Values.database.mysql.password -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the database admin username
+*/}}
+{{- define "powerdns-auth.databaseAdminUsername" -}}
+{{- if eq .Values.database.type "postgresql" -}}
+    {{- .Values.database.postgresql.adminUsername -}}
+{{- else -}}
+    {{- .Values.database.mysql.adminUsername -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the database admin password
+*/}}
+{{- define "powerdns-auth.databaseAdminPassword" -}}
+{{- if eq .Values.database.type "postgresql" -}}
+    {{- .Values.database.postgresql.adminPassword -}}
+{{- else -}}
+    {{- .Values.database.mysql.adminPassword -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return true if a secret object should be created for database credentials
+*/}}
+{{- define "powerdns-auth.createDatabaseSecret" -}}
+{{- if not .Values.database.existingSecret.enabled -}}
+    {{- true -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return true if webserver/API is enabled
+*/}}
+{{- define "powerdns-auth.webserverEnabled" -}}
+{{- if .Values.webserver.enabled -}}
+    {{- true -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return true if GeoIP backend is enabled
+*/}}
+{{- define "powerdns-auth.geoipEnabled" -}}
+{{- if and .Values.geoip.enabled .Values.geoipZones.enabled -}}
+    {{- true -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Generate PowerDNS configuration
+*/}}
+{{- define "powerdns-auth.configuration" -}}
+#################################
+# PowerDNS Authoritative Server Configuration
+# Generated by Helm
+#################################
+
+# Daemon settings
+daemon=no
+guardian=no
+write-pid=no
+disable-syslog=yes
+
+# Network settings
+local-address={{ .Values.config.localAddress }}
+local-port={{ .Values.config.localPort }}
+
+# Logging
+loglevel={{ .Values.config.loglevel }}
+log-dns-details={{ if .Values.config.logDnsDetails }}yes{{ else }}no{{ end }}
+log-dns-queries={{ if .Values.config.logDnsQueries }}yes{{ else }}no{{ end }}
+query-logging={{ if .Values.config.queryLogging }}yes{{ else }}no{{ end }}
+
+# AXFR / Replication
+disable-axfr={{ if .Values.config.disableAxfr }}yes{{ else }}no{{ end }}
+allow-axfr-ips={{ .Values.config.allowAxfrIps }}
+allow-notify-from={{ .Values.config.allowNotifyFrom }}
+
+# Primary/Secondary mode
+primary={{ if .Values.config.primary }}yes{{ else }}no{{ end }}
+secondary={{ if .Values.config.secondary }}yes{{ else }}no{{ end }}
+{{- if .Values.config.alsoNotify }}
+also-notify={{ .Values.config.alsoNotify }}
+{{- end }}
+{{- if .Values.config.onlyNotify }}
+only-notify={{ .Values.config.onlyNotify }}
+{{- end }}
+
+# Autoprimary/Autosecondary
+{{- if .Values.config.autosecondary }}
+autosecondary=yes
+{{- end }}
+{{- if .Values.config.allowUnsignedAutoprimary }}
+allow-unsigned-autoprimary=yes
+{{- end }}
+{{- if .Values.config.allowUnsignedNotify }}
+allow-unsigned-notify=yes
+{{- end }}
+
+# Performance
+receiver-threads={{ .Values.config.receiverThreads }}
+retrieval-threads={{ .Values.config.retrievalThreads }}
+signing-threads={{ .Values.config.signingThreads }}
+reuseport={{ if .Values.config.reuseport }}yes{{ else }}no{{ end }}
+
+# TCP settings
+max-tcp-connection-duration={{ .Values.config.maxTcpConnectionDuration }}
+max-tcp-connections={{ .Values.config.maxTcpConnections }}
+tcp-fast-open={{ .Values.config.tcpFastOpen }}
+
+# DNSSEC defaults
+default-ksk-algorithm={{ .Values.config.defaultKskAlgorithm }}
+default-ksk-size={{ .Values.config.defaultKskSize }}
+{{- if .Values.config.defaultZskAlgorithm }}
+default-zsk-algorithm={{ .Values.config.defaultZskAlgorithm }}
+{{- end }}
+default-zsk-size={{ .Values.config.defaultZskSize }}
+
+# DNAME processing
+dname-processing={{ if .Values.config.dnameProcessing }}yes{{ else }}no{{ end }}
+expand-alias={{ if .Values.config.expandAlias }}yes{{ else }}no{{ end }}
+
+# Security
+version-string={{ .Values.config.versionString }}
+{{- if .Values.config.securityPollSuffix }}
+security-poll-suffix={{ .Values.config.securityPollSuffix }}
+{{- else }}
+security-poll-suffix=
+{{- end }}
+
+# Cache settings
+cache-ttl={{ .Values.config.cacheTtl }}
+negquery-cache-ttl={{ .Values.config.negqueryCacheTtl }}
+query-cache-ttl={{ if .Values.config.queryCacheEnabled }}20{{ else }}0{{ end }}
+
+# SOA defaults
+{{- if .Values.config.defaultSoaContent }}
+default-soa-content={{ .Values.config.defaultSoaContent }}
+{{- end }}
+{{- if .Values.config.defaultSoaMail }}
+default-soa-mail={{ .Values.config.defaultSoaMail }}
+{{- end }}
+{{- if .Values.config.defaultSoaName }}
+default-soa-name={{ .Values.config.defaultSoaName }}
+{{- end }}
+default-ttl={{ .Values.config.defaultTtl }}
+
+# DNS UPDATE (RFC 2136)
+{{- if .Values.config.allowDnsupdateFrom }}
+allow-dnsupdate-from={{ .Values.config.allowDnsupdateFrom }}
+dnsupdate={{ if .Values.config.allowDnsupdateFrom }}yes{{ else }}no{{ end }}
+{{- end }}
+{{- if .Values.config.dnsupdateRequireTsig }}
+dnsupdate-require-tsig=yes
+{{- end }}
+{{- if .Values.config.forwardDnsupdate }}
+forward-dnsupdate=yes
+{{- end }}
+
+# LUA records
+{{- if .Values.config.enableLuaRecords }}
+enable-lua-records=yes
+{{- end }}
+
+# Backend configuration
+{{- if eq .Values.database.type "postgresql" }}
+launch={{ if .Values.geoip.enabled }}geoip,{{ end }}gpgsql
+gpgsql-host={{ include "powerdns-auth.databaseHost" . }}
+gpgsql-port={{ include "powerdns-auth.databasePort" . }}
+gpgsql-dbname={{ include "powerdns-auth.databaseName" . }}
+gpgsql-user={{ include "powerdns-auth.databaseUsername" . }}
+gpgsql-password={{ include "powerdns-auth.databasePassword" . }}
+gpgsql-dnssec=yes
+{{- else }}
+launch={{ if .Values.geoip.enabled }}geoip,{{ end }}gmysql
+gmysql-host={{ include "powerdns-auth.databaseHost" . }}
+gmysql-port={{ include "powerdns-auth.databasePort" . }}
+gmysql-dbname={{ include "powerdns-auth.databaseName" . }}
+gmysql-user={{ include "powerdns-auth.databaseUsername" . }}
+gmysql-password={{ include "powerdns-auth.databasePassword" . }}
+gmysql-dnssec=yes
+gmysql-timeout={{ .Values.database.mysql.timeout }}
+{{- end }}
+
+{{- if .Values.geoip.enabled }}
+# GeoIP backend configuration
+geoip-database-files={{ join " " .Values.geoip.databases }}
+geoip-zones-file={{ .Values.geoip.zonesFile }}
+{{- if .Values.geoip.ednsSubnetProcessing }}
+edns-subnet-processing=yes
+{{- end }}
+{{- if .Values.geoip.dnssecKeydir }}
+geoip-dnssec-keydir={{ .Values.geoip.dnssecKeydir }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.webserver.enabled }}
+# Webserver / API configuration
+webserver=yes
+webserver-address={{ .Values.webserver.address }}
+webserver-port={{ .Values.webserver.port }}
+webserver-allow-from={{ .Values.webserver.allowFrom }}
+{{- if .Values.webserver.password }}
+webserver-password={{ .Values.webserver.password }}
+{{- end }}
+api=yes
+{{- if .Values.webserver.apiKey }}
+api-key={{ .Values.webserver.apiKey }}
+{{- end }}
+{{- end }}
+
+{{- range $key, $value := .Values.config.extra }}
+{{ $key }}={{ $value }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Compile all warnings into a single message.
+*/}}
+{{- define "powerdns-auth.validateValues" -}}
+{{- $messages := list -}}
+{{- $messages := append $messages (include "powerdns-auth.validateValues.database" .) -}}
+{{- $messages := append $messages (include "powerdns-auth.validateValues.geoip" .) -}}
+{{- $messages := without $messages "" -}}
+{{- $message := join "\n" $messages -}}
+{{- if $message -}}
+{{-   printf "\nVALUES VALIDATION:\n%s" $message | fail -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Validate values of PowerDNS Auth - Database
+*/}}
+{{- define "powerdns-auth.validateValues.database" -}}
+{{- if not (or (eq .Values.database.type "postgresql") (eq .Values.database.type "mysql")) -}}
+powerdns-auth: database.type
+    Invalid database type. Valid values are "postgresql" or "mysql".
+{{- end -}}
+{{- if and (not .Values.database.existingSecret.enabled) (not (include "powerdns-auth.databaseHost" .)) -}}
+powerdns-auth: database host
+    You must provide a database host. Set database.postgresql.host or database.mysql.host.
+{{- end -}}
+{{- end -}}
+
+{{/*
+Validate values of PowerDNS Auth - GeoIP
+*/}}
+{{- define "powerdns-auth.validateValues.geoip" -}}
+{{- if and .Values.geoip.enabled (not .Values.geoipVolume.enabled) -}}
+powerdns-auth: geoip
+    GeoIP backend is enabled but geoipVolume is not enabled. You must provide GeoIP database files.
+{{- end -}}
+{{- end -}}

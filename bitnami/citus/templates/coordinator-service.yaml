@@ -1,0 +1,77 @@
+{{- /*
+Copyright Anthropic, Inc.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "citus.coordinator.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "citus.coordinator.labels" . | nindent 4 }}
+  {{- if or .Values.coordinator.service.annotations .Values.commonAnnotations }}
+  annotations:
+    {{- if .Values.coordinator.service.annotations }}
+    {{- toYaml .Values.coordinator.service.annotations | nindent 4 }}
+    {{- end }}
+    {{- if .Values.commonAnnotations }}
+    {{- toYaml .Values.commonAnnotations | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  type: {{ .Values.coordinator.service.type }}
+  {{- if and .Values.coordinator.service.clusterIP (eq .Values.coordinator.service.type "ClusterIP") }}
+  clusterIP: {{ .Values.coordinator.service.clusterIP }}
+  {{- end }}
+  {{- if and .Values.coordinator.service.loadBalancerIP (eq .Values.coordinator.service.type "LoadBalancer") }}
+  loadBalancerIP: {{ .Values.coordinator.service.loadBalancerIP }}
+  {{- end }}
+  {{- if and (eq .Values.coordinator.service.type "LoadBalancer") .Values.coordinator.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges: {{- toYaml .Values.coordinator.service.loadBalancerSourceRanges | nindent 4 }}
+  {{- end }}
+  {{- if and .Values.coordinator.service.externalTrafficPolicy (or (eq .Values.coordinator.service.type "NodePort") (eq .Values.coordinator.service.type "LoadBalancer")) }}
+  externalTrafficPolicy: {{ .Values.coordinator.service.externalTrafficPolicy }}
+  {{- end }}
+  {{- if .Values.coordinator.service.sessionAffinity }}
+  sessionAffinity: {{ .Values.coordinator.service.sessionAffinity }}
+  {{- end }}
+  {{- if .Values.coordinator.service.sessionAffinityConfig }}
+  sessionAffinityConfig: {{- toYaml .Values.coordinator.service.sessionAffinityConfig | nindent 4 }}
+  {{- end }}
+  ports:
+    - name: postgresql
+      port: {{ .Values.coordinator.service.ports.postgresql }}
+      targetPort: postgresql
+      {{- if and (or (eq .Values.coordinator.service.type "NodePort") (eq .Values.coordinator.service.type "LoadBalancer")) .Values.coordinator.service.nodePorts.postgresql }}
+      nodePort: {{ .Values.coordinator.service.nodePorts.postgresql }}
+      {{- else if eq .Values.coordinator.service.type "ClusterIP" }}
+      nodePort: null
+      {{- end }}
+    {{- if .Values.metrics.enabled }}
+    - name: metrics
+      port: {{ .Values.metrics.containerPorts.metrics }}
+      targetPort: metrics
+    {{- end }}
+    {{- if .Values.coordinator.service.extraPorts }}
+    {{- toYaml .Values.coordinator.service.extraPorts | nindent 4 }}
+    {{- end }}
+  selector: {{- include "citus.coordinator.selectorLabels" . | nindent 4 }}
+---
+## Headless service for coordinator StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "citus.coordinator.svcHeadless" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "citus.coordinator.labels" . | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- toYaml .Values.commonAnnotations | nindent 4 }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: postgresql
+      port: {{ .Values.coordinator.service.ports.postgresql }}
+      targetPort: postgresql
+  selector: {{- include "citus.coordinator.selectorLabels" . | nindent 4 }}

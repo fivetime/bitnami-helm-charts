@@ -1,0 +1,870 @@
+# Copyright Simon Li
+# SPDX-License-Identifier: Apache-2.0
+
+## @section Global parameters
+## Global Docker image parameters
+## Please, note that this will override the image parameters, including dependencies, configured to use the global value
+
+## @param global.imageRegistry Global Docker image registry
+## @param global.imagePullSecrets Global Docker registry secret names as an array
+## @param global.defaultStorageClass Global default StorageClass for Persistent Volume(s)
+##
+global:
+  imageRegistry: ""
+  ## E.g.
+  ## imagePullSecrets:
+  ##   - myRegistryKeySecretName
+  ##
+  imagePullSecrets: []
+  defaultStorageClass: ""
+  ## Security parameters
+  ##
+  security:
+    ## @param global.security.allowInsecureImages Allows skipping image verification
+    ##
+    allowInsecureImages: false
+  ## Compatibility adaptations for Kubernetes platforms
+  ##
+  compatibility:
+    ## Compatibility adaptations for Openshift
+    ##
+    openshift:
+      ## @param global.compatibility.openshift.adaptSecurityContext Adapt the securityContext sections of the deployment to make them compatible with Openshift restricted-v2 SCC
+      ##
+      adaptSecurityContext: auto
+
+## @section Common parameters
+
+## @param kubeVersion Override Kubernetes version
+##
+kubeVersion: ""
+## @param nameOverride String to partially override common.names.fullname
+##
+nameOverride: ""
+## @param fullnameOverride String to fully override common.names.fullname
+##
+fullnameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+##
+namespaceOverride: ""
+## @param commonLabels Labels to add to all deployed objects
+##
+commonLabels: {}
+## @param commonAnnotations Annotations to add to all deployed objects
+##
+commonAnnotations: {}
+## @param clusterDomain Kubernetes cluster domain name
+##
+clusterDomain: cluster.local
+## @param extraDeploy Array of extra objects to deploy with the release
+##
+extraDeploy: []
+
+## Enable diagnostic mode in the deployment
+##
+diagnosticMode:
+  ## @param diagnosticMode.enabled Enable diagnostic mode (all probes will be disabled and the command will be overridden)
+  ##
+  enabled: false
+  ## @param diagnosticMode.command Command to override all containers in the deployment
+  ##
+  command:
+    - sleep
+  ## @param diagnosticMode.args Args to override all containers in the deployment
+  ##
+  args:
+    - infinity
+
+## @section DNSdist Parameters
+
+## DNSdist image
+## ref: https://hub.docker.com/r/powerdns/dnsdist-20
+## @param image.registry [default: docker.io] DNSdist image registry
+## @param image.repository [default: powerdns/dnsdist-20] DNSdist image repository
+## @param image.tag DNSdist image tag (immutable tags are recommended)
+## @param image.digest DNSdist image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+## @param image.pullPolicy DNSdist image pull policy
+## @param image.pullSecrets DNSdist image pull secrets
+##
+image:
+  registry: docker.io
+  repository: powerdns/dnsdist-20
+  tag: "2.0.2"
+  digest: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+## @param replicaCount Number of DNSdist replicas to deploy
+##
+replicaCount: 2
+
+## @param revisionHistoryLimit The number of old history to retain to allow rollback
+##
+revisionHistoryLimit: 10
+
+## @param hostNetwork Specify if host network should be enabled for DNSdist pod
+##
+hostNetwork: false
+
+## @param hostIPC Specify if host IPC should be enabled for DNSdist pod
+##
+hostIPC: false
+
+## @param automountServiceAccountToken Mount Service Account token in pod
+##
+automountServiceAccountToken: false
+
+## @param dnsPolicy DNS Policy for pod
+## ref: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/
+##
+dnsPolicy: ""
+
+## @param dnsConfig DNS Configuration pod
+## ref: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/
+##
+dnsConfig: {}
+
+## Configure extra options for containers' liveness probe
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+## @param livenessProbe.enabled Enable livenessProbe on containers
+## @param livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+## @param livenessProbe.periodSeconds Period seconds for livenessProbe
+## @param livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+## @param livenessProbe.failureThreshold Failure threshold for livenessProbe
+## @param livenessProbe.successThreshold Success threshold for livenessProbe
+##
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 15
+  periodSeconds: 20
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+## Configure extra options for containers' readiness probe
+## @param readinessProbe.enabled Enable readinessProbe on containers
+## @param readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+## @param readinessProbe.periodSeconds Period seconds for readinessProbe
+## @param readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+## @param readinessProbe.failureThreshold Failure threshold for readinessProbe
+## @param readinessProbe.successThreshold Success threshold for readinessProbe
+##
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+## Configure extra options for containers' startup probe
+## @param startupProbe.enabled Enable startupProbe on containers
+## @param startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
+## @param startupProbe.periodSeconds Period seconds for startupProbe
+## @param startupProbe.timeoutSeconds Timeout seconds for startupProbe
+## @param startupProbe.failureThreshold Failure threshold for startupProbe
+## @param startupProbe.successThreshold Success threshold for startupProbe
+##
+startupProbe:
+  enabled: true
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 30
+  successThreshold: 1
+
+## @param customLivenessProbe Custom livenessProbe that overrides the default one
+##
+customLivenessProbe: {}
+## @param customReadinessProbe Custom readinessProbe that overrides the default one
+##
+customReadinessProbe: {}
+## @param customStartupProbe Custom startupProbe that overrides the default one
+##
+customStartupProbe: {}
+
+## Resource requests and limits
+## ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+## @param resourcesPreset Set container resources according to one common preset (allowed values: none, nano, micro, small, medium, large, xlarge, 2xlarge). This is ignored if resources is set (resources is recommended for production).
+## More information: https://github.com/bitnami/charts/blob/main/bitnami/common/templates/_resources.tpl#L15
+##
+resourcesPreset: "small"
+## @param resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+## Example:
+## resources:
+##   requests:
+##     cpu: 500m
+##     memory: 256Mi
+##   limits:
+##     cpu: 2000m
+##     memory: 512Mi
+##
+resources: {}
+
+## Configure Pods Security Context
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+## @param podSecurityContext.enabled Enable pods' Security Context
+## @param podSecurityContext.fsGroupChangePolicy Set filesystem group change policy
+## @param podSecurityContext.sysctls Set kernel settings using the sysctl interface
+## @param podSecurityContext.supplementalGroups Set filesystem extra groups
+## @param podSecurityContext.fsGroup Set DNSdist pod's Security Context fsGroup
+##
+podSecurityContext:
+  enabled: true
+  fsGroupChangePolicy: "Always"
+  sysctls: []
+  supplementalGroups: []
+  fsGroup: 953
+
+## Configure Container Security Context
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
+## @param containerSecurityContext.enabled Enable container Security Context
+## @param containerSecurityContext.seLinuxOptions [object,nullable] Set SELinux options in container
+## @param containerSecurityContext.runAsUser Set container's Security Context runAsUser
+## @param containerSecurityContext.runAsGroup Set container's Security Context runAsGroup
+## @param containerSecurityContext.runAsNonRoot Set container's Security Context runAsNonRoot
+## @param containerSecurityContext.readOnlyRootFilesystem Set container's Security Context readOnlyRootFilesystem
+## @param containerSecurityContext.privileged Set container's Security Context privileged
+## @param containerSecurityContext.allowPrivilegeEscalation Set container's Security Context allowPrivilegeEscalation
+## @param containerSecurityContext.capabilities.drop List of capabilities to be dropped
+## @param containerSecurityContext.seccompProfile.type Set container's Security Context seccomp profile
+##
+containerSecurityContext:
+  enabled: true
+  seLinuxOptions: {}
+  runAsUser: 953
+  runAsGroup: 953
+  runAsNonRoot: true
+  readOnlyRootFilesystem: false  # DNSCrypt needs write access for keys
+  privileged: false
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+## @param command Override default container command (useful when using custom images)
+##
+command: []
+## @param args Override default container args (useful when using custom images)
+##
+args: []
+## @param hostAliases DNSdist pods host aliases
+##
+hostAliases: []
+## @param podLabels Extra labels for pods
+##
+podLabels: {}
+## @param podAnnotations Annotations for pods
+##
+podAnnotations: {}
+## @param podAffinityPreset Pod affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+##
+podAffinityPreset: ""
+## @param podAntiAffinityPreset Pod anti-affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+##
+podAntiAffinityPreset: soft
+## Node affinity preset
+## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity
+##
+nodeAffinityPreset:
+  ## @param nodeAffinityPreset.type Node affinity preset type. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+  ##
+  type: ""
+  ## @param nodeAffinityPreset.key Node label key to match. Ignored if `affinity` is set
+  ##
+  key: ""
+  ## @param nodeAffinityPreset.values Node label values to match. Ignored if `affinity` is set
+  ##
+  values: []
+## @param affinity Affinity for pods assignment
+##
+affinity: {}
+## @param nodeSelector Node labels for pods assignment
+##
+nodeSelector: {}
+## @param tolerations Tolerations for pods assignment
+##
+tolerations: []
+## @param updateStrategy.type Deployment strategy type
+##
+updateStrategy:
+  type: RollingUpdate
+## @param priorityClassName Pods' priorityClassName
+##
+priorityClassName: ""
+## @param topologySpreadConstraints Topology Spread Constraints for pod assignment spread across your cluster among failure-domains
+##
+topologySpreadConstraints: []
+## @param schedulerName Name of the k8s scheduler (other than default) for pods
+##
+schedulerName: ""
+## @param runtimeClassName Runtime class name for pod
+##
+runtimeClassName: ""
+## @param terminationGracePeriodSeconds Seconds pod needs to terminate gracefully
+##
+terminationGracePeriodSeconds: 30
+## @param lifecycleHooks for containers to automate configuration before or after startup
+##
+lifecycleHooks: {}
+
+## @param extraEnvVars Array with extra environment variables to add to containers
+##
+extraEnvVars: []
+## @param extraEnvVarsCM Name of existing ConfigMap containing extra env vars for containers
+##
+extraEnvVarsCM: ""
+## @param extraEnvVarsSecret Name of existing Secret containing extra env vars for containers
+##
+extraEnvVarsSecret: ""
+## @param extraVolumes Optionally specify extra list of additional volumes for the pods
+##
+extraVolumes: []
+## @param extraVolumeMounts Optionally specify extra list of additional volumeMounts for the containers
+##
+extraVolumeMounts: []
+## @param sidecars Add additional sidecar containers to the pods
+##
+sidecars: []
+## @param initContainers Add additional init containers to the pods
+##
+initContainers: []
+
+## @section DNSdist Configuration
+
+## Backend servers configuration
+## @param backends.recursor.enabled Enable recursor backend pool
+## @param backends.recursor.servers List of recursor servers [{name, address, port}]
+## @param backends.recursor.pool Pool name for recursor servers
+## @param backends.recursor.healthCheck.mode Health check mode (lazy, up, down, auto)
+## @param backends.recursor.healthCheck.interval Health check interval in seconds
+## @param backends.recursor.useClientSubnet Enable EDNS Client Subnet
+##
+backends:
+  recursor:
+    enabled: true
+    servers:
+      - name: recursor
+        address: pdns-recursor
+        port: 53
+    pool: recursor
+    healthCheck:
+      mode: lazy
+      interval: 5
+      lazyThreshold: 20
+      lazySampleSize: 100
+      lazyMinSampleCount: 10
+    useClientSubnet: true
+
+  ## @param backends.auth.enabled Enable authoritative backend pool
+  ## @param backends.auth.servers List of auth servers [{name, address, port}]
+  ## @param backends.auth.pool Pool name for auth servers
+  ## @param backends.auth.healthCheck.mode Health check mode
+  ## @param backends.auth.healthCheck.interval Health check interval in seconds
+  ## @param backends.auth.useClientSubnet Enable EDNS Client Subnet
+  ##
+  auth:
+    enabled: false
+    servers:
+      - name: auth
+        address: pdns-auth
+        port: 53
+    pool: auth
+    healthCheck:
+      mode: lazy
+      interval: 5
+    useClientSubnet: true
+
+  ## @param backends.external.enabled Enable external upstream pool
+  ## @param backends.external.servers List of external servers [{name, address, port}]
+  ## @param backends.external.pool Pool name for external servers
+  ## @param backends.external.healthCheck.mode Health check mode
+  ## @param backends.external.healthCheck.interval Health check interval in seconds
+  ##
+  external:
+    enabled: false
+    servers: []
+    pool: external
+    healthCheck:
+      mode: lazy
+      interval: 10
+
+## Listeners configuration
+##
+listeners:
+  ## @param listeners.dns.enabled Enable plain DNS listener
+  ## @param listeners.dns.address DNS listener bind address
+  ## @param listeners.dns.port DNS listener port
+  ## @param listeners.dns.tcpFastOpen TCP Fast Open queue size
+  ##
+  dns:
+    enabled: true
+    address: "0.0.0.0"
+    port: 53
+    tcpFastOpen: 64
+
+  ## @param listeners.dot.enabled Enable DNS over TLS (DoT) listener
+  ## @param listeners.dot.address DoT listener bind address
+  ## @param listeners.dot.port DoT listener port
+  ## @param listeners.dot.minTLSVersion Minimum TLS version
+  ## @param listeners.dot.ciphers TLS ciphers (empty = default)
+  ## @param listeners.dot.numberOfTicketsKeys Number of TLS session ticket keys
+  ##
+  dot:
+    enabled: false
+    address: "0.0.0.0"
+    port: 853
+    minTLSVersion: tls1.2
+    ciphers: ""
+    numberOfTicketsKeys: 5
+
+  ## @param listeners.doh.enabled Enable DNS over HTTPS (DoH) listener
+  ## @param listeners.doh.address DoH listener bind address
+  ## @param listeners.doh.port DoH listener port
+  ## @param listeners.doh.path DoH query path
+  ## @param listeners.doh.minTLSVersion Minimum TLS version
+  ## @param listeners.doh.additionalPaths Additional DoH paths
+  ## @param listeners.doh.customResponses Custom HTTP responses for specific paths
+  ##
+  doh:
+    enabled: false
+    address: "0.0.0.0"
+    port: 443
+    path: /dns-query
+    minTLSVersion: tls1.2
+    additionalPaths: []
+    # - /resolve
+    customResponses:
+      - path: /health
+        status: 200
+        content: "OK"
+        contentType: text/plain
+
+  ## @param listeners.doq.enabled Enable DNS over QUIC (DoQ) listener
+  ## @param listeners.doq.address DoQ listener bind address
+  ## @param listeners.doq.port DoQ listener port
+  ## @param listeners.doq.idleTimeout DoQ idle timeout in seconds
+  ##
+  doq:
+    enabled: false
+    address: "0.0.0.0"
+    port: 8853
+    idleTimeout: 30
+
+  ## @param listeners.doh3.enabled Enable DNS over HTTP/3 (DoH3) listener
+  ## @param listeners.doh3.address DoH3 listener bind address
+  ## @param listeners.doh3.port DoH3 listener port
+  ## @param listeners.doh3.path DoH3 query path
+  ## @param listeners.doh3.idleTimeout DoH3 idle timeout in seconds
+  ##
+  doh3:
+    enabled: false
+    address: "0.0.0.0"
+    port: 8443
+    path: /dns-query
+    idleTimeout: 30
+
+  ## @param listeners.dnscrypt.enabled Enable DNSCrypt listener
+  ## @param listeners.dnscrypt.address DNSCrypt listener bind address
+  ## @param listeners.dnscrypt.port DNSCrypt listener port
+  ## @param listeners.dnscrypt.providerName DNSCrypt provider name (must start with "2.")
+  ## @param listeners.dnscrypt.certValidity Certificate validity in days
+  ##
+  dnscrypt:
+    enabled: false
+    address: "0.0.0.0"
+    port: 8443
+    providerName: "2.dnscrypt-cert.example.com"
+    certValidity: 365
+
+## TLS certificates configuration
+## @param tls.existingSecret Name of existing secret containing TLS certificates
+## @param tls.cert TLS certificate (if not using existingSecret)
+## @param tls.key TLS private key (if not using existingSecret)
+## @param tls.ca TLS CA certificate (optional)
+##
+tls:
+  existingSecret: ""
+  cert: ""
+  key: ""
+  ca: ""
+
+## Console configuration
+## @param console.enabled Enable control console
+## @param console.address Console bind address
+## @param console.port Console port
+## @param console.key Console key (auto-generated if empty)
+## @param console.acl Console ACL list
+##
+console:
+  enabled: true
+  address: "127.0.0.1"
+  port: 5199
+  key: ""
+  acl:
+    - "127.0.0.0/8"
+    - "::1/128"
+
+## Webserver / API configuration
+## @param webserver.enabled Enable webserver/API
+## @param webserver.address Webserver bind address
+## @param webserver.port Webserver port
+## @param webserver.password Webserver password (auto-generated if empty)
+## @param webserver.apiKey API key (auto-generated if empty)
+## @param webserver.acl Webserver ACL
+## @param webserver.statsRequireAuth Require authentication for stats
+##
+webserver:
+  enabled: true
+  address: "0.0.0.0"
+  port: 8083
+  password: ""
+  apiKey: ""
+  acl: "0.0.0.0/0, ::/0"
+  statsRequireAuth: true
+
+## Cache configuration
+## @param cache.enabled Enable packet cache
+## @param cache.size Number of cache entries
+## @param cache.maxTTL Maximum TTL in seconds
+## @param cache.minTTL Minimum TTL in seconds
+## @param cache.stale.enabled Enable serving stale data on backend failure
+## @param cache.stale.ttl Stale TTL in seconds
+## @param cache.negativeTTL Negative cache TTL in seconds
+##
+cache:
+  enabled: true
+  size: 100000
+  maxTTL: 86400
+  minTTL: 0
+  stale:
+    enabled: true
+    ttl: 60
+  negativeTTL: 60
+
+## ACL configuration
+## @param acl.allowed List of allowed client networks
+## @param acl.blocked List of blocked networks (processed first)
+##
+acl:
+  allowed:
+    - "0.0.0.0/0"
+    - "::/0"
+  blocked: []
+
+## Rate limiting configuration
+## @param rateLimit.enabled Enable rate limiting
+## @param rateLimit.delayThreshold QPS per IP to start delaying
+## @param rateLimit.delayMs Delay in milliseconds
+## @param rateLimit.dropThreshold QPS per IP to start dropping
+## @param rateLimit.ipv4PrefixLength IPv4 prefix length for rate limiting
+## @param rateLimit.ipv6PrefixLength IPv6 prefix length for rate limiting
+##
+rateLimit:
+  enabled: true
+  delayThreshold: 100
+  delayMs: 100
+  dropThreshold: 500
+  ipv4PrefixLength: 32
+  ipv6PrefixLength: 64
+
+## Security rules
+## @param security.dropChaos Drop CHAOS class queries
+## @param security.dropAny Drop ANY queries
+## @param security.minTTL Minimum TTL to return to clients
+## @param security.maxTTL Maximum TTL to return to clients
+##
+security:
+  dropChaos: true
+  dropAny: false
+  minTTL: 0
+  maxTTL: 86400
+
+## Blocklist configuration
+## @param blocklist.enabled Enable blocklist
+## @param blocklist.action Action for blocked domains (Drop, Refused, ServFail, NoData)
+## @param blocklist.domains List of domains to block
+## @param blocklist.externalUrl External blocklist URL
+## @param blocklist.batchSize Batch size for loading blocklist (memory optimization)
+##
+blocklist:
+  enabled: false
+  action: ServFail
+  domains: []
+  externalUrl: ""
+  batchSize: 10000
+
+## Routing configuration
+## @param routing.defaultPool Default pool for queries
+## @param routing.rules Custom routing rules
+##
+routing:
+  defaultPool: recursor
+  rules: []
+
+## Logging configuration
+## @param logging.queries Log queries to stdout
+## @param logging.verbose Enable verbose mode
+## @param logging.responses Log responses
+##
+logging:
+  queries: false
+  verbose: false
+  responses: false
+
+## @param extraConfig Additional Lua code appended to main config
+##
+extraConfig: ""
+
+## @param extraConfigFiles Additional config files (will be included via includeDirectory)
+##
+extraConfigFiles: {}
+
+## @section Traffic Exposure Parameters
+
+## Service parameters
+## @param service.enabled Enable service creation
+## @param service.type Kubernetes Service type
+## @param service.ports.dns DNS service port (UDP/TCP)
+## @param service.ports.dot DoT service port
+## @param service.ports.doh DoH service port
+## @param service.ports.doq DoQ service port
+## @param service.ports.doh3 DoH3 service port
+## @param service.ports.dnscrypt DNSCrypt service port
+## @param service.ports.webserver Webserver service port
+## @param service.nodePorts.dns Node port for DNS
+## @param service.nodePorts.dot Node port for DoT
+## @param service.nodePorts.doh Node port for DoH
+## @param service.nodePorts.doq Node port for DoQ
+## @param service.nodePorts.doh3 Node port for DoH3
+## @param service.nodePorts.dnscrypt Node port for DNSCrypt
+## @param service.nodePorts.webserver Node port for webserver
+## @param service.clusterIP Service Cluster IP
+## @param service.loadBalancerIP Service Load Balancer IP
+## @param service.loadBalancerSourceRanges Service Load Balancer sources
+## @param service.externalIPs Service external IP addresses
+## @param service.externalTrafficPolicy Service external traffic policy
+## @param service.annotations Additional custom annotations for Service
+## @param service.extraPorts Extra ports to expose in Service
+## @param service.sessionAffinity Session Affinity for Kubernetes service
+## @param service.sessionAffinityConfig Additional settings for the sessionAffinity
+##
+service:
+  enabled: true
+  type: LoadBalancer
+  ports:
+    dns: 53
+    dot: 853
+    doh: 443
+    doq: 8853
+    doh3: 8443
+    dnscrypt: 8443
+    webserver: 8083
+  nodePorts:
+    dns: ""
+    dot: ""
+    doh: ""
+    doq: ""
+    doh3: ""
+    dnscrypt: ""
+    webserver: ""
+  clusterIP: ""
+  loadBalancerIP: ""
+  loadBalancerSourceRanges: []
+  externalIPs: []
+  externalTrafficPolicy: Local
+  annotations: {}
+  extraPorts: []
+  sessionAffinity: None
+  sessionAffinityConfig: {}
+
+## Ingress parameters (for DoH)
+## @param ingress.enabled Enable ingress for DoH
+## @param ingress.pathType Ingress path type
+## @param ingress.apiVersion Force Ingress API version
+## @param ingress.hostname Default hostname
+## @param ingress.ingressClassName IngressClass name
+## @param ingress.path Default path for DoH
+## @param ingress.annotations Additional annotations for Ingress
+## @param ingress.tls Enable TLS for ingress
+## @param ingress.selfSigned Use self-signed certificates
+## @param ingress.extraHosts Additional hostnames
+## @param ingress.extraPaths Additional paths
+## @param ingress.extraTls Additional TLS configuration
+## @param ingress.secrets Custom TLS certificates as secrets
+## @param ingress.extraRules Additional ingress rules
+##
+ingress:
+  enabled: false
+  pathType: Prefix
+  apiVersion: ""
+  hostname: dns.example.com
+  ingressClassName: ""
+  path: /dns-query
+  annotations: {}
+  tls: false
+  selfSigned: false
+  extraHosts: []
+  extraPaths: []
+  extraTls: []
+  secrets: []
+  extraRules: []
+
+## @section Persistence Parameters
+
+## DNSCrypt keys persistence
+## @param persistence.enabled Enable persistence for DNSCrypt keys
+## @param persistence.mountPath Path to mount the volume at
+## @param persistence.storageClass Storage class of backing PVC
+## @param persistence.annotations Persistent Volume Claim annotations
+## @param persistence.accessModes Persistent Volume Access Modes
+## @param persistence.size Size of data volume
+## @param persistence.existingClaim Use existing PVC
+## @param persistence.selector Selector to match an existing PV
+##
+persistence:
+  enabled: false
+  mountPath: /var/lib/dnsdist
+  storageClass: ""
+  annotations: {}
+  accessModes:
+    - ReadWriteOnce
+  size: 100Mi
+  existingClaim: ""
+  selector: {}
+
+## @section RBAC Parameters
+
+## ServiceAccount configuration
+## @param serviceAccount.create Specifies whether a ServiceAccount should be created
+## @param serviceAccount.name The name of the ServiceAccount to use
+## @param serviceAccount.annotations Additional Service Account annotations
+## @param serviceAccount.automountServiceAccountToken Automount service account token
+##
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automountServiceAccountToken: false
+
+## @section Network Policies
+
+## NetworkPolicy parameters
+## @param networkPolicy.enabled Specifies whether a NetworkPolicy should be created
+## @param networkPolicy.allowExternal Don't require client label for connections
+## @param networkPolicy.allowExternalEgress Allow the pod to access any range of port and all destinations
+## @param networkPolicy.extraIngress Add extra ingress rules to the NetworkPolicy
+## @param networkPolicy.extraEgress Add extra egress rules to the NetworkPolicy
+## @param networkPolicy.ingressNSMatchLabels Labels to match to allow traffic from other namespaces
+## @param networkPolicy.ingressNSPodMatchLabels Pod labels to match to allow traffic from other namespaces
+##
+networkPolicy:
+  enabled: true
+  allowExternal: true
+  allowExternalEgress: true
+  extraIngress: []
+  extraEgress: []
+  ingressNSMatchLabels: {}
+  ingressNSPodMatchLabels: {}
+
+## @section Pod Disruption Budget Parameters
+
+## PodDisruptionBudget configuration
+## @param pdb.create Enable/disable a Pod Disruption Budget creation
+## @param pdb.minAvailable Minimum number/percentage of pods that should remain scheduled
+## @param pdb.maxUnavailable Maximum number/percentage of pods that may be made unavailable
+##
+pdb:
+  create: true
+  minAvailable: 1
+  maxUnavailable: ""
+
+## @section Autoscaling Parameters
+
+## Autoscaling parameters
+##
+autoscaling:
+  ## VPA configuration
+  ##
+  vpa:
+    ## @param autoscaling.vpa.enabled Enable VPA
+    ##
+    enabled: false
+    ## @param autoscaling.vpa.annotations Annotations for VPA resource
+    ##
+    annotations: {}
+    ## @param autoscaling.vpa.controlledResources VPA List of resources that the vertical pod autoscaler can control
+    ##
+    controlledResources: []
+    ## @param autoscaling.vpa.maxAllowed VPA Max allowed resources for the pod
+    ##
+    maxAllowed: {}
+    ## @param autoscaling.vpa.minAllowed VPA Min allowed resources for the pod
+    ##
+    minAllowed: {}
+    ## @param autoscaling.vpa.updatePolicy.updateMode Autoscaling update policy
+    ##
+    updatePolicy:
+      updateMode: Auto
+  ## HPA configuration
+  ##
+  hpa:
+    ## @param autoscaling.hpa.enabled Enable HPA
+    ##
+    enabled: false
+    ## @param autoscaling.hpa.minReplicas Minimum number of replicas
+    ##
+    minReplicas: 2
+    ## @param autoscaling.hpa.maxReplicas Maximum number of replicas
+    ##
+    maxReplicas: 10
+    ## @param autoscaling.hpa.targetCPU Target CPU utilization percentage
+    ##
+    targetCPU: 70
+    ## @param autoscaling.hpa.targetMemory Target Memory utilization percentage
+    ##
+    targetMemory: ""
+
+## @section Metrics Parameters
+
+## Prometheus metrics
+##
+metrics:
+  ## @param metrics.enabled Enable Prometheus metrics endpoint
+  ##
+  enabled: false
+  ## ServiceMonitor configuration
+  ##
+  serviceMonitor:
+    ## @param metrics.serviceMonitor.enabled Create ServiceMonitor resource
+    ##
+    enabled: false
+    ## @param metrics.serviceMonitor.namespace The namespace in which the ServiceMonitor will be created
+    ##
+    namespace: ""
+    ## @param metrics.serviceMonitor.interval The interval at which metrics should be scraped
+    ##
+    interval: 30s
+    ## @param metrics.serviceMonitor.scrapeTimeout The timeout after which the scrape is ended
+    ##
+    scrapeTimeout: 10s
+    ## @param metrics.serviceMonitor.relabelings RelabelConfigs to apply to samples before scraping
+    ##
+    relabelings: []
+    ## @param metrics.serviceMonitor.metricRelabelings MetricRelabelConfigs to apply to samples before ingestion
+    ##
+    metricRelabelings: []
+    ## @param metrics.serviceMonitor.selector Prometheus instance selector labels
+    ##
+    selector: {}
+    ## @param metrics.serviceMonitor.labels Additional labels for ServiceMonitor
+    ##
+    labels: {}
+    ## @param metrics.serviceMonitor.honorLabels Honor metrics labels
+    ##
+    honorLabels: false
+    ## @param metrics.serviceMonitor.jobLabel The name of the label on the target service to use as the job name in Prometheus
+    ##
+    jobLabel: ""

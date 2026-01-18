@@ -1,0 +1,99 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+CHART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+** Please be patient while the chart is being deployed **
+
+{{- if .Values.diagnosticMode.enabled }}
+The chart has been deployed in diagnostic mode. All probes have been disabled and the command has been overwritten with:
+
+  command: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 4 }}
+  args: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 4 }}
+
+Get the list of pods by executing:
+
+  kubectl get pods --namespace {{ include "common.names.namespace" . }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+Access the pod you want to debug by executing
+
+  kubectl exec --namespace {{ include "common.names.namespace" . }} -ti <NAME OF THE POD> -- bash
+
+{{- else }}
+
+Apache Traffic Server can be accessed through the following DNS name from within your cluster:
+
+    {{ include "common.names.fullname" . }}.{{ include "common.names.namespace" . }}.svc.{{ .Values.clusterDomain }}
+
+To access Apache Traffic Server from outside the cluster, follow the steps below:
+
+{{- if .Values.ingress.enabled }}
+
+1. Get the Apache Traffic Server URL and associate its hostname to your cluster external IP:
+
+   export CLUSTER_IP=$(minikube ip) # On Minikube. Use: `kubectl cluster-info` on others K8s clusters
+   echo "Apache Traffic Server URL: http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.hostname }}"
+   echo "$CLUSTER_IP  {{ .Values.ingress.hostname }}" | sudo tee -a /etc/hosts
+
+{{- else if contains "NodePort" .Values.service.type }}
+
+1. Get the Apache Traffic Server URL by running these commands:
+
+    export NODE_PORT=$(kubectl get --namespace {{ include "common.names.namespace" . }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "common.names.fullname" . }})
+    export NODE_IP=$(kubectl get nodes --namespace {{ include "common.names.namespace" . }} -o jsonpath="{.items[0].status.addresses[0].address}")
+    echo "http://${NODE_IP}:${NODE_PORT}"
+
+{{- else if contains "LoadBalancer" .Values.service.type }}
+
+1. Get the Apache Traffic Server URL by running these commands:
+
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ include "common.names.namespace" . }} svc -w {{ include "common.names.fullname" . }}'
+
+    export SERVICE_IP=$(kubectl get svc --namespace {{ include "common.names.namespace" . }} {{ include "common.names.fullname" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+    echo "http://${SERVICE_IP}:{{ .Values.service.ports.http }}"
+
+{{- else if contains "ClusterIP" .Values.service.type }}
+
+1. Get the Apache Traffic Server URL by running these commands:
+
+    kubectl port-forward --namespace {{ include "common.names.namespace" . }} svc/{{ include "common.names.fullname" . }} {{ .Values.service.ports.http }}:{{ .Values.service.ports.http }} &
+    echo "http://127.0.0.1:{{ .Values.service.ports.http }}"
+
+{{- end }}
+
+2. Configuration files:
+
+   The Apache Traffic Server configuration files are managed via ConfigMaps:
+   - records.yaml: Main configuration
+   - remap.config: URL remapping rules
+   - plugin.config: Plugin configuration
+   - storage.config: Cache storage configuration
+
+   To update the remap configuration:
+   
+   kubectl edit configmap {{ include "common.names.fullname" . }}-remap -n {{ include "common.names.namespace" . }}
+
+   After updating the configuration, restart the pods:
+   
+   kubectl rollout restart deployment {{ include "common.names.fullname" . }} -n {{ include "common.names.namespace" . }}
+
+{{- if .Values.metrics.enabled }}
+
+3. Metrics:
+
+   Apache Traffic Server exposes metrics at {{ .Values.metrics.path }} endpoint.
+   {{- if .Values.metrics.serviceMonitor.enabled }}
+   A ServiceMonitor has been created for Prometheus Operator.
+   {{- end }}
+
+{{- end }}
+
+{{- end }}
+
+{{- include "common.warnings.rollingTag" .Values.image }}
+{{- include "trafficserver.validateValues" . }}

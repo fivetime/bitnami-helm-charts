@@ -1,0 +1,342 @@
+{{/*
+Copyright Simon Li
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+apiVersion: {{ include "common.capabilities.deployment.apiVersion" . }}
+kind: Deployment
+metadata:
+  name: {{ include "common.names.fullname" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: dnsdist
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not .Values.autoscaling.hpa.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  {{- if .Values.updateStrategy }}
+  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  {{- $podLabels := include "common.tplvalues.merge" ( dict "values" ( list .Values.podLabels .Values.commonLabels ) "context" . ) }}
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" ( dict "customLabels" $podLabels "context" $ ) | nindent 6 }}
+      app.kubernetes.io/component: dnsdist
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- if .Values.podAnnotations }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.podAnnotations "context" $) | nindent 8 }}
+        {{- end }}
+      labels: {{- include "common.labels.standard" ( dict "customLabels" $podLabels "context" $ ) | nindent 8 }}
+        app.kubernetes.io/component: dnsdist
+    spec:
+      {{- include "dnsdist.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "dnsdist.serviceAccountName" . }}
+      {{- if .Values.automountServiceAccountToken }}
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      {{- else }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+      {{- end }}
+      {{- if .Values.hostAliases }}
+      hostAliases: {{- include "common.tplvalues.render" (dict "value" .Values.hostAliases "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.hostNetwork }}
+      hostNetwork: {{ .Values.hostNetwork }}
+      {{- end }}
+      {{- if .Values.hostIPC }}
+      hostIPC: {{ .Values.hostIPC }}
+      {{- end }}
+      {{- if .Values.affinity }}
+      affinity: {{- include "common.tplvalues.render" ( dict "value" .Values.affinity "context" $) | nindent 8 }}
+      {{- else }}
+      affinity:
+        podAffinity: {{- include "common.affinities.pods" (dict "type" .Values.podAffinityPreset "component" "dnsdist" "customLabels" $podLabels "context" $) | nindent 10 }}
+        podAntiAffinity: {{- include "common.affinities.pods" (dict "type" .Values.podAntiAffinityPreset "component" "dnsdist" "customLabels" $podLabels "context" $) | nindent 10 }}
+        nodeAffinity: {{- include "common.affinities.nodes" (dict "type" .Values.nodeAffinityPreset.type "key" .Values.nodeAffinityPreset.key "values" .Values.nodeAffinityPreset.values) | nindent 10 }}
+      {{- end }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" ( dict "value" .Values.nodeSelector "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.tolerations "context" .) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
+      {{- if .Values.schedulerName }}
+      schedulerName: {{ .Values.schedulerName | quote }}
+      {{- end }}
+      {{- if .Values.runtimeClassName }}
+      runtimeClassName: {{ .Values.runtimeClassName | quote }}
+      {{- end }}
+      {{- if .Values.topologySpreadConstraints }}
+      topologySpreadConstraints: {{- include "common.tplvalues.render" (dict "value" .Values.topologySpreadConstraints "context" .) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.podSecurityContext.enabled }}
+      securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.podSecurityContext "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.dnsPolicy }}
+      dnsPolicy: {{ .Values.dnsPolicy }}
+      {{- end }}
+      {{- if .Values.dnsConfig }}
+      dnsConfig: {{- include "common.tplvalues.render" (dict "value" .Values.dnsConfig "context" $) | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- if .Values.initContainers }}
+      initContainers:
+        {{- include "common.tplvalues.render" (dict "value" .Values.initContainers "context" $) | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: dnsdist
+          image: {{ include "dnsdist.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.containerSecurityContext "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.diagnosticMode.enabled }}
+          command: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 12 }}
+          {{- else if .Values.command }}
+          command: {{- include "common.tplvalues.render" (dict "value" .Values.command "context" $) | nindent 12 }}
+          {{- else }}
+          command:
+            - dnsdist
+            - --supervised
+            - --disable-syslog
+            - --config=/etc/dnsdist/dnsdist.conf
+          {{- end }}
+          {{- if .Values.diagnosticMode.enabled }}
+          args: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 12 }}
+          {{- else if .Values.args }}
+          args: {{- include "common.tplvalues.render" (dict "value" .Values.args "context" $) | nindent 12 }}
+          {{- end }}
+          env:
+            - name: DNSDIST_CONSOLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "dnsdist.secretName" . }}
+                  key: console-key
+                  optional: true
+            {{- if .Values.webserver.enabled }}
+            - name: DNSDIST_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "dnsdist.secretName" . }}
+                  key: api-key
+                  optional: true
+            - name: DNSDIST_WEBSERVER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "dnsdist.secretName" . }}
+                  key: webserver-password
+                  optional: true
+            {{- end }}
+            {{- if .Values.extraEnvVars }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
+            {{- end }}
+          {{- if or .Values.extraEnvVarsCM .Values.extraEnvVarsSecret }}
+          envFrom:
+            {{- if .Values.extraEnvVarsCM }}
+            - configMapRef:
+                name: {{ include "common.tplvalues.render" (dict "value" .Values.extraEnvVarsCM "context" $) }}
+            {{- end }}
+            {{- if .Values.extraEnvVarsSecret }}
+            - secretRef:
+                name: {{ include "common.tplvalues.render" (dict "value" .Values.extraEnvVarsSecret "context" $) }}
+            {{- end }}
+          {{- end }}
+          ports:
+            {{- if .Values.listeners.dns.enabled }}
+            - name: dns-udp
+              containerPort: {{ .Values.listeners.dns.port }}
+              protocol: UDP
+            - name: dns-tcp
+              containerPort: {{ .Values.listeners.dns.port }}
+              protocol: TCP
+            {{- end }}
+            {{- if .Values.listeners.dot.enabled }}
+            - name: dot
+              containerPort: {{ .Values.listeners.dot.port }}
+              protocol: TCP
+            {{- end }}
+            {{- if .Values.listeners.doh.enabled }}
+            - name: doh
+              containerPort: {{ .Values.listeners.doh.port }}
+              protocol: TCP
+            {{- end }}
+            {{- if .Values.listeners.doq.enabled }}
+            - name: doq
+              containerPort: {{ .Values.listeners.doq.port }}
+              protocol: UDP
+            {{- end }}
+            {{- if .Values.listeners.doh3.enabled }}
+            - name: doh3
+              containerPort: {{ .Values.listeners.doh3.port }}
+              protocol: UDP
+            {{- end }}
+            {{- if .Values.listeners.dnscrypt.enabled }}
+            - name: dnscrypt-udp
+              containerPort: {{ .Values.listeners.dnscrypt.port }}
+              protocol: UDP
+            - name: dnscrypt-tcp
+              containerPort: {{ .Values.listeners.dnscrypt.port }}
+              protocol: TCP
+            {{- end }}
+            {{- if .Values.webserver.enabled }}
+            - name: webserver
+              containerPort: {{ .Values.webserver.port }}
+              protocol: TCP
+            {{- end }}
+          {{- if not .Values.diagnosticMode.enabled }}
+          {{- if .Values.customLivenessProbe }}
+          livenessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customLivenessProbe "context" $) | nindent 12 }}
+          {{- else if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            {{- if .Values.webserver.enabled }}
+            httpGet:
+              path: /
+              port: webserver
+              scheme: HTTP
+            {{- else }}
+            tcpSocket:
+              port: dns-tcp
+            {{- end }}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+            successThreshold: {{ .Values.livenessProbe.successThreshold }}
+          {{- end }}
+          {{- if .Values.customReadinessProbe }}
+          readinessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customReadinessProbe "context" $) | nindent 12 }}
+          {{- else if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            {{- if .Values.webserver.enabled }}
+            httpGet:
+              path: /
+              port: webserver
+              scheme: HTTP
+            {{- else }}
+            tcpSocket:
+              port: dns-tcp
+            {{- end }}
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+            successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          {{- end }}
+          {{- if .Values.customStartupProbe }}
+          startupProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customStartupProbe "context" $) | nindent 12 }}
+          {{- else if .Values.startupProbe.enabled }}
+          startupProbe:
+            {{- if .Values.webserver.enabled }}
+            httpGet:
+              path: /
+              port: webserver
+              scheme: HTTP
+            {{- else }}
+            tcpSocket:
+              port: dns-tcp
+            {{- end }}
+            initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+            successThreshold: {{ .Values.startupProbe.successThreshold }}
+          {{- end }}
+          {{- end }}
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "common.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.resources }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          {{- else if ne .Values.resourcesPreset "none" }}
+          resources: {{- include "common.resources.preset" (dict "type" .Values.resourcesPreset) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/dnsdist/dnsdist.conf
+              subPath: dnsdist.conf
+              readOnly: true
+            - name: config-extra
+              mountPath: /etc/dnsdist/conf.d
+              readOnly: true
+            {{- if .Values.blocklist.enabled }}
+            - name: blocklist
+              mountPath: /etc/dnsdist/blocklist
+              readOnly: true
+            - name: blocklist-conf
+              mountPath: /etc/dnsdist/conf.d/blocklist.conf
+              subPath: blocklist.conf
+              readOnly: true
+            {{- end }}
+            {{- if include "dnsdist.tlsEnabled" . }}
+            - name: tls-certs
+              mountPath: /etc/dnsdist/tls
+              readOnly: true
+            {{- end }}
+            {{- if .Values.listeners.dnscrypt.enabled }}
+            - name: dnscrypt-keys
+              mountPath: /var/lib/dnsdist
+            {{- end }}
+            - name: tmp
+              mountPath: /tmp
+            {{- if .Values.extraVolumeMounts }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+            {{- end }}
+        {{- if .Values.sidecars }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.sidecars "context" $) | nindent 8 }}
+        {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "common.names.fullname" . }}-config
+            defaultMode: 0444
+        - name: config-extra
+          configMap:
+            name: {{ include "common.names.fullname" . }}-config-extra
+            defaultMode: 0444
+            optional: true
+        {{- if .Values.blocklist.enabled }}
+        - name: blocklist
+          configMap:
+            name: {{ include "common.names.fullname" . }}-blocklist
+            defaultMode: 0444
+            items:
+              - key: blocklist.txt
+                path: blocklist.txt
+        - name: blocklist-conf
+          configMap:
+            name: {{ include "common.names.fullname" . }}-blocklist
+            defaultMode: 0444
+            items:
+              - key: blocklist.conf
+                path: blocklist.conf
+        {{- end }}
+        {{- if include "dnsdist.tlsEnabled" . }}
+        - name: tls-certs
+          secret:
+            secretName: {{ include "dnsdist.tlsSecretName" . }}
+            defaultMode: 0444
+            optional: true
+        {{- end }}
+        {{- if .Values.listeners.dnscrypt.enabled }}
+        - name: dnscrypt-keys
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (printf "%s-dnscrypt" (include "common.names.fullname" .)) }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- end }}
+        - name: tmp
+          emptyDir: {}
+        {{- if .Values.extraVolumes }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumes "context" $) | nindent 8 }}
+        {{- end }}

@@ -1,0 +1,339 @@
+{{- /*
+Copyright Anthropic, Inc.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "citus.worker.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "citus.worker.labels" . | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- toYaml .Values.commonAnnotations | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.worker.replicaCount }}
+  podManagementPolicy: {{ .Values.worker.podManagementPolicy }}
+  serviceName: {{ include "citus.worker.svcHeadless" . }}
+  {{- if .Values.worker.updateStrategy }}
+  updateStrategy: {{- toYaml .Values.worker.updateStrategy | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels: {{- include "citus.worker.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "citus.worker.labels" . | nindent 8 }}
+        {{- if .Values.worker.podLabels }}
+        {{- toYaml .Values.worker.podLabels | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/scripts: {{ include (print $.Template.BasePath "/configmap-scripts.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- if .Values.worker.podAnnotations }}
+        {{- toYaml .Values.worker.podAnnotations | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "citus.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "citus.worker.serviceAccountName" . }}
+      {{- if .Values.worker.hostAliases }}
+      hostAliases: {{- toYaml .Values.worker.hostAliases | nindent 8 }}
+      {{- end }}
+      {{- if .Values.worker.affinity }}
+      affinity: {{- toYaml .Values.worker.affinity | nindent 8 }}
+      {{- else }}
+      affinity:
+        podAntiAffinity:
+          {{- if eq .Values.worker.podAntiAffinityPreset "hard" }}
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels: {{- include "citus.worker.selectorLabels" . | nindent 20 }}
+              topologyKey: kubernetes.io/hostname
+          {{- else if eq .Values.worker.podAntiAffinityPreset "soft" }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels: {{- include "citus.worker.selectorLabels" . | nindent 20 }}
+                topologyKey: kubernetes.io/hostname
+          {{- end }}
+      {{- end }}
+      {{- if .Values.worker.nodeSelector }}
+      nodeSelector: {{- toYaml .Values.worker.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if .Values.worker.tolerations }}
+      tolerations: {{- toYaml .Values.worker.tolerations | nindent 8 }}
+      {{- end }}
+      {{- if .Values.worker.topologySpreadConstraints }}
+      topologySpreadConstraints: {{- toYaml .Values.worker.topologySpreadConstraints | nindent 8 }}
+      {{- end }}
+      {{- if .Values.worker.priorityClassName }}
+      priorityClassName: {{ .Values.worker.priorityClassName | quote }}
+      {{- end }}
+      {{- if .Values.worker.schedulerName }}
+      schedulerName: {{ .Values.worker.schedulerName | quote }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.worker.terminationGracePeriodSeconds }}
+      {{- if .Values.worker.podSecurityContext.enabled }}
+      securityContext:
+        fsGroup: {{ .Values.worker.podSecurityContext.fsGroup }}
+        {{- if .Values.worker.podSecurityContext.fsGroupChangePolicy }}
+        fsGroupChangePolicy: {{ .Values.worker.podSecurityContext.fsGroupChangePolicy }}
+        {{- end }}
+      {{- end }}
+      {{- if or .Values.worker.initContainers .Values.volumePermissions.enabled }}
+      initContainers:
+        {{- if .Values.volumePermissions.enabled }}
+        - name: volume-permissions
+          image: {{ include "citus.volumePermissions.image" . }}
+          imagePullPolicy: {{ .Values.volumePermissions.image.pullPolicy | quote }}
+          command:
+            - /bin/bash
+            - -ec
+            - |
+              mkdir -p /var/lib/postgresql/data
+              chown -R {{ .Values.worker.containerSecurityContext.runAsUser }}:{{ .Values.worker.podSecurityContext.fsGroup }} /var/lib/postgresql
+              chmod 700 /var/lib/postgresql/data
+          securityContext: {{- toYaml .Values.volumePermissions.containerSecurityContext | nindent 12 }}
+          {{- if .Values.volumePermissions.resources }}
+          resources: {{- toYaml .Values.volumePermissions.resources | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql
+        {{- end }}
+        {{- if .Values.worker.initContainers }}
+        {{- toYaml .Values.worker.initContainers | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      containers:
+        - name: citus
+          image: {{ include "citus.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          {{- if .Values.worker.containerSecurityContext.enabled }}
+          securityContext:
+            runAsUser: {{ .Values.worker.containerSecurityContext.runAsUser }}
+            runAsGroup: {{ .Values.worker.containerSecurityContext.runAsGroup }}
+            runAsNonRoot: {{ .Values.worker.containerSecurityContext.runAsNonRoot }}
+            allowPrivilegeEscalation: {{ .Values.worker.containerSecurityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.worker.containerSecurityContext.readOnlyRootFilesystem }}
+            {{- if .Values.worker.containerSecurityContext.seccompProfile }}
+            seccompProfile: {{- toYaml .Values.worker.containerSecurityContext.seccompProfile | nindent 14 }}
+            {{- end }}
+            {{- if .Values.worker.containerSecurityContext.capabilities }}
+            capabilities: {{- toYaml .Values.worker.containerSecurityContext.capabilities | nindent 14 }}
+            {{- end }}
+          {{- end }}
+          {{- if .Values.diagnosticMode.enabled }}
+          command: {{- toYaml .Values.diagnosticMode.command | nindent 12 }}
+          args: {{- toYaml .Values.diagnosticMode.args | nindent 12 }}
+          {{- else if .Values.worker.command }}
+          command: {{- toYaml .Values.worker.command | nindent 12 }}
+          {{- if .Values.worker.args }}
+          args: {{- toYaml .Values.worker.args | nindent 12 }}
+          {{- end }}
+          {{- else }}
+          args:
+            - postgres
+            - -c
+            - max_connections={{ .Values.postgresql.maxConnections }}
+            - -c
+            - wal_level={{ .Values.postgresql.walLevel }}
+            - -c
+            - max_wal_senders={{ .Values.postgresql.maxWalSenders }}
+            - -c
+            - max_replication_slots={{ .Values.postgresql.maxReplicationSlots }}
+            - -c
+            - max_worker_processes={{ .Values.postgresql.maxWorkerProcesses }}
+            {{- if .Values.worker.extraArgs }}
+            {{- range .Values.worker.extraArgs }}
+            - {{ . | quote }}
+            {{- end }}
+            {{- end }}
+          {{- end }}
+          env:
+            - name: CITUS_NODE_ROLE
+              value: "worker"
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "citus.secretName" . }}
+                  key: {{ include "citus.secretPasswordKey" . }}
+            - name: POSTGRES_DB
+              value: {{ .Values.auth.database | quote }}
+            - name: PGDATA
+              value: {{ include "citus.pgdata" . }}
+            {{- if .Values.auth.username }}
+            - name: POSTGRES_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "citus.secretName" . }}
+                  key: {{ include "citus.secretUserPasswordKey" . }}
+            {{- end }}
+            {{- if .Values.worker.extraEnvVars }}
+            {{- toYaml .Values.worker.extraEnvVars | nindent 12 }}
+            {{- end }}
+          {{- if or .Values.worker.extraEnvVarsCM .Values.worker.extraEnvVarsSecret }}
+          envFrom:
+            {{- if .Values.worker.extraEnvVarsCM }}
+            - configMapRef:
+                name: {{ .Values.worker.extraEnvVarsCM }}
+            {{- end }}
+            {{- if .Values.worker.extraEnvVarsSecret }}
+            - secretRef:
+                name: {{ .Values.worker.extraEnvVarsSecret }}
+            {{- end }}
+          {{- end }}
+          ports:
+            - name: postgresql
+              containerPort: {{ .Values.worker.containerPorts.postgresql }}
+          {{- if not .Values.diagnosticMode.enabled }}
+          {{- if .Values.worker.customLivenessProbe }}
+          livenessProbe: {{- toYaml .Values.worker.customLivenessProbe | nindent 12 }}
+          {{- else if .Values.worker.livenessProbe.enabled }}
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - exec pg_isready -U postgres -h localhost -p {{ .Values.worker.containerPorts.postgresql }}
+            initialDelaySeconds: {{ .Values.worker.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.worker.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.worker.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.worker.livenessProbe.failureThreshold }}
+            successThreshold: {{ .Values.worker.livenessProbe.successThreshold }}
+          {{- end }}
+          {{- if .Values.worker.customReadinessProbe }}
+          readinessProbe: {{- toYaml .Values.worker.customReadinessProbe | nindent 12 }}
+          {{- else if .Values.worker.readinessProbe.enabled }}
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - exec pg_isready -U postgres -h localhost -p {{ .Values.worker.containerPorts.postgresql }}
+            initialDelaySeconds: {{ .Values.worker.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.worker.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.worker.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.worker.readinessProbe.failureThreshold }}
+            successThreshold: {{ .Values.worker.readinessProbe.successThreshold }}
+          {{- end }}
+          {{- if .Values.worker.customStartupProbe }}
+          startupProbe: {{- toYaml .Values.worker.customStartupProbe | nindent 12 }}
+          {{- else if .Values.worker.startupProbe.enabled }}
+          startupProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - exec pg_isready -U postgres -h localhost -p {{ .Values.worker.containerPorts.postgresql }}
+            initialDelaySeconds: {{ .Values.worker.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.worker.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.worker.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.worker.startupProbe.failureThreshold }}
+            successThreshold: {{ .Values.worker.startupProbe.successThreshold }}
+          {{- end }}
+          {{- end }}
+          resources: {{- include "citus.worker.resources" . | nindent 12 }}
+          {{- if .Values.worker.lifecycleHooks }}
+          lifecycle: {{- toYaml .Values.worker.lifecycleHooks | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql
+            - name: scripts
+              mountPath: /docker-entrypoint-initdb.d/init-citus.sh
+              subPath: init-citus.sh
+            {{- if .Values.worker.extraVolumeMounts }}
+            {{- toYaml .Values.worker.extraVolumeMounts | nindent 12 }}
+            {{- end }}
+        {{- if .Values.metrics.enabled }}
+        - name: metrics
+          image: {{ include "citus.metrics.image" . }}
+          imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
+          {{- if .Values.metrics.containerSecurityContext.enabled }}
+          securityContext:
+            runAsUser: {{ .Values.metrics.containerSecurityContext.runAsUser }}
+            runAsGroup: {{ .Values.metrics.containerSecurityContext.runAsGroup }}
+            runAsNonRoot: {{ .Values.metrics.containerSecurityContext.runAsNonRoot }}
+            allowPrivilegeEscalation: {{ .Values.metrics.containerSecurityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.metrics.containerSecurityContext.readOnlyRootFilesystem }}
+            {{- if .Values.metrics.containerSecurityContext.seccompProfile }}
+            seccompProfile: {{- toYaml .Values.metrics.containerSecurityContext.seccompProfile | nindent 14 }}
+            {{- end }}
+            {{- if .Values.metrics.containerSecurityContext.capabilities }}
+            capabilities: {{- toYaml .Values.metrics.containerSecurityContext.capabilities | nindent 14 }}
+            {{- end }}
+          {{- end }}
+          env:
+            - name: DATA_SOURCE_NAME
+              value: "postgresql://postgres:$(POSTGRES_PASSWORD)@localhost:5432/{{ .Values.auth.database }}?sslmode=disable"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "citus.secretName" . }}
+                  key: {{ include "citus.secretPasswordKey" . }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.metrics.containerPorts.metrics }}
+          {{- if not .Values.diagnosticMode.enabled }}
+          {{- if .Values.metrics.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: {{ .Values.metrics.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.metrics.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.metrics.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.metrics.livenessProbe.failureThreshold }}
+            successThreshold: {{ .Values.metrics.livenessProbe.successThreshold }}
+          {{- end }}
+          {{- if .Values.metrics.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: {{ .Values.metrics.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.metrics.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.metrics.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.metrics.readinessProbe.failureThreshold }}
+            successThreshold: {{ .Values.metrics.readinessProbe.successThreshold }}
+          {{- end }}
+          {{- end }}
+          resources: {{- toYaml .Values.metrics.resources | nindent 12 }}
+        {{- end }}
+        {{- if .Values.worker.sidecars }}
+        {{- toYaml .Values.worker.sidecars | nindent 8 }}
+        {{- end }}
+      volumes:
+        - name: scripts
+          configMap:
+            name: {{ include "citus.fullname" . }}-scripts
+            defaultMode: 0755
+        {{- if .Values.worker.extraVolumes }}
+        {{- toYaml .Values.worker.extraVolumes | nindent 8 }}
+        {{- end }}
+  {{- if .Values.worker.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        {{- if .Values.worker.persistence.annotations }}
+        annotations: {{- toYaml .Values.worker.persistence.annotations | nindent 10 }}
+        {{- end }}
+        {{- if .Values.worker.persistence.labels }}
+        labels: {{- toYaml .Values.worker.persistence.labels | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes: {{- toYaml .Values.worker.persistence.accessModes | nindent 10 }}
+        {{- if or .Values.worker.persistence.storageClass .Values.global.storageClass }}
+        storageClassName: {{ coalesce .Values.worker.persistence.storageClass .Values.global.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.worker.persistence.size | quote }}
+        {{- if .Values.worker.persistence.selector }}
+        selector: {{- toYaml .Values.worker.persistence.selector | nindent 10 }}
+        {{- end }}
+  {{- end }}

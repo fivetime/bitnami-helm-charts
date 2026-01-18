@@ -1,0 +1,237 @@
+CHART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+-------------------------------------------------------------------------------
+ DNSdist 已成功部署！
+-------------------------------------------------------------------------------
+
+{{- if .Values.diagnosticMode.enabled }}
+
+⚠️  诊断模式已启用
+
+所有探针已禁用，容器命令已覆盖为:
+  command: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 4 }}
+  args: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 4 }}
+
+获取 Pod 列表:
+  kubectl get pods --namespace {{ include "common.names.namespace" . }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+进入 Pod 进行调试:
+  kubectl exec -it --namespace {{ include "common.names.namespace" . }} <POD_NAME> -- bash
+
+{{- else }}
+
+{{- if .Values.service.enabled }}
+
+1. 获取 DNSdist 服务地址
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{{- if eq .Values.service.type "LoadBalancer" }}
+
+   等待 LoadBalancer IP 分配 (可能需要几分钟):
+
+   kubectl get svc --namespace {{ include "common.names.namespace" . }} {{ include "common.names.fullname" . }} -w
+
+   获取 DNS 服务地址:
+
+   export DNS_IP=$(kubectl get svc --namespace {{ include "common.names.namespace" . }} {{ include "common.names.fullname" . }} \
+     -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+   echo "DNS 服务器: $DNS_IP"
+
+{{- else if eq .Values.service.type "ClusterIP" }}
+
+   获取 ClusterIP:
+
+   export DNS_IP=$(kubectl get svc --namespace {{ include "common.names.namespace" . }} {{ include "common.names.fullname" . }} \
+     -o jsonpath='{.spec.clusterIP}')
+   echo "DNS 服务器: $DNS_IP"
+
+   端口转发 (用于本地测试):
+
+   kubectl port-forward --namespace {{ include "common.names.namespace" . }} svc/{{ include "common.names.fullname" . }} 5353:53
+
+{{- else if eq .Values.service.type "NodePort" }}
+
+   获取 NodePort:
+
+   export NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="ExternalIP")].address}')
+   export NODE_PORT=$(kubectl get svc --namespace {{ include "common.names.namespace" . }} {{ include "common.names.fullname" . }} \
+     -o jsonpath='{.spec.ports[?(@.name=="dns-udp")].nodePort}')
+   echo "DNS 服务器: $NODE_IP:$NODE_PORT"
+
+{{- end }}
+
+2. 测试 DNS 解析
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   # 基本 DNS 查询
+   dig @$DNS_IP example.com
+
+   # 指定查询类型
+   dig @$DNS_IP example.com MX
+   dig @$DNS_IP example.com AAAA
+
+{{- end }}
+
+{{- if and .Values.listeners.dot.enabled (include "dnsdist.tlsEnabled" .) }}
+
+3. DNS over TLS (DoT)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   DoT 已启用，端口: {{ .Values.listeners.dot.port }}
+
+   # 使用 kdig 测试
+   kdig +tls @$DNS_IP -p {{ .Values.listeners.dot.port }} example.com
+
+   # 或使用 dog
+   dog --tls @$DNS_IP:{{ .Values.listeners.dot.port }} example.com
+
+{{- end }}
+
+{{- if and .Values.listeners.doh.enabled (include "dnsdist.tlsEnabled" .) }}
+
+4. DNS over HTTPS (DoH)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   DoH 已启用，端口: {{ .Values.listeners.doh.port }}，路径: {{ .Values.listeners.doh.path }}
+
+   # JSON 格式查询
+   curl -s -H "accept: application/dns-json" \
+     "https://$DNS_IP:{{ .Values.listeners.doh.port }}{{ .Values.listeners.doh.path }}?name=example.com&type=A"
+
+   # 使用 dog
+   dog --https @https://$DNS_IP:{{ .Values.listeners.doh.port }}{{ .Values.listeners.doh.path }} example.com
+
+{{- end }}
+
+{{- if and .Values.listeners.doq.enabled (include "dnsdist.tlsEnabled" .) }}
+
+5. DNS over QUIC (DoQ)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   DoQ 已启用，端口: {{ .Values.listeners.doq.port }}
+
+   # 使用支持 DoQ 的客户端测试
+   q @quic://$DNS_IP:{{ .Values.listeners.doq.port }} example.com
+
+{{- end }}
+
+{{- if .Values.webserver.enabled }}
+
+6. API 与监控
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   API Service (仅集群内部访问):
+
+   export API_IP=$(kubectl get svc --namespace {{ include "common.names.namespace" . }} {{ include "common.names.fullname" . }}-api \
+     -o jsonpath='{.spec.clusterIP}')
+
+   # 健康检查
+   curl http://$API_IP:{{ .Values.webserver.port }}/
+
+   # Prometheus 指标
+   curl http://$API_IP:{{ .Values.webserver.port }}/metrics
+
+   # 统计信息
+   curl http://$API_IP:{{ .Values.webserver.port }}/jsonstat
+
+{{- end }}
+
+{{- if .Values.console.enabled }}
+
+7. 管理控制台
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   进入 DNSdist 控制台:
+
+   kubectl exec -it --namespace {{ include "common.names.namespace" . }} \
+     $(kubectl get pods --namespace {{ include "common.names.namespace" . }} \
+       -l "app.kubernetes.io/name={{ include "common.names.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" \
+       -o jsonpath='{.items[0].metadata.name}') \
+     -- dnsdist -c
+
+   常用控制台命令:
+     showServers()        - 显示后端服务器状态
+     showBinds()          - 显示监听地址
+     showRules()          - 显示路由规则
+     topQueries(20)       - 显示热门查询
+     showCacheStats()     - 显示缓存统计
+     showResponseLatency()- 显示响应延迟
+
+{{- end }}
+
+-------------------------------------------------------------------------------
+ 重要提示
+-------------------------------------------------------------------------------
+
+{{- $warnings := list }}
+
+{{- if not (include "dnsdist.tlsEnabled" .) }}
+{{- if or .Values.listeners.dot.enabled .Values.listeners.doh.enabled .Values.listeners.doq.enabled .Values.listeners.doh3.enabled }}
+{{- $warnings = append $warnings "tls" }}
+{{- end }}
+{{- end }}
+
+{{- if not .Values.backends.recursor.enabled }}
+{{- if not .Values.backends.auth.enabled }}
+{{- if not .Values.backends.external.enabled }}
+{{- $warnings = append $warnings "backend" }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- if has "tls" $warnings }}
+
+⚠️  TLS 证书未配置
+
+   加密 DNS 监听器 (DoT/DoH/DoQ/DoH3) 已启用，但 TLS 证书未配置。
+   这些监听器将无法正常工作。
+
+   配置 TLS 证书:
+
+   # 方式 1: 使用已有 Secret
+   helm upgrade {{ .Release.Name }} {{ .Chart.Name }} \
+     --namespace {{ include "common.names.namespace" . }} \
+     --set tls.existingSecret=my-tls-secret
+
+   # 方式 2: 内联证书
+   helm upgrade {{ .Release.Name }} {{ .Chart.Name }} \
+     --namespace {{ include "common.names.namespace" . }} \
+     --set-file tls.cert=./tls.crt \
+     --set-file tls.key=./tls.key
+
+{{- end }}
+
+{{- if has "backend" $warnings }}
+
+⚠️  后端服务器未配置
+
+   DNSdist 需要至少一个后端 DNS 服务器才能正常工作。
+
+   配置后端服务器:
+
+   helm upgrade {{ .Release.Name }} {{ .Chart.Name }} \
+     --namespace {{ include "common.names.namespace" . }} \
+     --set backends.recursor.enabled=true \
+     --set backends.recursor.servers[0].name=recursor \
+     --set backends.recursor.servers[0].address=your-dns-server \
+     --set backends.recursor.servers[0].port=53
+
+{{- end }}
+
+{{- if not $warnings }}
+
+✅ 配置检查通过
+
+{{- end }}
+
+-------------------------------------------------------------------------------
+ 更多信息
+-------------------------------------------------------------------------------
+
+   📖 文档: https://dnsdist.org/
+   📦 Chart: {{ .Chart.Name }} v{{ .Chart.Version }}
+   🐳 镜像: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+
+{{- end }}

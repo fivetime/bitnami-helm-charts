@@ -1,0 +1,130 @@
+{{/*
+Copyright Simon Li
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- if .Values.networkPolicy.enabled }}
+kind: NetworkPolicy
+apiVersion: {{ include "common.capabilities.networkPolicy.apiVersion" . }}
+metadata:
+  name: {{ include "common.names.fullname" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: dnsdist
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- $podLabels := include "common.tplvalues.merge" ( dict "values" ( list .Values.podLabels .Values.commonLabels ) "context" . ) }}
+  podSelector:
+    matchLabels: {{- include "common.labels.matchLabels" ( dict "customLabels" $podLabels "context" $ ) | nindent 6 }}
+      app.kubernetes.io/component: dnsdist
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    {{- if .Values.networkPolicy.allowExternalEgress }}
+    - {}
+    {{- else }}
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # Allow backend connections
+    {{- if .Values.backends.recursor.enabled }}
+    {{- range .Values.backends.recursor.servers }}
+    - to:
+        - podSelector: {}
+      ports:
+        - port: {{ .port | default 53 }}
+          protocol: UDP
+        - port: {{ .port | default 53 }}
+          protocol: TCP
+    {{- end }}
+    {{- end }}
+    {{- if .Values.backends.auth.enabled }}
+    {{- range .Values.backends.auth.servers }}
+    - to:
+        - podSelector: {}
+      ports:
+        - port: {{ .port | default 53 }}
+          protocol: UDP
+        - port: {{ .port | default 53 }}
+          protocol: TCP
+    {{- end }}
+    {{- end }}
+    {{- if .Values.networkPolicy.extraEgress }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.networkPolicy.extraEgress "context" $ ) | nindent 4 }}
+    {{- end }}
+    {{- end }}
+  ingress:
+    # Allow DNS queries
+    - ports:
+        {{- if .Values.listeners.dns.enabled }}
+        - port: {{ .Values.listeners.dns.port }}
+          protocol: UDP
+        - port: {{ .Values.listeners.dns.port }}
+          protocol: TCP
+        {{- end }}
+        {{- if .Values.listeners.dot.enabled }}
+        - port: {{ .Values.listeners.dot.port }}
+          protocol: TCP
+        {{- end }}
+        {{- if .Values.listeners.doh.enabled }}
+        - port: {{ .Values.listeners.doh.port }}
+          protocol: TCP
+        {{- end }}
+        {{- if .Values.listeners.doq.enabled }}
+        - port: {{ .Values.listeners.doq.port }}
+          protocol: UDP
+        {{- end }}
+        {{- if .Values.listeners.doh3.enabled }}
+        - port: {{ .Values.listeners.doh3.port }}
+          protocol: UDP
+        {{- end }}
+        {{- if .Values.listeners.dnscrypt.enabled }}
+        - port: {{ .Values.listeners.dnscrypt.port }}
+          protocol: UDP
+        - port: {{ .Values.listeners.dnscrypt.port }}
+          protocol: TCP
+        {{- end }}
+      {{- if not .Values.networkPolicy.allowExternal }}
+      from:
+        - podSelector:
+            matchLabels: {{- include "common.labels.matchLabels" ( dict "customLabels" $podLabels "context" $ ) | nindent 14 }}
+        {{- if .Values.networkPolicy.ingressNSMatchLabels }}
+        - namespaceSelector:
+            matchLabels: {{- include "common.tplvalues.render" (dict "value" .Values.networkPolicy.ingressNSMatchLabels "context" $) | nindent 14 }}
+          {{- if .Values.networkPolicy.ingressNSPodMatchLabels }}
+          podSelector:
+            matchLabels: {{- include "common.tplvalues.render" (dict "value" .Values.networkPolicy.ingressNSPodMatchLabels "context" $) | nindent 14 }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    # Allow webserver/API access
+    {{- if .Values.webserver.enabled }}
+    - ports:
+        - port: {{ .Values.webserver.port }}
+          protocol: TCP
+      {{- if not .Values.networkPolicy.allowExternal }}
+      from:
+        - podSelector:
+            matchLabels: {{- include "common.labels.matchLabels" ( dict "customLabels" $podLabels "context" $ ) | nindent 14 }}
+        {{- if .Values.networkPolicy.ingressNSMatchLabels }}
+        - namespaceSelector:
+            matchLabels: {{- include "common.tplvalues.render" (dict "value" .Values.networkPolicy.ingressNSMatchLabels "context" $) | nindent 14 }}
+          {{- if .Values.networkPolicy.ingressNSPodMatchLabels }}
+          podSelector:
+            matchLabels: {{- include "common.tplvalues.render" (dict "value" .Values.networkPolicy.ingressNSPodMatchLabels "context" $) | nindent 14 }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.networkPolicy.extraIngress }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.networkPolicy.extraIngress "context" $ ) | nindent 4 }}
+    {{- end }}
+{{- end }}

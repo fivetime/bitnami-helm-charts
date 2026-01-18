@@ -1,0 +1,103 @@
+{{- /*
+Copyright Simon Li. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if .Values.networkPolicy.enabled }}
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: {{ include "common.names.fullname" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: auth
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- $podLabels := include "common.tplvalues.merge" ( dict "values" ( list .Values.podLabels .Values.commonLabels ) "context" . ) }}
+  podSelector:
+    matchLabels: {{- include "common.labels.matchLabels" ( dict "customLabels" $podLabels "context" $ ) | nindent 6 }}
+      app.kubernetes.io/component: auth
+  policyTypes:
+    - Ingress
+    - Egress
+  {{- if .Values.networkPolicy.allowExternalEgress }}
+  egress:
+    - {}
+  {{- else }}
+  egress:
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow database connections
+    {{- if eq .Values.database.type "postgresql" }}
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.database.postgresql.port }}
+    {{- else }}
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.database.mysql.port }}
+    {{- end }}
+    # Allow zone transfers (if primary/secondary)
+    {{- if or .Values.config.primary .Values.config.secondary }}
+    - ports:
+        - protocol: TCP
+          port: 53
+    {{- end }}
+    {{- if .Values.networkPolicy.extraEgress }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.networkPolicy.extraEgress "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+  ingress:
+    # Allow DNS from anywhere (or restrict based on allowExternal)
+    - ports:
+        - protocol: UDP
+          port: {{ .Values.config.localPort }}
+        - protocol: TCP
+          port: {{ .Values.config.localPort }}
+      {{- if not .Values.networkPolicy.allowExternal }}
+      from:
+        # Allow from recursor
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: powerdns-recursor
+        # Allow from dnsdist
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: powerdns-dnsdist
+        {{- if .Values.networkPolicy.ingressNSMatchLabels }}
+        - namespaceSelector:
+            matchLabels:
+              {{- range $key, $value := .Values.networkPolicy.ingressNSMatchLabels }}
+              {{ $key | quote }}: {{ $value | quote }}
+              {{- end }}
+          {{- if .Values.networkPolicy.ingressNSPodMatchLabels }}
+          podSelector:
+            matchLabels:
+              {{- range $key, $value := .Values.networkPolicy.ingressNSPodMatchLabels }}
+              {{ $key | quote }}: {{ $value | quote }}
+              {{- end }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    # Allow API access
+    {{- if .Values.webserver.enabled }}
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.webserver.port }}
+      {{- if not .Values.networkPolicy.allowExternal }}
+      from:
+        - namespaceSelector: {}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.networkPolicy.extraIngress }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.networkPolicy.extraIngress "context" $ ) | nindent 4 }}
+    {{- end }}
+{{- end }}

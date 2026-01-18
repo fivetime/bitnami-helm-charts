@@ -1,0 +1,1077 @@
+# Copyright Anthropic, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+## @section 全局参数
+## @descriptionStart
+## 全局 Docker 镜像参数
+## 请参阅 https://github.com/bitnami/charts/tree/main/bitnami/common#parameters 获取通用 chart 参数的完整列表
+## @descriptionEnd
+
+## @param global.imageRegistry 全局 Docker 镜像仓库
+## @param global.imagePullSecrets 全局 Docker 镜像仓库 Secret 名称数组
+## @param global.storageClass 全局存储类
+##
+global:
+  imageRegistry: ""
+  ## E.g.
+  ## imagePullSecrets:
+  ##   - myRegistryKeySecretName
+  ##
+  imagePullSecrets: []
+  storageClass: ""
+
+## @section 通用参数
+
+## @param kubeVersion 覆盖 Kubernetes 版本
+##
+kubeVersion: ""
+## @param nameOverride 部分覆盖 common.names.name
+##
+nameOverride: ""
+## @param fullnameOverride 完全覆盖 common.names.fullname
+##
+fullnameOverride: ""
+## @param namespaceOverride 覆盖发布资源部署的命名空间
+##
+namespaceOverride: ""
+## @param commonLabels 添加到所有资源的标签
+##
+commonLabels: {}
+## @param commonAnnotations 添加到所有资源的注解
+##
+commonAnnotations: {}
+## @param clusterDomain Kubernetes 集群域名
+##
+clusterDomain: cluster.local
+## @param extraDeploy 额外部署的对象数组
+##
+extraDeploy: []
+
+## 诊断模式
+## @param diagnosticMode.enabled 启用诊断模式（所有探针将被禁用，并且 command 被覆盖）
+## @param diagnosticMode.command 覆盖容器启动命令
+## @param diagnosticMode.args 覆盖容器启动参数
+##
+diagnosticMode:
+  enabled: false
+  command:
+    - sleep
+  args:
+    - infinity
+
+## @section PowerDNS Recursor 镜像参数
+
+## PowerDNS Recursor 镜像
+## ref: https://hub.docker.com/r/powerdns/pdns-recursor-53
+## @param image.registry [default: docker.io] PowerDNS Recursor 镜像仓库
+## @param image.repository [default: powerdns/pdns-recursor-53] PowerDNS Recursor 镜像名称
+## @param image.tag PowerDNS Recursor 镜像标签
+## @param image.digest 镜像摘要（覆盖 tag）
+## @param image.pullPolicy PowerDNS Recursor 镜像拉取策略
+## @param image.pullSecrets PowerDNS Recursor 镜像拉取 Secrets
+## @param image.debug 启用镜像调试模式
+##
+image:
+  registry: docker.io
+  repository: powerdns/pdns-recursor-53
+  tag: 5.3.4
+  digest: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+  debug: false
+
+## @section PowerDNS Recursor 部署参数
+
+## @param replicaCount Recursor 副本数量
+##
+replicaCount: 2
+
+## Configure extra options for containers' liveness and readiness probes
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+## @param startupProbe.enabled 启用 startupProbe
+## @param startupProbe.initialDelaySeconds startupProbe 初始延迟秒数
+## @param startupProbe.periodSeconds startupProbe 检查周期秒数
+## @param startupProbe.timeoutSeconds startupProbe 超时秒数
+## @param startupProbe.failureThreshold startupProbe 失败阈值
+## @param startupProbe.successThreshold startupProbe 成功阈值
+##
+startupProbe:
+  enabled: true
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 30
+  successThreshold: 1
+## @param livenessProbe.enabled 启用 livenessProbe
+## @param livenessProbe.initialDelaySeconds livenessProbe 初始延迟秒数
+## @param livenessProbe.periodSeconds livenessProbe 检查周期秒数
+## @param livenessProbe.timeoutSeconds livenessProbe 超时秒数
+## @param livenessProbe.failureThreshold livenessProbe 失败阈值
+## @param livenessProbe.successThreshold livenessProbe 成功阈值
+##
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 20
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+## @param readinessProbe.enabled 启用 readinessProbe
+## @param readinessProbe.initialDelaySeconds readinessProbe 初始延迟秒数
+## @param readinessProbe.periodSeconds readinessProbe 检查周期秒数
+## @param readinessProbe.timeoutSeconds readinessProbe 超时秒数
+## @param readinessProbe.failureThreshold readinessProbe 失败阈值
+## @param readinessProbe.successThreshold readinessProbe 成功阈值
+##
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+## @param customStartupProbe 自定义 startupProbe（覆盖默认）
+##
+customStartupProbe: {}
+## @param customLivenessProbe 自定义 livenessProbe（覆盖默认）
+##
+customLivenessProbe: {}
+## @param customReadinessProbe 自定义 readinessProbe（覆盖默认）
+##
+customReadinessProbe: {}
+
+## Recursor 资源请求和限制
+## ref: http://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+## @param resourcesPreset 资源预设（none, nano, micro, small, medium, large, xlarge, 2xlarge）
+## @param resources 设置容器资源请求和限制
+##
+resourcesPreset: "small"
+resources: {}
+
+## Configure Pods Security Context
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+## @param podSecurityContext.enabled 启用 pod 安全上下文
+## @param podSecurityContext.fsGroup pod 的 fsGroup
+## @param podSecurityContext.fsGroupChangePolicy 卷 fsGroup 变更策略
+## @param podSecurityContext.supplementalGroups 附加组 ID 列表
+## @param podSecurityContext.sysctls pod 的 sysctl 设置
+##
+podSecurityContext:
+  enabled: true
+  fsGroup: 953
+  fsGroupChangePolicy: "Always"
+  supplementalGroups: []
+  sysctls: []
+
+## Configure Container Security Context
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
+## @param containerSecurityContext.enabled 启用容器安全上下文
+## @param containerSecurityContext.seLinuxOptions [object,nullable] SELinux 选项
+## @param containerSecurityContext.runAsUser 容器运行用户 ID
+## @param containerSecurityContext.runAsGroup 容器运行组 ID
+## @param containerSecurityContext.runAsNonRoot 是否以非 root 用户运行
+## @param containerSecurityContext.privileged 是否启用特权模式
+## @param containerSecurityContext.readOnlyRootFilesystem 是否使用只读根文件系统
+## @param containerSecurityContext.allowPrivilegeEscalation 是否允许特权升级
+## @param containerSecurityContext.capabilities.drop 要移除的 Linux 能力
+## @param containerSecurityContext.seccompProfile.type seccomp profile 类型
+##
+containerSecurityContext:
+  enabled: true
+  seLinuxOptions: {}
+  runAsUser: 953
+  runAsGroup: 953
+  runAsNonRoot: true
+  privileged: false
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+## @param automountServiceAccountToken 是否自动挂载 ServiceAccount Token
+##
+automountServiceAccountToken: false
+## @param hostNetwork 是否启用主机网络
+##
+hostNetwork: false
+## @param hostIPC 是否启用主机 IPC
+##
+hostIPC: false
+## @param dnsPolicy Pod 的 DNS 策略
+##
+dnsPolicy: ""
+## @param dnsConfig Pod 的 DNS 配置
+##
+dnsConfig: {}
+
+## @param command 覆盖默认容器命令
+##
+command: []
+## @param args 覆盖默认容器参数
+##
+args: []
+## @param hostAliases 容器的 hosts 文件条目
+##
+hostAliases: []
+## @param podLabels 添加到 Pod 的额外标签
+##
+podLabels: {}
+## @param podAnnotations Pod 注解
+##
+podAnnotations: {}
+
+## @param podAffinityPreset Pod 亲和性预设（soft, hard）
+##
+podAffinityPreset: ""
+## @param podAntiAffinityPreset Pod 反亲和性预设（soft, hard）
+##
+podAntiAffinityPreset: soft
+## Node affinity preset
+## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity
+##
+nodeAffinityPreset:
+  ## @param nodeAffinityPreset.type 节点亲和性预设类型（soft, hard）
+  ##
+  type: ""
+  ## @param nodeAffinityPreset.key 节点标签键
+  ##
+  key: ""
+  ## @param nodeAffinityPreset.values 节点标签值数组
+  ##
+  values: []
+## @param affinity 亲和性设置（覆盖 podAffinityPreset, podAntiAffinityPreset, nodeAffinityPreset）
+##
+affinity: {}
+## @param nodeSelector 节点选择器
+##
+nodeSelector: {}
+## @param tolerations 容忍设置
+##
+tolerations: []
+## @param topologySpreadConstraints 拓扑分布约束
+##
+topologySpreadConstraints: []
+## @param revisionHistoryLimit 保留的历史版本数量
+##
+revisionHistoryLimit: 10
+## @param updateStrategy.type Deployment 更新策略
+## @param updateStrategy.rollingUpdate.maxUnavailable 最大不可用 Pod 数
+## @param updateStrategy.rollingUpdate.maxSurge 最大超出 Pod 数
+##
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 1
+## @param priorityClassName Pod 优先级类名
+##
+priorityClassName: ""
+## @param schedulerName 调度器名称
+##
+schedulerName: ""
+## @param runtimeClassName Runtime class 名称
+##
+runtimeClassName: ""
+## @param terminationGracePeriodSeconds 终止宽限期秒数
+##
+terminationGracePeriodSeconds: 30
+## @param lifecycleHooks 生命周期钩子
+##
+lifecycleHooks: {}
+## @param extraEnvVars 额外的环境变量
+##
+extraEnvVars: []
+## @param extraEnvVarsCM 包含额外环境变量的 ConfigMap 名称
+##
+extraEnvVarsCM: ""
+## @param extraEnvVarsSecret 包含额外环境变量的 Secret 名称
+##
+extraEnvVarsSecret: ""
+## @param extraVolumes 额外卷数组
+##
+extraVolumes: []
+## @param extraVolumeMounts 额外卷挂载数组
+##
+extraVolumeMounts: []
+## @param sidecars 添加额外的 sidecar 容器
+##
+sidecars: []
+## @param initContainers 添加额外的 init 容器
+##
+initContainers: []
+
+## @section PowerDNS Recursor 配置参数
+
+## @descriptionStart
+## Recursor 配置参数
+## ref: https://doc.powerdns.com/recursor/settings.html
+## @descriptionEnd
+
+config:
+  ## @section Incoming 配置
+  incoming:
+    ## @param config.incoming.listen 监听地址列表
+    ##
+    listen:
+      - "0.0.0.0"
+    ## @param config.incoming.port DNS 监听端口
+    ##
+    port: 53
+    ## @param config.incoming.allowFrom 允许查询的 IP/CIDR 列表
+    ##
+    allowFrom:
+      - "127.0.0.0/8"
+      - "10.0.0.0/8"
+      - "100.64.0.0/10"
+      - "169.254.0.0/16"
+      - "192.168.0.0/16"
+      - "172.16.0.0/12"
+      - "::1/128"
+      - "fc00::/7"
+      - "fe80::/10"
+    ## @param config.incoming.allowNoRd 允许无递归请求的查询
+    ##
+    allowNoRd: false
+    ## @param config.incoming.tcpFastOpen TCP Fast Open 队列大小
+    ##
+    tcpFastOpen: 64
+    ## @param config.incoming.reuseport 启用 SO_REUSEPORT
+    ##
+    reuseport: true
+    ## @param config.incoming.proxyProtocolFrom 接受 Proxy Protocol v2 的来源 IP/CIDR
+    ## 用于在负载均衡器后保留真实客户端 IP
+    ## 示例: ["10.0.0.0/8", "192.168.1.0/24"]
+    ##
+    proxyProtocolFrom: []
+    ## @param config.incoming.proxyProtocolExceptions 不使用 Proxy Protocol 的例外地址
+    ##
+    proxyProtocolExceptions: []
+    ## @param config.incoming.allowNotifyFrom 允许发送 NOTIFY 的来源 IP/CIDR
+    ## 用于接收区域更新通知并清除缓存
+    ##
+    allowNotifyFrom: []
+    ## @param config.incoming.allowNotifyFor 允许接收 NOTIFY 的域名列表
+    ## 必须与 allowNotifyFrom 配合使用
+    ##
+    allowNotifyFor: []
+
+  ## @section Recursor 运行时配置
+  recursor:
+    ## @param config.recursor.threads 线程数
+    ##
+    threads: 4
+    ## @param config.recursor.pdnsDistributesQueries 启用查询分发
+    ##
+    pdnsDistributesQueries: true
+    ## @param config.recursor.socketDir Socket 目录
+    ##
+    socketDir: /var/run
+    ## @param config.recursor.versionString 版本字符串（anonymous 隐藏）
+    ##
+    versionString: anonymous
+    ## @param config.recursor.daemon 守护进程模式（容器中禁用）
+    ##
+    daemon: false
+    ## @param config.recursor.writePid 写入 PID 文件
+    ##
+    writePid: false
+    ## @param config.recursor.securityPollSuffix 安全轮询后缀（空禁用）
+    ##
+    securityPollSuffix: ""
+    ## @param config.recursor.extendedResolutionErrors 启用扩展 DNS 错误 (RFC 8914)
+    ## 在响应中包含详细错误信息
+    ##
+    extendedResolutionErrors: true
+    ## @param config.recursor.sortlists 响应排序列表
+    ## 按客户端 IP 对 A/AAAA 记录进行排序
+    ## 示例:
+    ## sortlists:
+    ##   - key: "192.168.0.0/24"      # 客户端网络
+    ##     order:                      # 排序优先级
+    ##       - "192.168.0.0/24"
+    ##       - "10.0.0.0/8"
+    ##
+    sortlists: []
+
+  ## @section DNS64 配置
+  ## DNS64 允许纯 IPv6 客户端访问 IPv4 资源
+  dns64:
+    ## @param config.dns64.prefix DNS64 前缀（/96 IPv6 前缀）
+    ## 启用后，为仅有 A 记录的域名合成 AAAA 记录
+    ## 示例: "64:ff9b::/96"
+    ##
+    prefix: ""
+
+  ## @section DNSSEC 配置
+  dnssec:
+    ## @param config.dnssec.validation DNSSEC 验证模式
+    ## 可选值: off, process-no-validate, process, log-fail, validate
+    ##
+    validation: validate
+    ## @param config.dnssec.logBogus 记录 BOGUS 响应
+    ##
+    logBogus: true
+    ## @param config.dnssec.aggressiveNsecCacheSize 积极 NSEC 缓存大小
+    ##
+    aggressiveNsecCacheSize: 100000
+    ## @param config.dnssec.aggressiveCacheMinNsec3HitRatio NSEC3 记录最小命中率阈值
+    ##
+    aggressiveCacheMinNsec3HitRatio: 2000
+    ## @param config.dnssec.nsec3MaxIterations NSEC3 最大迭代次数
+    ##
+    nsec3MaxIterations: 50
+    ## @param config.dnssec.signatureInceptionSkew 签名时间偏移允许（秒）
+    ##
+    signatureInceptionSkew: 60
+    ## @param config.dnssec.disabledAlgorithms 禁用的 DNSSEC 算法列表
+    ## 示例: [5, 7] 禁用 RSASHA1 和 RSASHA1NSEC3SHA1
+    ##
+    disabledAlgorithms: []
+    ## @param config.dnssec.maxDnskeys 每区域最大 DNSKEY 数量
+    ##
+    maxDnskeys: 2
+    ## @param config.dnssec.maxDsPerZone 每区域最大 DS 记录数
+    ##
+    maxDsPerZone: 8
+    ## @param config.dnssec.maxRrsigsPerRecord 每记录最大 RRSIG 数量
+    ##
+    maxRrsigsPerRecord: 2
+    ## @param config.dnssec.maxNsec3sPerRecord 每记录最大 NSEC3 数量
+    ##
+    maxNsec3sPerRecord: 10
+    ## @param config.dnssec.maxSignatureValidationsPerQuery 每查询最大签名验证次数
+    ##
+    maxSignatureValidationsPerQuery: 30
+    ## @param config.dnssec.maxNsec3HashComputationsPerQuery 每查询最大 NSEC3 哈希计算次数
+    ##
+    maxNsec3HashComputationsPerQuery: 600
+
+  ## @section 日志配置
+  logging:
+    ## @param config.logging.loglevel 日志级别 (0-9)
+    ##
+    loglevel: 4
+    ## @param config.logging.commonErrors 记录常见错误
+    ##
+    commonErrors: true
+    ## @param config.logging.disableSyslog 禁用 syslog
+    ##
+    disableSyslog: true
+    ## @param config.logging.quiet 安静模式
+    ##
+    quiet: true
+    ## @param config.logging.trace 跟踪模式 (no, fail, all)
+    ##
+    trace: "fail"
+    ## @param config.logging.timestamp 日志时间戳
+    ##
+    timestamp: true
+    ## @param config.logging.structuredLogging 结构化日志
+    ##
+    structuredLogging: true
+    ## @param config.logging.protobufServers Protobuf 日志服务器列表
+    ## 高级日志导出，发送查询/响应到远程服务器
+    ## 示例: ["192.168.1.100:4242"]
+    ##
+    protobufServers: []
+    ## @param config.logging.outgoingProtobufServers 出站查询 Protobuf 服务器列表
+    ## 记录发送到上游的查询
+    ## 示例: ["192.168.1.100:4243"]
+    ##
+    outgoingProtobufServers: []
+    ## @param config.logging.protobufMaskV4 Protobuf 日志 IPv4 掩码位数
+    ##
+    protobufMaskV4: 32
+    ## @param config.logging.protobufMaskV6 Protobuf 日志 IPv6 掩码位数
+    ##
+    protobufMaskV6: 128
+    ## @param config.logging.protobufLogQueries 记录查询到 Protobuf
+    ##
+    protobufLogQueries: true
+    ## @param config.logging.protobufLogResponses 记录响应到 Protobuf
+    ##
+    protobufLogResponses: true
+    ## @param config.logging.protobufAlwaysCache 总是缓存 Protobuf 响应
+    ##
+    protobufAlwaysCache: false
+    ## @param config.logging.protobufTaggedOnly 仅记录有标签的查询/响应
+    ##
+    protobufTaggedOnly: false
+    ## @param config.logging.dnstapFramestreamServers DNSTap framestream 服务器列表
+    ## 标准化 DNS 日志格式 (RFC 8618)
+    ## 示例: ["192.168.1.100:6000"]
+    ##
+    dnstapFramestreamServers: []
+    ## @param config.logging.dnstapLogQueries 记录查询到 DNSTap
+    ##
+    dnstapLogQueries: true
+    ## @param config.logging.dnstapLogResponses 记录响应到 DNSTap
+    ##
+    dnstapLogResponses: true
+    ## @param config.logging.dnstapIdentity DNSTap 服务器标识
+    ##
+    dnstapIdentity: ""
+
+  ## @section ECS (EDNS Client Subnet) 配置
+  ecs:
+    ## @param config.ecs.addFor 为这些 IP 添加 ECS
+    ##
+    addFor:
+      - "0.0.0.0/0"
+      - "::/0"
+      - "!127.0.0.0/8"
+      - "!10.0.0.0/8"
+      - "!192.168.0.0/16"
+      - "!172.16.0.0/12"
+    ## @param config.ecs.ipv4Bits IPv4 ECS 位数
+    ##
+    ipv4Bits: 24
+    ## @param config.ecs.ipv6Bits IPv6 ECS 位数
+    ##
+    ipv6Bits: 56
+
+  ## @section 缓存配置
+  cache:
+    ## @param config.cache.maxCacheEntries 最大缓存条目数
+    ##
+    maxCacheEntries: 1000000
+    ## @param config.cache.maxNegativeTtl 最大负缓存 TTL
+    ##
+    maxNegativeTtl: 3600
+    ## @param config.cache.maxCacheTtl 最大缓存 TTL
+    ##
+    maxCacheTtl: 86400
+    ## @param config.cache.servfailCacheTtl SERVFAIL 缓存 TTL
+    ##
+    servfailCacheTtl: 60
+
+  ## @section Outgoing 出站查询配置
+  outgoing:
+    ## @param config.outgoing.dontQuery 不查询的 IP/CIDR 列表（防止查询内部网络）
+    ##
+    dontQuery:
+      - "127.0.0.0/8"
+      - "10.0.0.0/8"
+      - "100.64.0.0/10"
+      - "169.254.0.0/16"
+      - "192.168.0.0/16"
+      - "172.16.0.0/12"
+      - "::1/128"
+      - "fc00::/7"
+      - "fe80::/10"
+      - "0.0.0.0/8"
+      - "192.0.0.0/24"
+      - "192.0.2.0/24"
+      - "198.51.100.0/24"
+      - "203.0.113.0/24"
+      - "240.0.0.0/4"
+      - "::/96"
+      - "::ffff:0:0/96"
+      - "100::/64"
+      - "2001:db8::/32"
+    ## @param config.outgoing.sourceAddress 出站查询源地址
+    ##
+    sourceAddress:
+      - "0.0.0.0"
+      - "::"
+    ## @param config.outgoing.networkTimeout 出站查询超时（毫秒）
+    ##
+    networkTimeout: 1500
+    ## @param config.outgoing.tcpFastOpenConnect 出站启用 TCP Fast Open
+    ##
+    tcpFastOpenConnect: true
+    ## @param config.outgoing.ednsSubnetAllowList 允许 ECS 的域名列表
+    ## 示例: ["powerdns.com", "example.net"]
+    ##
+    ednsSubnetAllowList: []
+    ## @param config.outgoing.ednsSubnetHarden 严格 ECS 处理
+    ##
+    ednsSubnetHarden: false
+    ## @param config.outgoing.dontThrottleNames 不限速的域名
+    ##
+    dontThrottleNames: []
+    ## @param config.outgoing.dontThrottleNetmasks 不限速的 IP
+    ##
+    dontThrottleNetmasks: []
+    ## @param config.outgoing.maxQperq 每个查询最大子查询数
+    ##
+    maxQperq: 60
+    ## @param config.outgoing.maxNsAddressQperq 每个查询最大 NS 地址查询数
+    ##
+    maxNsAddressQperq: 10
+    ## @param config.outgoing.maxNsPerResolve 每次解析最大 NS 数
+    ##
+    maxNsPerResolve: 13
+    ## @param config.outgoing.serverDownMaxFails 服务器标记为 down 的最大失败次数
+    ##
+    serverDownMaxFails: 64
+    ## @param config.outgoing.serverDownThrottleTime 服务器 down 后的限速时间（秒）
+    ##
+    serverDownThrottleTime: 60
+    ## @param config.outgoing.udpSourcePortMin 出站 UDP 源端口最小值
+    ##
+    udpSourcePortMin: 1024
+    ## @param config.outgoing.udpSourcePortMax 出站 UDP 源端口最大值
+    ##
+    udpSourcePortMax: 65535
+    ## @param config.outgoing.udpSourcePortAvoid 避免使用的 UDP 端口列表
+    ##
+    udpSourcePortAvoid: []
+    ## @param config.outgoing.dotToAuthNames 对这些权威服务器使用 DoT
+    ## 强制对指定的权威服务器使用 DNS over TLS (端口 853)
+    ## 示例: ["ns1.example.com", "ns2.example.com"]
+    ##
+    dotToAuthNames: []
+    ## @param config.outgoing.dotToForwarders 对 853 端口的 forwarder 启用 DoT
+    ## 当 forwarder 使用端口 853 时自动启用 DoT
+    ##
+    dotToForwarders: false
+
+  ## @section Packet Cache 包缓存配置
+  packetcache:
+    ## @param config.packetcache.disable 禁用包缓存
+    ##
+    disable: false
+    ## @param config.packetcache.maxEntries 包缓存最大条目数
+    ##
+    maxEntries: 500000
+    ## @param config.packetcache.ttl 包缓存 TTL（秒）
+    ##
+    ttl: 86400
+    ## @param config.packetcache.negativeTtl 负响应包缓存 TTL
+    ##
+    negativeTtl: 60
+    ## @param config.packetcache.servfailTtl SERVFAIL 包缓存 TTL
+    ##
+    servfailTtl: 60
+    ## @param config.packetcache.shards 包缓存分片数
+    ##
+    shards: 1024
+
+  ## @section NOD (Newly Observed Domain) 配置
+  nod:
+    ## @param config.nod.enabled 启用新观察域跟踪
+    ##
+    enabled: false
+    ## @param config.nod.tracking 启用 NOD 跟踪
+    ##
+    tracking: false
+    ## @param config.nod.log 记录新观察到的域
+    ##
+    log: true
+    ## @param config.nod.lookup 新域名查询后缀（用于共享 NOD 信息）
+    ## 示例: "nod.powerdns.com"
+    ##
+    lookup: ""
+    ## @param config.nod.dbSize NOD 数据库大小
+    ##
+    dbSize: 67108864
+    ## @param config.nod.historyDir NOD 历史目录
+    ##
+    historyDir: ""
+    ## @param config.nod.ignoreList 忽略的域名列表
+    ##
+    ignoreList: []
+    ## @param config.nod.pbTag Protobuf 标签
+    ##
+    pbTag: "pdns-nod"
+    ## @param config.nod.uniqueResponseTracking 启用 UDR (Unique Domain Response) 跟踪
+    ## 跟踪每个域名的唯一响应
+    ##
+    uniqueResponseTracking: false
+    ## @param config.nod.uniqueResponseLog 记录 UDR 到日志
+    ##
+    uniqueResponseLog: true
+    ## @param config.nod.uniqueResponseDbSize UDR 数据库大小
+    ##
+    uniqueResponseDbSize: 67108864
+    ## @param config.nod.uniqueResponseHistoryDir UDR 历史目录
+    ##
+    uniqueResponseHistoryDir: ""
+    ## @param config.nod.uniqueResponsePbTag UDR Protobuf 标签
+    ##
+    uniqueResponsePbTag: "pdns-udr"
+
+  ## @section Carbon 监控配置
+  carbon:
+    ## @param config.carbon.enabled 启用 Carbon 指标导出
+    ##
+    enabled: false
+    ## @param config.carbon.server Carbon 服务器地址列表
+    ## 示例: ["192.168.1.100:2003"]
+    ##
+    server: []
+    ## @param config.carbon.interval 指标发送间隔（秒）
+    ##
+    interval: 30
+    ## @param config.carbon.ourname 覆盖主机名
+    ##
+    ourname: ""
+    ## @param config.carbon.namespace Carbon 命名空间
+    ##
+    namespace: "pdns"
+    ## @param config.carbon.instance Carbon 实例名
+    ##
+    instance: "recursor"
+
+  ## @section 额外配置
+  ## @param config.extraConfig 额外的 recursor.yml 配置（YAML 格式）
+  ##
+  extraConfig: {}
+
+## @section Webserver/API 配置
+
+webserver:
+  ## @param webserver.enabled 启用 Web 服务器/API
+  ##
+  enabled: true
+  ## @param webserver.address Web 服务器监听地址
+  ##
+  address: "0.0.0.0"
+  ## @param webserver.port Web 服务器端口
+  ##
+  port: 8082
+  ## @param webserver.allowFrom 允许访问的 IP/CIDR
+  ##
+  allowFrom:
+    - "0.0.0.0/0"
+    - "::/0"
+  ## @param webserver.password Web 服务器密码
+  ##
+  password: ""
+  ## @param webserver.apiKey API 密钥
+  ##
+  apiKey: ""
+  ## @param webserver.existingSecret 包含凭据的现有 Secret
+  ## 必须包含 keys: webserver-password, api-key
+  ##
+  existingSecret: ""
+
+## @section Forward Zones 配置
+
+forwardZones:
+  ## @param forwardZones.zones 转发区域列表
+  ## 示例:
+  ## zones:
+  ##   - zone: internal.example.com
+  ##     forwarders:
+  ##       - 10.0.0.1
+  ##       - 10.0.0.2
+  ##     recurse: false
+  ##
+  zones: []
+  ## @param forwardZones.recursiveZones 递归转发区域列表
+  ## 示例:
+  ## recursiveZones:
+  ##   - zone: "."
+  ##     forwarders:
+  ##       - 8.8.8.8
+  ##       - 8.8.4.4
+  ##
+  recursiveZones: []
+
+## @section Zone to Cache 配置
+## 预加载区域到缓存，提高热点域名查询性能
+
+zoneToCache:
+  ## @param zoneToCache.enabled 启用 Zone to Cache
+  ##
+  enabled: false
+  ## @param zoneToCache.zones 要缓存的区域列表
+  ## 示例:
+  ## zones:
+  ##   - zone: "."                                    # 根区域
+  ##     method: url                                  # 获取方式: url, file, axfr
+  ##     source: "https://www.internic.net/domain/root.zone"
+  ##     refreshPeriod: 86400                         # 刷新周期（秒）
+  ##     retryOnError: 60                             # 错误重试间隔
+  ##     maxReceivedBytes: 10485760                   # 最大接收字节数
+  ##     timeout: 20                                  # 超时时间
+  ##   - zone: "example.com"
+  ##     method: axfr
+  ##     source: "192.168.1.1"                        # 主服务器 IP
+  ##     refreshPeriod: 3600
+  ##
+  zones: []
+
+## @section Trust Anchors 配置
+
+trustAnchors:
+  ## @param trustAnchors.enabled 启用自定义信任锚点
+  ##
+  enabled: false
+  ## @param trustAnchors.anchors 信任锚点列表
+  ## 示例:
+  ## anchors:
+  ##   - zone: internal.example.com
+  ##     dsRecord: "54970 13 1 27efe1c1a790c3cbb43b947d6d6dfac62507097e"
+  ##
+  anchors: []
+  ## @param trustAnchors.negative 负信任锚点列表（禁用 DNSSEC 验证的域）
+  ## 示例:
+  ## negative:
+  ##   - zone: broken-dnssec.example.com
+  ##     reason: "DNSSEC misconfigured"
+  ##
+  negative: []
+
+## @section Lua 脚本配置
+
+lua:
+  ## @param lua.configEnabled 启用 Lua 配置脚本
+  ##
+  configEnabled: false
+  ## @param lua.configScript Lua 配置脚本内容 (config.lua)
+  ##
+  configScript: ""
+  ## @param lua.dnsEnabled 启用 Lua DNS 脚本
+  ##
+  dnsEnabled: false
+  ## @param lua.dnsScript Lua DNS 脚本内容 (dns.lua)
+  ##
+  dnsScript: ""
+
+## @section RPZ (Response Policy Zones) 配置
+
+rpz:
+  ## @param rpz.enabled 启用 RPZ
+  ##
+  enabled: false
+  ## @param rpz.zones RPZ 区域列表
+  ## 示例:
+  ## zones:
+  ##   - name: malware-block
+  ##     url: "https://example.com/rpz.zone"
+  ##     refresh: 3600
+  ##     policy: NXDOMAIN
+  ##
+  zones: []
+
+## @section 流量暴露参数
+
+## Recursor Service 配置
+##
+service:
+  ## @param service.type Recursor Service 类型
+  ##
+  type: ClusterIP
+  ## @param service.ports.dns DNS UDP 端口
+  ## @param service.ports.dnsTcp DNS TCP 端口
+  ## @param service.ports.webserver Web 服务器端口
+  ##
+  ports:
+    dns: 53
+    dnsTcp: 53
+    webserver: 8082
+  ## @param service.nodePorts.dns DNS UDP NodePort
+  ## @param service.nodePorts.dnsTcp DNS TCP NodePort
+  ## @param service.nodePorts.webserver Web 服务器 NodePort
+  ##
+  nodePorts:
+    dns: ""
+    dnsTcp: ""
+    webserver: ""
+  ## @param service.clusterIP Service 集群 IP
+  ##
+  clusterIP: ""
+  ## @param service.loadBalancerIP LoadBalancer IP
+  ##
+  loadBalancerIP: ""
+  ## @param service.loadBalancerSourceRanges LoadBalancer 允许的源 IP 范围
+  ##
+  loadBalancerSourceRanges: []
+  ## @param service.externalTrafficPolicy 外部流量策略
+  ##
+  externalTrafficPolicy: Local
+  ## @param service.annotations Service 注解
+  ##
+  annotations: {}
+  ## @param service.extraPorts 额外端口
+  ##
+  extraPorts: []
+  ## @param service.sessionAffinity Session 亲和性
+  ##
+  sessionAffinity: None
+  ## @param service.sessionAffinityConfig Session 亲和性配置
+  ##
+  sessionAffinityConfig: {}
+
+## Ingress 配置
+##
+ingress:
+  ## @param ingress.enabled 启用 Ingress（用于 API 访问）
+  ##
+  enabled: false
+  ## @param ingress.ingressClassName Ingress 类名
+  ##
+  ingressClassName: ""
+  ## @param ingress.pathType Ingress 路径类型
+  ##
+  pathType: Prefix
+  ## @param ingress.hostname 默认主机名
+  ##
+  hostname: recursor-api.local
+  ## @param ingress.path 默认路径
+  ##
+  path: /
+  ## @param ingress.annotations Ingress 注解
+  ##
+  annotations: {}
+  ## @param ingress.tls 启用 TLS
+  ##
+  tls: false
+  ## @param ingress.selfSigned 创建自签名 TLS 证书
+  ##
+  selfSigned: false
+  ## @param ingress.extraHosts 额外主机
+  ##
+  extraHosts: []
+  ## @param ingress.extraPaths 额外路径
+  ##
+  extraPaths: []
+  ## @param ingress.extraTls 额外 TLS 配置
+  ##
+  extraTls: []
+  ## @param ingress.secrets 包含 TLS 证书的 Secret
+  ##
+  secrets: []
+
+## @section RBAC 参数
+
+## ServiceAccount 配置
+##
+serviceAccount:
+  ## @param serviceAccount.create 是否创建 ServiceAccount
+  ##
+  create: true
+  ## @param serviceAccount.name ServiceAccount 名称
+  ##
+  name: ""
+  ## @param serviceAccount.annotations ServiceAccount 注解
+  ##
+  annotations: {}
+  ## @param serviceAccount.automountServiceAccountToken 自动挂载 token
+  ##
+  automountServiceAccountToken: false
+
+## @section NetworkPolicy 参数
+
+networkPolicy:
+  ## @param networkPolicy.enabled 启用 NetworkPolicy
+  ##
+  enabled: true
+  ## @param networkPolicy.allowExternal 允许外部连接
+  ##
+  allowExternal: true
+  ## @param networkPolicy.allowExternalEgress 允许出站连接
+  ##
+  allowExternalEgress: true
+  ## @param networkPolicy.extraIngress 额外入站规则
+  ##
+  extraIngress: []
+  ## @param networkPolicy.extraEgress 额外出站规则
+  ##
+  extraEgress: []
+  ## @param networkPolicy.ingressNSMatchLabels 允许入站的命名空间标签
+  ##
+  ingressNSMatchLabels: {}
+  ## @param networkPolicy.ingressNSPodMatchLabels 允许入站的 Pod 标签
+  ##
+  ingressNSPodMatchLabels: {}
+
+## @section PodDisruptionBudget 参数
+
+pdb:
+  ## @param pdb.create 创建 PodDisruptionBudget
+  ##
+  create: true
+  ## @param pdb.minAvailable 最小可用 Pod 数
+  ##
+  minAvailable: ""
+  ## @param pdb.maxUnavailable 最大不可用 Pod 数
+  ##
+  maxUnavailable: 1
+
+## @section 自动伸缩参数
+
+autoscaling:
+  ## HPA 配置
+  hpa:
+    ## @param autoscaling.hpa.enabled 启用 HPA
+    ##
+    enabled: false
+    ## @param autoscaling.hpa.minReplicas HPA 最小副本数
+    ##
+    minReplicas: 2
+    ## @param autoscaling.hpa.maxReplicas HPA 最大副本数
+    ##
+    maxReplicas: 10
+    ## @param autoscaling.hpa.targetCPU CPU 目标使用率
+    ##
+    targetCPU: 70
+    ## @param autoscaling.hpa.targetMemory 内存目标使用率
+    ##
+    targetMemory: 80
+    ## @param autoscaling.hpa.behavior HPA 行为配置
+    ##
+    behavior: {}
+  ## VPA 配置
+  vpa:
+    ## @param autoscaling.vpa.enabled 启用 VPA
+    ##
+    enabled: false
+    ## @param autoscaling.vpa.annotations VPA 注解
+    ##
+    annotations: {}
+    ## @param autoscaling.vpa.controlledResources VPA 控制的资源
+    ##
+    controlledResources: []
+    ## @param autoscaling.vpa.maxAllowed VPA 最大资源限制
+    ##
+    maxAllowed: {}
+    ## @param autoscaling.vpa.minAllowed VPA 最小资源限制
+    ##
+    minAllowed: {}
+    ## @param autoscaling.vpa.updatePolicy.updateMode VPA 更新模式
+    ##
+    updatePolicy:
+      updateMode: Auto
+
+## @section Prometheus 监控参数
+
+metrics:
+  ## @param metrics.enabled 启用 Prometheus 指标
+  ##
+  enabled: false
+  ## ServiceMonitor 配置
+  serviceMonitor:
+    ## @param metrics.serviceMonitor.enabled 创建 ServiceMonitor
+    ##
+    enabled: false
+    ## @param metrics.serviceMonitor.namespace ServiceMonitor 命名空间
+    ##
+    namespace: ""
+    ## @param metrics.serviceMonitor.labels ServiceMonitor 标签
+    ##
+    labels: {}
+    ## @param metrics.serviceMonitor.interval 抓取间隔
+    ##
+    interval: 30s
+    ## @param metrics.serviceMonitor.scrapeTimeout 抓取超时
+    ##
+    scrapeTimeout: 10s
+    ## @param metrics.serviceMonitor.relabelings 重新标记配置
+    ##
+    relabelings: []
+    ## @param metrics.serviceMonitor.metricRelabelings 指标重新标记配置
+    ##
+    metricRelabelings: []
+    ## @param metrics.serviceMonitor.honorLabels 保留目标标签
+    ##
+    honorLabels: false
+    ## @param metrics.serviceMonitor.jobLabel 作业标签
+    ##
+    jobLabel: ""

@@ -1,0 +1,38 @@
+{{/*
+Copyright Anthropic. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "common.names.fullname" . }}-config
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: powerdns-admin
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  FLASK_APP: "powerdnsadmin/__init__.py"
+  BIND_ADDRESS: {{ .Values.powerdnsAdmin.bindAddress | quote }}
+  PORT: {{ .Values.powerdnsAdmin.port | quote }}
+  LOG_LEVEL: {{ .Values.powerdnsAdmin.logLevel | quote }}
+  SESSION_TYPE: {{ .Values.powerdnsAdmin.sessionType | quote }}
+  {{- if .Values.powerdnsAdmin.offlineMode }}
+  OFFLINE_MODE: "True"
+  {{- end }}
+  SIGNUP_ENABLED: {{ .Values.powerdnsAdmin.signupEnabled | quote }}
+  # Gunicorn settings
+  GUNICORN_TIMEOUT: {{ .Values.gunicorn.timeout | quote }}
+  GUNICORN_WORKERS: {{ .Values.gunicorn.workers | quote }}
+  GUNICORN_LOGLEVEL: {{ .Values.gunicorn.loglevel | quote }}
+  # CAPTCHA settings
+  {{- if .Values.captcha.enabled }}
+  CAPTCHA_ENABLE: "True"
+  CAPTCHA_LENGTH: {{ .Values.captcha.length | quote }}
+  CAPTCHA_WIDTH: {{ .Values.captcha.width | quote }}
+  CAPTCHA_HEIGHT: {{ .Values.captcha.height | quote }}
+  {{- else }}
+  CAPTCHA_ENABLE: "False"
+  {{- end }}

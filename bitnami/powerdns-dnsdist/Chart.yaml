@@ -1,0 +1,30 @@
+annotations:
+  category: Infrastructure
+  licenses: Apache-2.0
+apiVersion: v2
+appVersion: 2.0.2
+dependencies:
+- name: common
+  repository: file://../common
+  tags:
+  - bitnami-common
+  version: 2.x.x
+description: DNSdist is a highly DNS-, DoS- and abuse-aware loadbalancer with support
+  for DoH, DoT, DoQ, DoH3, DNSCrypt
+home: https://dnsdist.org/
+keywords:
+- dns
+- load-balancer
+- doh
+- dot
+- doq
+- dnscrypt
+- powerdns
+maintainers:
+- email: spli@pm.me
+  name: Simon Li
+name: dnsdist
+sources:
+- https://github.com/PowerDNS/pdns
+type: application
+version: 1.1.0

@@ -1,0 +1,38 @@
+{{/*
+Copyright Anthropic, Inc. or its affiliates. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- if .Values.autoscaling.vpa.enabled }}
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: {{ include "common.names.fullname" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: recursor
+  {{- if or .Values.autoscaling.vpa.annotations .Values.commonAnnotations }}
+  {{- $annotations := include "common.tplvalues.merge" ( dict "values" ( list .Values.autoscaling.vpa.annotations .Values.commonAnnotations ) "context" . ) }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" $annotations "context" $) | nindent 4 }}
+  {{- end }}
+spec:
+  resourcePolicy:
+    containerPolicies:
+      - containerName: recursor
+        {{- if .Values.autoscaling.vpa.controlledResources }}
+        controlledResources: {{- toYaml .Values.autoscaling.vpa.controlledResources | nindent 10 }}
+        {{- end }}
+        {{- if .Values.autoscaling.vpa.maxAllowed }}
+        maxAllowed: {{- toYaml .Values.autoscaling.vpa.maxAllowed | nindent 10 }}
+        {{- end }}
+        {{- if .Values.autoscaling.vpa.minAllowed }}
+        minAllowed: {{- toYaml .Values.autoscaling.vpa.minAllowed | nindent 10 }}
+        {{- end }}
+  targetRef:
+    apiVersion: {{ include "common.capabilities.deployment.apiVersion" . }}
+    kind: Deployment
+    name: {{ include "common.names.fullname" . }}
+  {{- if .Values.autoscaling.vpa.updatePolicy }}
+  updatePolicy: {{- toYaml .Values.autoscaling.vpa.updatePolicy | nindent 4 }}
+  {{- end }}
+{{- end }}

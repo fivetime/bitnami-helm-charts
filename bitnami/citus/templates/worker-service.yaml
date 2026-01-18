@@ -1,0 +1,38 @@
+{{- /*
+Copyright Anthropic, Inc.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+## Headless service for worker StatefulSet (for internal communication)
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "citus.worker.svcHeadless" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "citus.worker.labels" . | nindent 4 }}
+  {{- if or .Values.worker.service.annotations .Values.commonAnnotations }}
+  annotations:
+    {{- if .Values.worker.service.annotations }}
+    {{- toYaml .Values.worker.service.annotations | nindent 4 }}
+    {{- end }}
+    {{- if .Values.commonAnnotations }}
+    {{- toYaml .Values.commonAnnotations | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  type: {{ .Values.worker.service.type }}
+  clusterIP: {{ .Values.worker.service.clusterIP }}
+  publishNotReadyAddresses: true
+  ports:
+    - name: postgresql
+      port: {{ .Values.worker.service.ports.postgresql }}
+      targetPort: postgresql
+    {{- if .Values.metrics.enabled }}
+    - name: metrics
+      port: {{ .Values.metrics.containerPorts.metrics }}
+      targetPort: metrics
+    {{- end }}
+    {{- if .Values.worker.service.extraPorts }}
+    {{- toYaml .Values.worker.service.extraPorts | nindent 4 }}
+    {{- end }}
+  selector: {{- include "citus.worker.selectorLabels" . | nindent 4 }}

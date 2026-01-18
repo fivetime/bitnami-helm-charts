@@ -9,11 +9,12 @@
 3. [基础部署](#3-基础部署)
 4. [高可用部署](#4-高可用部署)
 5. [区域传输配置](#5-区域传输配置)
-6. [安全加固](#6-安全加固)
-7. [监控配置](#7-监控配置)
-8. [常见问题](#8-常见问题)
-9. [升级与回滚](#9-升级与回滚)
-10. [卸载](#10-卸载)
+6. [GeoDNS 部署](#6-geodns-部署)
+7. [安全加固](#7-安全加固)
+8. [监控配置](#8-监控配置)
+9. [常见问题](#9-常见问题)
+10. [升级与回滚](#10-升级与回滚)
+11. [卸载](#11-卸载)
 
 ---
 
@@ -393,7 +394,348 @@ kubectl exec -it deploy/pdns-auth-secondary -n dns -- pdns_control retrieve exam
 
 ---
 
-## 6. 安全加固
+## 6. GeoDNS 部署
+
+GeoDNS 根据客户端地理位置返回不同的 DNS 解析结果，适用于 CDN、多区域部署等场景。
+
+### 6.1 GeoDNS 实现方式对比
+
+| 特性 | GeoIP Backend | LUA Records |
+|------|--------------|-------------|
+| 配置方式 | YAML 文件 (静态) | 数据库记录 (动态) |
+| 管理接口 | 需重启 Pod | API/PowerDNS-Admin |
+| 适用规模 | 中小规模 | 大规模 (百万级域名) |
+| 灵活性 | 较低 | 高 (支持复杂逻辑) |
+| 推荐场景 | 固定配置的 GeoDNS | 动态管理的 GeoDNS |
+
+**推荐**: 对于需要动态管理的场景，使用 **LUA Records** 模式。
+
+### 6.2 准备 GeoIP 数据库
+
+#### 6.2.1 创建 MaxMind 账号
+
+1. 访问 https://www.maxmind.com/en/geolite2/signup 注册免费账号
+2. 登录后获取 Account ID 和 License Key
+3. 创建 Kubernetes Secret：
+
+```bash
+kubectl create secret generic maxmind-credentials \
+  --namespace dns \
+  --from-literal=account-id=YOUR_ACCOUNT_ID \
+  --from-literal=license-key=YOUR_LICENSE_KEY
+```
+
+#### 6.2.2 创建 GeoIP 数据 PVC
+
+```yaml
+# geoip-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: geoip-data
+  namespace: dns
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard  # 根据环境修改
+```
+
+```bash
+kubectl apply -f geoip-pvc.yaml
+```
+
+### 6.3 LUA Records GeoDNS 部署
+
+#### 6.3.1 配置文件
+
+```yaml
+# values-geodns.yaml
+replicaCount: 3
+
+config:
+  # 性能配置
+  performance:
+    receiverThreads: 8          # 建议等于 CPU 核心数
+    distributorThreads: 2
+    signingThreads: 4
+    reuseport: true
+    udpTruncationThreshold: 1232
+  
+  # 缓存配置
+  cache:
+    ttl: 30
+    negTtl: 60
+    queryEnabled: true
+    queryTtl: 20
+  
+  # LUA Records 配置
+  luaRecords:
+    enabled: true
+    geoipDatabaseFiles:
+      - /usr/share/GeoIP/GeoLite2-City.mmdb
+      - /usr/share/GeoIP/GeoLite2-Country.mmdb
+      - /usr/share/GeoIP/GeoLite2-ASN.mmdb
+    ednsSubnetProcessing: true
+    execLimit: 5000
+    healthChecks:
+      enabled: true
+      interval: 5
+      expireDelay: 3600
+      maxConcurrent: 16
+      timeout: 2000
+    axfrFormat: native
+
+# GeoIP 数据库挂载
+geoipVolume:
+  enabled: true
+  type: pvc
+  pvc:
+    claimName: geoip-data
+
+# GeoIP 数据库自动更新
+geoipUpdate:
+  enabled: true
+  schedule: "0 2 * * 3"          # 每周三凌晨 2 点
+  editionIds:
+    - GeoLite2-City
+    - GeoLite2-Country
+    - GeoLite2-ASN
+  existingSecret:
+    enabled: true
+    name: maxmind-credentials
+  autoReload:
+    enabled: true                # 数据库更新后自动重载 Pod
+
+# 不需要 GeoIP Backend
+geoip:
+  enabled: false
+
+# 数据库配置
+database:
+  type: postgresql
+  existingSecret:
+    enabled: true
+    name: pdns-db-credentials
+  postgresql:
+    host: postgresql.database.svc.cluster.local
+    database: pdns
+    username: pdns
+
+# 启用 API
+webserver:
+  enabled: true
+  apiKey: "your-api-key"
+
+# 资源配置
+resources:
+  requests:
+    cpu: "2"
+    memory: "2Gi"
+  limits:
+    cpu: "4"
+    memory: "4Gi"
+
+# 高可用配置
+autoscaling:
+  hpa:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPU: 70
+
+pdb:
+  create: true
+  minAvailable: 2
+```
+
+#### 6.3.2 部署
+
+```bash
+helm install pdns-auth ./powerdns-auth \
+  --namespace dns \
+  -f values-geodns.yaml
+```
+
+#### 6.3.3 验证部署
+
+```bash
+# 检查 Pod 状态
+kubectl get pods -n dns -l app.kubernetes.io/name=powerdns-auth
+
+# 检查 GeoIP 数据库是否挂载
+kubectl exec -it deploy/pdns-auth -n dns -- ls -la /usr/share/GeoIP/
+
+# 检查 CronJob
+kubectl get cronjob -n dns
+
+# 检查 ConfigMap (hash)
+kubectl get configmap -n dns pdns-auth-geoip-hash -o yaml
+```
+
+### 6.4 创建 LUA 记录
+
+#### 6.4.1 通过 API 创建
+
+```bash
+API_KEY="your-api-key"
+API_URL="http://pdns-auth.dns.svc.cluster.local:8081/api/v1"
+
+# 创建按国家返回的 GeoDNS 记录
+curl -X PATCH -H "X-API-Key: $API_KEY" -H "Content-Type: application/json" \
+  -d '{
+    "rrsets": [{
+      "name": "www.example.com.",
+      "type": "LUA",
+      "ttl": 300,
+      "changetype": "REPLACE",
+      "records": [{
+        "content": "A \"country({JP='\''103.1.1.1'\'', CN='\''116.2.2.2'\'', US='\''198.3.3.3'\'', default='\''103.1.1.1'\''})\"",
+        "disabled": false
+      }]
+    }]
+  }' \
+  $API_URL/servers/localhost/zones/example.com.
+```
+
+#### 6.4.2 通过 SQL 创建
+
+```bash
+kubectl exec -it deploy/pdns-auth -n dns -- psql -h $DB_HOST -U pdns -d pdns
+```
+
+```sql
+-- 按大洲返回
+INSERT INTO records (domain_id, name, type, content, ttl)
+SELECT id, 'cdn.example.com', 'LUA', 
+       'A "continent({AS=''103.1.1.1'', EU=''185.2.2.2'', NA=''198.3.3.3'', default=''103.1.1.1''})"',
+       300
+FROM domains WHERE name = 'example.com';
+
+-- 选择最近节点
+INSERT INTO records (domain_id, name, type, content, ttl)
+SELECT id, 'edge.example.com', 'LUA',
+       'A "pickclosest({''103.1.1.1'', ''185.2.2.2'', ''198.3.3.3''})"',
+       300
+FROM domains WHERE name = 'example.com';
+
+-- 带健康检查
+INSERT INTO records (domain_id, name, type, content, ttl)
+SELECT id, 'ha.example.com', 'LUA',
+       'A "ifportup(443, {''103.1.1.1'', ''185.2.2.2''}, {''198.3.3.3''})"',
+       300
+FROM domains WHERE name = 'example.com';
+```
+
+### 6.5 常用 LUA 函数
+
+| 函数 | 用途 | 示例 |
+|------|------|------|
+| `country({...})` | 按国家代码返回 | `country({JP='1.1.1.1', default='2.2.2.2'})` |
+| `continent({...})` | 按大洲返回 | `continent({AS='1.1.1.1', EU='2.2.2.2'})` |
+| `region({...})` | 按地区/省份返回 | `region({13='1.1.1.1'})` (东京=13) |
+| `asnum({...})` | 按 ASN 返回 | `asnum({1234='1.1.1.1'})` |
+| `pickclosest({...})` | 返回地理最近节点 | `pickclosest({'1.1.1.1','2.2.2.2'})` |
+| `pickwhashed(...)` | 加权哈希选择 | `pickwhashed(0.7,'1.1.1.1',0.3,'2.2.2.2')` |
+| `pickrandom({...})` | 随机选择 | `pickrandom({'1.1.1.1','2.2.2.2'})` |
+| `ifportup(port,{...})` | 端口健康检查 | `ifportup(443,{'1.1.1.1','2.2.2.2'})` |
+| `ifurlup(url,{...})` | URL 健康检查 | `ifurlup('https://hc.example.com',{'1.1.1.1'})` |
+
+### 6.6 测试 GeoDNS
+
+```bash
+# 模拟来自不同地区的查询 (使用 EDNS Client Subnet)
+# 模拟日本客户端
+dig @pdns-auth.dns.svc.cluster.local www.example.com +subnet=103.0.0.0/24
+
+# 模拟美国客户端
+dig @pdns-auth.dns.svc.cluster.local www.example.com +subnet=8.8.8.0/24
+
+# 模拟欧洲客户端
+dig @pdns-auth.dns.svc.cluster.local www.example.com +subnet=185.0.0.0/24
+```
+
+### 6.7 GeoIP 数据库更新
+
+#### 6.7.1 自动更新 (推荐)
+
+启用 `geoipUpdate.enabled: true` 后，CronJob 会自动：
+1. 从 MaxMind 下载最新数据库
+2. 计算数据库 hash
+3. 如果 hash 变化，更新 ConfigMap
+4. Deployment 检测到 ConfigMap 变化后自动滚动更新 Pod
+
+#### 6.7.2 手动触发更新
+
+```bash
+# 创建临时 Job 立即执行更新
+kubectl create job --from=cronjob/pdns-auth-geoip-update geoip-manual-$(date +%s) -n dns
+
+# 查看 Job 状态
+kubectl get jobs -n dns | grep geoip
+
+# 查看 Job 日志
+kubectl logs -n dns job/geoip-manual-xxx
+```
+
+#### 6.7.3 查看更新状态
+
+```bash
+# 查看当前 hash
+kubectl get configmap pdns-auth-geoip-hash -n dns -o yaml
+
+# 查看 Pod 环境变量中的 hash
+kubectl exec -it deploy/pdns-auth -n dns -- env | grep GEOIP
+```
+
+### 6.8 GeoDNS 性能调优
+
+#### 6.8.1 关键配置
+
+```yaml
+config:
+  performance:
+    receiverThreads: 8          # = CPU 核心数
+    reuseport: true             # 必须启用
+  
+  cache:
+    ttl: 30                     # 响应缓存
+    queryTtl: 20                # 查询缓存
+  
+  luaRecords:
+    healthChecks:
+      interval: 5               # 检查间隔
+      expireDelay: 3600         # 结果缓存 1 小时
+      maxConcurrent: 16         # 并发检查数
+```
+
+#### 6.8.2 性能预估
+
+| 配置 | 单 Pod QPS | 说明 |
+|------|-----------|------|
+| 纯 geo 函数 | 30,000+ | country/continent 等 |
+| 带 pickclosest | 25,000+ | 需要计算距离 |
+| 带 ifportup (缓存) | 20,000+ | 健康检查结果已缓存 |
+| 带 ifportup (无缓存) | <500 | 避免！每次查询都检查 |
+
+#### 6.8.3 水平扩展
+
+```yaml
+autoscaling:
+  hpa:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPU: 70
+```
+
+预估集群容量：`单 Pod QPS × 副本数 × 0.7`
+
+---
+
+## 7. 安全加固
 
 ### 6.1 安全上下文
 
@@ -476,7 +818,7 @@ webserver:
 
 ---
 
-## 7. 监控配置
+## 8. 监控配置
 
 ### 7.1 启用 Prometheus 监控
 
@@ -551,9 +893,9 @@ spec:
 
 ---
 
-## 8. 常见问题
+## 9. 常见问题
 
-### 8.1 Pod 启动失败
+### 9.1 Pod 启动失败
 
 **症状**: Pod 处于 CrashLoopBackOff 状态
 
@@ -573,7 +915,7 @@ kubectl exec -it deploy/pdns-auth -n dns -- \
   psql -h $DB_HOST -U pdns -d pdns -c "SELECT 1"
 ```
 
-### 8.2 数据库连接失败
+### 9.2 数据库连接失败
 
 **症状**: db-init 或 db-sync Job 失败
 
@@ -599,7 +941,7 @@ kubectl run db-test --rm -it --restart=Never --image=postgres:16-alpine \
 - 网络策略阻止连接
 - 数据库未就绪
 
-### 8.3 DNS 查询无响应
+### 9.3 DNS 查询无响应
 
 **症状**: DNS 查询超时或无响应
 
@@ -620,7 +962,7 @@ kubectl exec -it deploy/pdns-auth -n dns -- \
 kubectl get networkpolicy -n dns
 ```
 
-### 8.4 AXFR 传输失败
+### 9.4 AXFR 传输失败
 
 **症状**: Secondary 无法从 Primary 同步 Zone
 
@@ -648,7 +990,7 @@ kubectl logs -n dns deploy/pdns-auth-secondary | grep -i axfr
 - allow-axfr-ips 未包含 Secondary IP
 - NetworkPolicy 阻止 TCP 53 端口
 
-### 8.5 API 无法访问
+### 9.5 API 无法访问
 
 **症状**: 无法连接到 PowerDNS API
 
@@ -668,11 +1010,104 @@ curl -v -H "X-API-Key: your-api-key" http://localhost:8081/api/v1/servers/localh
 kubectl logs -n dns deploy/pdns-auth | grep -i api
 ```
 
+### 9.6 GeoDNS 不生效
+
+**症状**: LUA 记录返回相同结果，不区分地区
+
+**排查步骤**:
+
+```bash
+# 检查 LUA 记录是否启用
+kubectl exec -it deploy/pdns-auth -n dns -- cat /etc/pdns/pdns.conf | grep lua
+
+# 检查 GeoIP 数据库是否存在
+kubectl exec -it deploy/pdns-auth -n dns -- ls -la /usr/share/GeoIP/
+
+# 检查 EDNS Client Subnet 是否启用
+kubectl exec -it deploy/pdns-auth -n dns -- cat /etc/pdns/pdns.conf | grep edns
+
+# 测试带 ECS 的查询
+dig @pdns-auth.dns.svc.cluster.local www.example.com +subnet=103.0.0.0/24
+dig @pdns-auth.dns.svc.cluster.local www.example.com +subnet=8.8.8.0/24
+
+# 检查 LUA 记录内容
+kubectl exec -it deploy/pdns-auth -n dns -- \
+  psql -h $DB_HOST -U pdns -d pdns -c "SELECT name, content FROM records WHERE type='LUA'"
+```
+
+**常见原因**:
+- `ednsSubnetProcessing` 未启用
+- GeoIP 数据库未挂载或文件损坏
+- LUA 记录语法错误
+- 客户端未发送 EDNS Client Subnet
+
+### 9.7 GeoIP 更新失败
+
+**症状**: CronJob 执行失败或 Pod 未滚动更新
+
+**排查步骤**:
+
+```bash
+# 检查 CronJob 状态
+kubectl get cronjob -n dns
+kubectl describe cronjob pdns-auth-geoip-update -n dns
+
+# 查看最近的 Job
+kubectl get jobs -n dns | grep geoip
+
+# 查看 Job 日志
+kubectl logs -n dns job/pdns-auth-geoip-update-xxx
+
+# 检查 MaxMind 凭据
+kubectl get secret maxmind-credentials -n dns -o yaml
+
+# 检查 ConfigMap hash
+kubectl get configmap pdns-auth-geoip-hash -n dns -o yaml
+
+# 手动触发更新测试
+kubectl create job --from=cronjob/pdns-auth-geoip-update geoip-test -n dns
+```
+
+**常见原因**:
+- MaxMind 账号 ID 或 License Key 错误
+- 网络无法访问 MaxMind 服务器
+- PVC 存储空间不足
+- ServiceAccount 无权限更新 ConfigMap
+
+### 9.8 健康检查导致性能问题
+
+**症状**: GeoDNS 查询延迟高，QPS 下降
+
+**排查步骤**:
+
+```bash
+# 检查健康检查配置
+kubectl exec -it deploy/pdns-auth -n dns -- cat /etc/pdns/pdns.conf | grep lua-health
+
+# 查看后端健康状态
+kubectl exec -it deploy/pdns-auth -n dns -- \
+  curl -s http://localhost:8081/api/v1/servers/localhost/statistics | jq '.[] | select(.name | contains("lua"))'
+```
+
+**解决方案**:
+
+```yaml
+config:
+  luaRecords:
+    healthChecks:
+      # 增加缓存时间 (关键！)
+      expireDelay: 3600
+      # 减少并发检查数
+      maxConcurrent: 8
+      # 增加检查间隔
+      interval: 10
+```
+
 ---
 
-## 9. 升级与回滚
+## 10. 升级与回滚
 
-### 9.1 升级 Chart
+### 10.1 升级 Chart
 
 ```bash
 # 查看当前版本
@@ -688,7 +1123,7 @@ helm upgrade pdns-auth ./powerdns-auth \
   --set image.tag=5.0.3
 ```
 
-### 9.2 滚动更新策略
+### 10.2 滚动更新策略
 
 Chart 默认使用 RollingUpdate 策略：
 
@@ -700,7 +1135,7 @@ updateStrategy:
     maxSurge: 1
 ```
 
-### 9.3 回滚操作
+### 10.3 回滚操作
 
 ```bash
 # 查看历史版本
@@ -713,7 +1148,7 @@ helm rollback pdns-auth -n dns
 helm rollback pdns-auth 2 -n dns
 ```
 
-### 9.4 数据库 Schema 升级
+### 10.4 数据库 Schema 升级
 
 数据库 Schema 由 db-sync Job 管理，会在每次 Helm 升级时自动运行。
 
@@ -729,33 +1164,33 @@ helm upgrade pdns-auth ./powerdns-auth -n dns -f values.yaml
 
 ---
 
-## 10. 卸载
+## 11. 卸载
 
-### 10.1 卸载 Chart
+### 11.1 卸载 Chart
 
 ```bash
 helm uninstall pdns-auth -n dns
 ```
 
-### 10.2 清理 PVC (如果使用持久化)
+### 11.2 清理 PVC (如果使用持久化)
 
 ```bash
 kubectl delete pvc -n dns -l app.kubernetes.io/name=powerdns-auth
 ```
 
-### 10.3 清理 Secret
+### 11.3 清理 Secret
 
 ```bash
 kubectl delete secret -n dns pdns-db-credentials
 ```
 
-### 10.4 删除命名空间
+### 11.4 删除命名空间
 
 ```bash
 kubectl delete namespace dns
 ```
 
-### 10.5 注意事项
+### 11.5 注意事项
 
 - 卸载 Chart 不会删除数据库中的数据
 - 如需保留配置，先导出 values：`helm get values pdns-auth -n dns > backup-values.yaml`
@@ -815,21 +1250,35 @@ curl -X PATCH -H "X-API-Key: $API_KEY" -H "Content-Type: application/json" \
 
 ### C. 性能调优
 
+#### C.1 基础性能配置
+
 ```yaml
 config:
-  # 增加接收线程 (CPU 核心数)
-  receiverThreads: 4
+  performance:
+    # 接收线程数 (建议 = CPU 核心数)
+    receiverThreads: 8
+    # 分发线程数 (通常 1-2 即可)
+    distributorThreads: 2
+    # DNSSEC 签名线程数
+    signingThreads: 4
+    # 启用端口复用 (多副本必须启用)
+    reuseport: true
+    # UDP 截断阈值 (IPv6 兼容性)
+    udpTruncationThreshold: 1232
   
-  # 增加缓存 TTL
-  cacheTtl: 60
-  negqueryCacheTtl: 120
+  cache:
+    # 响应缓存 TTL
+    ttl: 60
+    # 负查询缓存 TTL
+    negTtl: 120
+    # 启用查询缓存
+    queryEnabled: true
+    # 查询缓存 TTL
+    queryTtl: 20
   
   # TCP 优化
   tcpFastOpen: 128
   maxTcpConnections: 100
-  
-  # 启用端口复用
-  reuseport: true
 
 resources:
   requests:
@@ -839,3 +1288,43 @@ resources:
     cpu: 4000m
     memory: 2Gi
 ```
+
+#### C.2 GeoDNS 性能配置
+
+```yaml
+config:
+  luaRecords:
+    enabled: true
+    # EDNS Client Subnet 必须启用
+    ednsSubnetProcessing: true
+    # Lua 指令限制 (复杂脚本可增加)
+    execLimit: 5000
+    healthChecks:
+      enabled: true
+      # 检查间隔 (秒)
+      interval: 5
+      # 结果缓存时间 (秒) - 关键！
+      expireDelay: 3600
+      # 最大并发检查数
+      maxConcurrent: 16
+      # 检查超时 (毫秒)
+      timeout: 2000
+```
+
+#### C.3 性能指标参考
+
+| 场景 | 单 Pod QPS | 配置要点 |
+|------|-----------|---------|
+| 纯权威 DNS | 50,000+ | 缓存优化 |
+| GeoDNS (纯 geo) | 30,000+ | EDNS 处理 |
+| GeoDNS (健康检查) | 20,000+ | 缓存 expireDelay |
+| DNSSEC 签名 | 10,000+ | 增加签名线程 |
+
+#### C.4 调优检查清单
+
+- [ ] `reuseport: true` 已启用
+- [ ] `receiverThreads` >= CPU 核心数
+- [ ] 缓存 TTL 根据业务需求设置
+- [ ] GeoDNS 健康检查 `expireDelay` >= 60s
+- [ ] 资源 limits 足够
+- [ ] HPA 已配置

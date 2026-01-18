@@ -128,6 +128,14 @@ spec:
           args: {{- include "common.tplvalues.render" (dict "value" .Values.args "context" $) | nindent 12 }}
           {{- end }}
           env:
+            {{- if and .Values.geoipVolume.enabled .Values.geoipUpdate.enabled .Values.geoipUpdate.autoReload.enabled }}
+            # GeoIP hash from ConfigMap - triggers rolling update when database is updated
+            - name: GEOIP_DATABASE_HASH
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "common.names.fullname" . }}-geoip-hash
+                  key: geoip-hash
+            {{- end }}
             {{- if .Values.extraEnvVars }}
             {{- include "common.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
             {{- end }}
@@ -269,7 +277,6 @@ spec:
           {{- if eq .Values.geoipVolume.type "pvc" }}
           persistentVolumeClaim:
             claimName: {{ .Values.geoipVolume.pvc.claimName }}
-            readOnly: {{ .Values.geoipVolume.pvc.readOnly | default true }}
           {{- else if eq .Values.geoipVolume.type "configMap" }}
           configMap:
             name: {{ .Values.geoipVolume.configMap.name }}

@@ -228,11 +228,24 @@ allow-unsigned-autoprimary=yes
 allow-unsigned-notify=yes
 {{- end }}
 
-# Performance
-receiver-threads={{ .Values.config.receiverThreads }}
-retrieval-threads={{ .Values.config.retrievalThreads }}
-signing-threads={{ .Values.config.signingThreads }}
+# Performance tuning
+{{- if .Values.config.performance }}
+receiver-threads={{ .Values.config.performance.receiverThreads | default 2 }}
+{{- if .Values.config.performance.distributorThreads }}
+distributor-threads={{ .Values.config.performance.distributorThreads }}
+{{- end }}
+signing-threads={{ .Values.config.performance.signingThreads | default 3 }}
+reuseport={{ if .Values.config.performance.reuseport }}yes{{ else }}no{{ end }}
+{{- if .Values.config.performance.udpTruncationThreshold }}
+udp-truncation-threshold={{ .Values.config.performance.udpTruncationThreshold }}
+{{- end }}
+{{- else }}
+# Legacy performance config (deprecated, use config.performance)
+receiver-threads={{ .Values.config.receiverThreads | default 2 }}
+retrieval-threads={{ .Values.config.retrievalThreads | default 2 }}
+signing-threads={{ .Values.config.signingThreads | default 3 }}
 reuseport={{ if .Values.config.reuseport }}yes{{ else }}no{{ end }}
+{{- end }}
 
 # TCP settings
 max-tcp-connection-duration={{ .Values.config.maxTcpConnectionDuration }}
@@ -260,9 +273,16 @@ security-poll-suffix=
 {{- end }}
 
 # Cache settings
-cache-ttl={{ .Values.config.cacheTtl }}
-negquery-cache-ttl={{ .Values.config.negqueryCacheTtl }}
+{{- if .Values.config.cache }}
+cache-ttl={{ .Values.config.cache.ttl | default 20 }}
+negquery-cache-ttl={{ .Values.config.cache.negTtl | default 60 }}
+query-cache-ttl={{ if .Values.config.cache.queryEnabled }}{{ .Values.config.cache.queryTtl | default 20 }}{{ else }}0{{ end }}
+{{- else }}
+# Legacy cache config (deprecated, use config.cache)
+cache-ttl={{ .Values.config.cacheTtl | default 20 }}
+negquery-cache-ttl={{ .Values.config.negqueryCacheTtl | default 60 }}
 query-cache-ttl={{ if .Values.config.queryCacheEnabled }}20{{ else }}0{{ end }}
+{{- end }}
 
 # SOA defaults
 {{- if .Values.config.defaultSoaContent }}
@@ -288,9 +308,42 @@ dnsupdate-require-tsig=yes
 forward-dnsupdate=yes
 {{- end }}
 
-# LUA records
-{{- if .Values.config.enableLuaRecords }}
+# LUA records configuration (for dynamic GeoDNS with database backend)
+{{- if .Values.config.luaRecords.enabled }}
 enable-lua-records=yes
+{{- with .Values.config.luaRecords }}
+{{- if .geoipDatabaseFiles }}
+geoip-database-files={{ join " " .geoipDatabaseFiles }}
+{{- end }}
+{{- if .ednsSubnetProcessing }}
+edns-subnet-processing=yes
+{{- end }}
+{{- if .execLimit }}
+lua-records-exec-limit={{ .execLimit }}
+{{- end }}
+{{- if .axfrFormat }}
+lua-axfr-script={{ .axfrFormat }}
+{{- end }}
+{{- if and .sharedLua .sharedLua.enabled }}
+lua-records-shared={{ .sharedLua.enabled }}
+{{- end }}
+{{- with .healthChecks }}
+{{- if not (eq .enabled false) }}
+{{- if .interval }}
+lua-health-checks-interval={{ .interval }}
+{{- end }}
+{{- if .expireDelay }}
+lua-health-checks-expire-delay={{ .expireDelay }}
+{{- end }}
+{{- if .maxConcurrent }}
+lua-health-checks-max-concurrent={{ .maxConcurrent }}
+{{- end }}
+{{- if .timeout }}
+lua-health-checks-timeout={{ .timeout }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
 {{- end }}
 
 # Backend configuration
@@ -353,6 +406,8 @@ Compile all warnings into a single message.
 {{- $messages := list -}}
 {{- $messages := append $messages (include "powerdns-auth.validateValues.database" .) -}}
 {{- $messages := append $messages (include "powerdns-auth.validateValues.geoip" .) -}}
+{{- $messages := append $messages (include "powerdns-auth.validateValues.luaRecords" .) -}}
+{{- $messages := append $messages (include "powerdns-auth.validateValues.geoipUpdate" .) -}}
 {{- $messages := without $messages "" -}}
 {{- $message := join "\n" $messages -}}
 {{- if $message -}}
@@ -381,5 +436,55 @@ Validate values of PowerDNS Auth - GeoIP
 {{- if and .Values.geoip.enabled (not .Values.geoipVolume.enabled) -}}
 powerdns-auth: geoip
     GeoIP backend is enabled but geoipVolume is not enabled. You must provide GeoIP database files.
+{{- end -}}
+{{- end -}}
+
+{{/*
+Validate values of PowerDNS Auth - LUA Records
+*/}}
+{{- define "powerdns-auth.validateValues.luaRecords" -}}
+{{- if .Values.config.luaRecords.enabled -}}
+{{- if and .Values.config.luaRecords.geoipDatabaseFiles (not .Values.geoipVolume.enabled) -}}
+powerdns-auth: luaRecords
+    LUA records with GeoIP functions enabled but geoipVolume is not enabled.
+    You must mount GeoIP database files for country(), continent(), pickclosest() functions.
+    Set geoipVolume.enabled=true and configure the volume source.
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Validate values of PowerDNS Auth - GeoIP Update
+*/}}
+{{- define "powerdns-auth.validateValues.geoipUpdate" -}}
+{{- if .Values.geoipUpdate.enabled -}}
+{{- if not .Values.geoipVolume.enabled -}}
+powerdns-auth: geoipUpdate
+    GeoIP update CronJob is enabled but geoipVolume is not enabled.
+    Set geoipVolume.enabled=true to provide storage for GeoIP databases.
+{{- end -}}
+{{- if and (not .Values.geoipUpdate.existingSecret.enabled) (not .Values.geoipUpdate.accountId) -}}
+powerdns-auth: geoipUpdate
+    GeoIP update requires MaxMind account credentials.
+    Set geoipUpdate.accountId and geoipUpdate.licenseKey, or use geoipUpdate.existingSecret.
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the GeoIP update image name
+*/}}
+{{- define "powerdns-auth.geoipUpdate.image" -}}
+{{ include "common.images.image" (dict "imageRoot" .Values.geoipUpdate.image "global" .Values.global) }}
+{{- end -}}
+
+{{/*
+Return the GeoIP update secret name
+*/}}
+{{- define "powerdns-auth.geoipUpdate.secretName" -}}
+{{- if .Values.geoipUpdate.existingSecret.enabled -}}
+    {{- .Values.geoipUpdate.existingSecret.name -}}
+{{- else -}}
+    {{- printf "%s-geoip-credentials" (include "common.names.fullname" .) -}}
 {{- end -}}
 {{- end -}}

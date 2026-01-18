@@ -97,6 +97,218 @@ helm uninstall my-pdns-auth
 - 混合云环境
 - 与外部 DNS 服务器同步
 
+## 高性能 GeoDNS 配置
+
+支持百万级域名的动态 GeoDNS 场景，使用 LUA Records + 数据库后端实现。
+
+### 架构说明
+
+```
+                         ┌──────────────────────────────────────┐
+                         │            Kubernetes Cluster        │
+                         │                                      │
+    DNS Query            │   ┌──────────┐    ┌──────────┐       │
+    (with ECS)           │   │ PowerDNS │    │ PowerDNS │       │
+         │               │   │  Pod 1   │    │  Pod 2   │  ...  │
+         ▼               │   │          │    │          │       │
+    ┌─────────┐          │   │ ┌──────┐ │    │ ┌──────┐ │       │
+    │ Service │──────────┼───┼►│ LUA  │ │    │ │ LUA  │ │       │
+    │  (UDP)  │          │   │ │Record│ │    │ │Record│ │       │
+    └─────────┘          │   │ └──┬───┘ │    │ └──┬───┘ │       │
+                         │   │    │     │    │    │     │       │
+                         │   │ ┌──▼───┐ │    │ ┌──▼───┐ │       │
+                         │   │ │GeoIP │ │    │ │GeoIP │ │       │
+                         │   │ │ mmdb │ │    │ │ mmdb │ │       │
+                         │   │ └──────┘ │    │ └──────┘ │       │
+                         │   └────┬─────┘    └────┬─────┘       │
+                         │        │               │             │
+                         │        └───────┬───────┘             │
+                         │                │                     │
+                         │                ▼                     │
+                         │   ┌────────────────────────┐         │
+                         │   │    PostgreSQL / MySQL   │         │
+                         │   │  (LUA Records 存储)    │         │
+                         │   │  millions of records   │         │
+                         │   └────────────────────────┘         │
+                         └──────────────────────────────────────┘
+```
+
+### 工作流程
+
+1. **DNS 查询到达** - 客户端通过递归解析器查询，带有 EDNS Client Subnet
+2. **LUA Record 执行** - PowerDNS 从数据库读取 LUA 记录并执行
+3. **GeoIP 查询** - LUA 脚本调用 `country()`, `continent()` 等函数查询 GeoIP 数据库
+4. **返回结果** - 根据客户端地理位置返回对应的 IP 地址
+
+### 示例配置
+
+```yaml
+# values-geodns.yaml - 高性能 GeoDNS 配置
+replicaCount: 3
+
+config:
+  # 性能调优
+  performance:
+    receiverThreads: 8        # 建议 = CPU 核心数
+    distributorThreads: 2
+    signingThreads: 4
+    reuseport: true           # 必须启用
+    udpTruncationThreshold: 1232
+  
+  # 缓存配置
+  cache:
+    ttl: 30                   # 响应缓存 30 秒
+    negTtl: 60
+    queryEnabled: true
+    queryTtl: 20
+  
+  # LUA Records 配置
+  luaRecords:
+    enabled: true
+    geoipDatabaseFiles:
+      - /usr/share/GeoIP/GeoLite2-City.mmdb
+      - /usr/share/GeoIP/GeoLite2-Country.mmdb
+      - /usr/share/GeoIP/GeoLite2-ASN.mmdb
+    ednsSubnetProcessing: true   # 必须启用
+    execLimit: 5000
+    healthChecks:
+      enabled: true
+      interval: 5
+      expireDelay: 3600
+      maxConcurrent: 16
+      timeout: 2000
+
+# 挂载 GeoIP 数据库
+geoipVolume:
+  enabled: true
+  type: pvc
+  pvc:
+    claimName: geoip-data
+    readOnly: true
+
+# 数据库配置
+database:
+  type: postgresql
+  postgresql:
+    host: postgresql.database.svc.cluster.local
+    port: 5432
+    database: pdns
+    username: pdns
+    password: "your-password"
+
+# 资源配置
+resources:
+  requests:
+    cpu: "2"
+    memory: "2Gi"
+  limits:
+    cpu: "4"
+    memory: "4Gi"
+
+# 启用 HPA
+autoscaling:
+  hpa:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPU: 70
+```
+
+### LUA Record 示例
+
+通过 PowerDNS API 或 PowerDNS-Admin 创建 LUA 记录：
+
+```bash
+# 按国家返回不同 IP
+curl -X POST http://pdns-api:8081/api/v1/servers/localhost/zones/example.com./records \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rrsets": [{
+      "name": "www.example.com.",
+      "type": "LUA",
+      "ttl": 300,
+      "records": [{
+        "content": "A \"country({JP='\''103.1.1.1'\'', CN='\''116.2.2.2'\'', US='\''198.3.3.3'\'', default='\''103.1.1.1'\''})\"",
+        "disabled": false
+      }]
+    }]
+  }'
+```
+
+### 常用 LUA 函数
+
+| 函数 | 用途 | 示例 |
+|------|------|------|
+| `country({...})` | 按国家代码返回 | `country({JP='1.1.1.1', default='2.2.2.2'})` |
+| `continent({...})` | 按大洲返回 | `continent({AS='1.1.1.1', EU='2.2.2.2'})` |
+| `region({...})` | 按地区/省份返回 | `region({13='1.1.1.1'})` (东京=13) |
+| `pickclosest({...})` | 返回地理最近节点 | `pickclosest({'1.1.1.1','2.2.2.2'})` |
+| `pickwhashed(...)` | 加权哈希选择 | `pickwhashed(0.7,'1.1.1.1',0.3,'2.2.2.2')` |
+| `ifportup(port,{...})` | 端口健康检查 | `ifportup(443,{'1.1.1.1','2.2.2.2'})` |
+| `ifurlup(url,{...})` | URL 健康检查 | `ifurlup('https://health.check',{'1.1.1.1'})` |
+
+### 性能优化建议
+
+1. **启用 EDNS Client Subnet** - 必须开启，否则无法获取真实客户端 IP
+2. **配置健康检查缓存** - 避免每次查询都触发后端检查
+3. **合理设置缓存 TTL** - 在响应速度和数据新鲜度之间平衡
+4. **使用 reuseport** - 多副本场景下的关键配置
+5. **预热 GeoIP 数据库** - 首次查询会加载 mmdb 文件到内存
+
+### GeoIP 数据库更新
+
+Chart 内置了 GeoIP 数据库自动更新功能，通过 CronJob 定期从 MaxMind 下载最新数据库。
+
+**前置要求**: 注册免费的 MaxMind 账号获取 License Key: https://www.maxmind.com/en/geolite2/signup
+
+**配置方式**:
+
+```yaml
+# 1. 创建 Secret 存储 MaxMind 凭据
+kubectl create secret generic maxmind-credentials \
+  --from-literal=account-id=YOUR_ACCOUNT_ID \
+  --from-literal=license-key=YOUR_LICENSE_KEY
+
+# 2. 在 values.yaml 中启用自动更新
+geoipVolume:
+  enabled: true
+  type: pvc
+  pvc:
+    claimName: geoip-data
+    readOnly: false  # 必须设为 false 以允许更新
+
+geoipUpdate:
+  enabled: true
+  schedule: "0 2 * * 3"  # 每周三凌晨 2 点
+  editionIds:
+    - GeoLite2-City
+    - GeoLite2-Country
+    - GeoLite2-ASN
+  existingSecret:
+    enabled: true
+    name: maxmind-credentials
+```
+
+**配置参数**:
+
+| 参数 | 描述 | 默认值 |
+|------|------|--------|
+| `geoipUpdate.enabled` | 启用自动更新 | `false` |
+| `geoipUpdate.schedule` | Cron 表达式 | `0 0 * * 3` |
+| `geoipUpdate.editionIds` | 数据库版本列表 | `[GeoLite2-City, GeoLite2-Country, GeoLite2-ASN]` |
+| `geoipUpdate.accountId` | MaxMind 账号 ID | `""` |
+| `geoipUpdate.licenseKey` | MaxMind License Key | `""` |
+| `geoipUpdate.existingSecret.enabled` | 使用已有 Secret | `false` |
+| `geoipUpdate.existingSecret.name` | Secret 名称 | `""` |
+
+**手动触发更新**:
+
+```bash
+# 创建一次性 Job 立即更新
+kubectl create job --from=cronjob/pdns-auth-geoip-update geoip-manual-update
+```
+
 ## 参数
 
 ### 全局参数
@@ -228,10 +440,6 @@ helm uninstall my-pdns-auth
 | `config.autosecondary` | 自动从 autoprimary 创建区域 | `false` |
 | `config.allowUnsignedAutoprimary` | 允许无 TSIG 的 autoprimary | `false` |
 | `config.allowUnsignedNotify` | 允许无 TSIG 的 NOTIFY | `false` |
-| `config.receiverThreads` | 接收线程数 | `2` |
-| `config.retrievalThreads` | 检索线程数 | `2` |
-| `config.signingThreads` | 签名线程数 | `3` |
-| `config.reuseport` | 启用 SO_REUSEPORT | `true` |
 | `config.maxTcpConnectionDuration` | TCP 最大连接时长 | `0` |
 | `config.maxTcpConnections` | TCP 最大连接数 | `20` |
 | `config.tcpFastOpen` | TCP Fast Open 队列大小 | `64` |
@@ -243,9 +451,6 @@ helm uninstall my-pdns-auth
 | `config.expandAlias` | 启用 ALIAS 扩展 | `false` |
 | `config.versionString` | 版本字符串 | `anonymous` |
 | `config.securityPollSuffix` | 安全轮询后缀 | `""` |
-| `config.cacheTtl` | 缓存 TTL (秒) | `20` |
-| `config.negqueryCacheTtl` | 负查询缓存 TTL | `60` |
-| `config.queryCacheEnabled` | 启用查询缓存 | `true` |
 | `config.defaultSoaContent` | 默认 SOA 内容 | `""` |
 | `config.defaultSoaMail` | 默认 SOA 邮箱 | `""` |
 | `config.defaultSoaName` | 默认 SOA 名称 | `""` |
@@ -253,8 +458,42 @@ helm uninstall my-pdns-auth
 | `config.allowDnsupdateFrom` | 允许 DNS UPDATE 的 IP | `""` |
 | `config.dnsupdateRequireTsig` | DNS UPDATE 需要 TSIG | `true` |
 | `config.forwardDnsupdate` | 转发 DNS UPDATE | `false` |
-| `config.enableLuaRecords` | 启用 LUA 记录 | `false` |
 | `config.extra` | 额外配置键值对 | `{}` |
+
+#### 性能配置参数
+
+| 参数 | 描述 | 默认值 |
+|------|------|--------|
+| `config.performance.receiverThreads` | 接收线程数（建议等于 CPU 核心数） | `4` |
+| `config.performance.distributorThreads` | 分发线程数 | `1` |
+| `config.performance.signingThreads` | DNSSEC 签名线程数 | `3` |
+| `config.performance.reuseport` | 启用 SO_REUSEPORT（多副本必须启用） | `true` |
+| `config.performance.udpTruncationThreshold` | UDP 截断阈值 | `1232` |
+
+#### 缓存配置参数
+
+| 参数 | 描述 | 默认值 |
+|------|------|--------|
+| `config.cache.ttl` | 包缓存 TTL（秒） | `20` |
+| `config.cache.negTtl` | 负查询缓存 TTL（秒） | `60` |
+| `config.cache.queryEnabled` | 启用查询缓存 | `true` |
+| `config.cache.queryTtl` | 查询缓存 TTL（秒） | `20` |
+
+#### LUA Records 配置参数（动态 GeoDNS）
+
+| 参数 | 描述 | 默认值 |
+|------|------|--------|
+| `config.luaRecords.enabled` | 启用 LUA 记录 | `false` |
+| `config.luaRecords.geoipDatabaseFiles` | GeoIP 数据库路径列表 | `[GeoLite2-City.mmdb, GeoLite2-Country.mmdb, GeoLite2-ASN.mmdb]` |
+| `config.luaRecords.ednsSubnetProcessing` | 启用 EDNS 子网处理（获取真实客户端 IP） | `true` |
+| `config.luaRecords.execLimit` | Lua 脚本执行指令限制 | `5000` |
+| `config.luaRecords.healthChecks.enabled` | 启用健康检查功能 | `true` |
+| `config.luaRecords.healthChecks.interval` | 健康检查间隔（秒） | `5` |
+| `config.luaRecords.healthChecks.expireDelay` | 健康检查结果缓存时间（秒） | `3600` |
+| `config.luaRecords.healthChecks.maxConcurrent` | 最大并发健康检查数 | `16` |
+| `config.luaRecords.healthChecks.timeout` | 健康检查超时（毫秒） | `2000` |
+| `config.luaRecords.axfrFormat` | AXFR 格式（native/compat） | `native` |
+| `config.luaRecords.sharedLua.enabled` | 启用共享 Lua 状态 | `false` |
 
 ### 数据库配置参数
 
@@ -299,7 +538,7 @@ helm uninstall my-pdns-auth
 
 | 参数 | 描述 | 默认值 |
 |------|------|--------|
-| `geoip.enabled` | 启用 GeoIP 后端 | `false` |
+| `geoip.enabled` | 启用 GeoIP 后端（静态配置模式） | `false` |
 | `geoip.databases` | GeoIP 数据库路径列表 | `[/usr/share/GeoIP/GeoLite2-City.mmdb, ...]` |
 | `geoip.zonesFile` | GeoIP zones 文件路径 | `/etc/pdns/geo-zones.yaml` |
 | `geoip.ednsSubnetProcessing` | 启用 EDNS 子网处理 | `true` |
@@ -309,9 +548,46 @@ helm uninstall my-pdns-auth
 | `geoipVolume.enabled` | 启用 GeoIP 卷 | `false` |
 | `geoipVolume.type` | 卷类型 (pvc/configMap/hostPath) | `pvc` |
 | `geoipVolume.pvc.claimName` | PVC 名称 | `geoip-data` |
-| `geoipVolume.pvc.readOnly` | 只读挂载 | `true` |
 | `geoipVolume.configMap.name` | ConfigMap 名称 | `geoip-data` |
 | `geoipVolume.hostPath.path` | 主机路径 | `/var/lib/GeoIP` |
+
+### GeoIP 自动更新 CronJob 参数
+
+| 参数 | 描述 | 默认值 |
+|------|------|--------|
+| `geoipUpdate.enabled` | 启用 GeoIP 自动更新 CronJob | `false` |
+| `geoipUpdate.schedule` | Cron 调度表达式 | `0 0 * * 3` |
+| `geoipUpdate.concurrencyPolicy` | 并发策略 | `Forbid` |
+| `geoipUpdate.startingDeadlineSeconds` | 启动截止时间（秒） | `600` |
+| `geoipUpdate.successfulJobsHistoryLimit` | 成功 Job 保留数 | `3` |
+| `geoipUpdate.failedJobsHistoryLimit` | 失败 Job 保留数 | `3` |
+| `geoipUpdate.ttlSecondsAfterFinished` | Job 完成后清理时间（秒） | `86400` |
+| `geoipUpdate.backoffLimit` | 失败重试次数 | `3` |
+| `geoipUpdate.suspend` | 暂停 CronJob | `false` |
+| `geoipUpdate.restartPolicy` | Pod 重启策略 | `OnFailure` |
+| `geoipUpdate.image.registry` | 镜像仓库 | `docker.io` |
+| `geoipUpdate.image.repository` | 镜像名称 | `maxmindinc/geoipupdate` |
+| `geoipUpdate.image.tag` | 镜像标签 | `v7.1` |
+| `geoipUpdate.image.pullPolicy` | 拉取策略 | `IfNotPresent` |
+| `geoipUpdate.accountId` | MaxMind 账号 ID | `""` |
+| `geoipUpdate.licenseKey` | MaxMind License Key | `""` |
+| `geoipUpdate.editionIds` | 下载的数据库版本列表 | `[GeoLite2-City, GeoLite2-Country, GeoLite2-ASN]` |
+| `geoipUpdate.databaseDirectory` | 数据库存储目录 | `/usr/share/GeoIP` |
+| `geoipUpdate.host` | MaxMind 服务器地址（可选） | `""` |
+| `geoipUpdate.proxy` | HTTP 代理 | `""` |
+| `geoipUpdate.proxyUserPassword` | 代理认证 | `""` |
+| `geoipUpdate.preserveFileTimes` | 保留文件时间戳 | `false` |
+| `geoipUpdate.verbose` | 详细日志 | `false` |
+| `geoipUpdate.existingSecret.enabled` | 使用已有 Secret | `false` |
+| `geoipUpdate.existingSecret.name` | Secret 名称 | `""` |
+| `geoipUpdate.existingSecret.keys.accountId` | 账号 ID 的 key | `account-id` |
+| `geoipUpdate.existingSecret.keys.licenseKey` | License Key 的 key | `license-key` |
+| `geoipUpdate.resourcesPreset` | 资源预设 | `micro` |
+| `geoipUpdate.resources` | 自定义资源配置 | `{}` |
+| `geoipUpdate.autoReload.enabled` | 数据库更新后自动重载 Pod | `true` |
+| `geoipUpdate.autoReload.image.registry` | kubectl 镜像仓库 | `docker.io` |
+| `geoipUpdate.autoReload.image.repository` | kubectl 镜像名称 | `bitnami/kubectl` |
+| `geoipUpdate.autoReload.image.tag` | kubectl 镜像标签 | `1.31` |
 
 ### TSIG 密钥配置参数
 
@@ -557,6 +833,98 @@ geoipZones:
           - a: 198.51.100.1
       services:
         www.example.com: "%co.cdn.example.com"
+```
+
+### LUA Records GeoDNS 配置（推荐用于大规模动态 GeoDNS）
+
+LUA Records 模式将 GeoDNS 记录存储在数据库中，支持通过 API/PowerDNS-Admin 动态管理，适合百万级域名场景。
+
+```yaml
+# 启用 LUA Records GeoDNS
+config:
+  # 性能配置
+  performance:
+    receiverThreads: 8          # 建议等于 CPU 核心数
+    distributorThreads: 2
+    signingThreads: 4
+    reuseport: true             # 多副本必须启用
+  
+  # 缓存配置
+  cache:
+    ttl: 30
+    negTtl: 60
+    queryEnabled: true
+    queryTtl: 20
+  
+  # LUA Records 配置
+  luaRecords:
+    enabled: true
+    geoipDatabaseFiles:
+      - /usr/share/GeoIP/GeoLite2-City.mmdb
+      - /usr/share/GeoIP/GeoLite2-Country.mmdb
+      - /usr/share/GeoIP/GeoLite2-ASN.mmdb
+    ednsSubnetProcessing: true  # 获取递归解析器后的真实客户端 IP
+    execLimit: 5000             # Lua 指令限制，复杂脚本可增加到 10000
+    healthChecks:
+      enabled: true
+      interval: 5               # 健康检查间隔，影响故障切换速度
+      expireDelay: 3600         # 检查结果缓存，防止高 QPS 时打爆后端
+      maxConcurrent: 16         # 最大并发健康检查
+      timeout: 2000             # 检查超时（毫秒）
+    axfrFormat: native
+
+# 必须挂载 GeoIP 数据库
+geoipVolume:
+  enabled: true
+  type: pvc
+  pvc:
+    claimName: geoip-data
+
+# GeoIP 数据库自动更新（可选但推荐）
+geoipUpdate:
+  enabled: true
+  schedule: "0 2 * * 3"         # 每周三凌晨 2 点
+  editionIds:
+    - GeoLite2-City
+    - GeoLite2-Country
+    - GeoLite2-ASN
+  existingSecret:
+    enabled: true
+    name: maxmind-credentials   # 包含 account-id 和 license-key
+  autoReload:
+    enabled: true               # 数据库更新后自动重载 Pod
+
+# 不需要启用 GeoIP Backend（两者独立）
+geoip:
+  enabled: false
+```
+
+配置完成后，通过 API 或 PowerDNS-Admin 创建 LUA 类型记录：
+
+```sql
+-- 按大洲返回不同 IP
+INSERT INTO records (domain_id, name, type, content, ttl)
+VALUES (1, 'www.example.com', 'LUA', 
+        'A "continent({AS=''103.1.1.1'', EU=''185.2.2.2'', NA=''198.3.3.3'', default=''103.1.1.1''})"', 
+        300);
+
+-- 按国家返回
+INSERT INTO records (domain_id, name, type, content, ttl)
+VALUES (1, 'cdn.example.com', 'LUA', 
+        'A "country({JP=''103.1.1.1'', CN=''116.2.2.2'', US=''198.3.3.3'', default=''103.1.1.1''})"', 
+        300);
+
+-- 选择最近节点
+INSERT INTO records (domain_id, name, type, content, ttl)
+VALUES (1, 'edge.example.com', 'LUA', 
+        'A "pickclosest({''103.1.1.1'', ''185.2.2.2'', ''198.3.3.3''})"', 
+        300);
+
+-- 带健康检查的 GeoDNS
+INSERT INTO records (domain_id, name, type, content, ttl)
+VALUES (1, 'ha.example.com', 'LUA', 
+        'A "ifportup(443, {continent({AS=''103.1.1.1'', EU=''185.2.2.2'', default=''103.1.1.1''})})"', 
+        300);
 ```
 
 ### 使用外部 Secret

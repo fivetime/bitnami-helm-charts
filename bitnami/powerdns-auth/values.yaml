@@ -429,11 +429,42 @@ config:
   allowUnsignedAutoprimary: false
   allowUnsignedNotify: false
   
-  ## Performance
-  receiverThreads: 2
-  retrievalThreads: 2
-  signingThreads: 3
-  reuseport: true
+  ## Performance tuning for high-QPS GeoDNS
+  ## For million-scale domains, tune based on CPU cores and expected QPS
+  ## General formula: receiverThreads = CPU cores, or 2x for high QPS
+  ##
+  performance:
+    ## @param config.performance.receiverThreads Number of UDP/TCP receiver threads
+    ## Each thread handles incoming queries independently
+    ## Recommended: number of CPU cores, or 2x cores for very high QPS
+    ## With reuseport=yes, each thread binds to the same port efficiently
+    ##
+    receiverThreads: 4
+    
+    ## @param config.performance.distributorThreads Number of distributor threads
+    ## Distributes queries from receivers to backend workers
+    ## Usually 1-2 is sufficient, increase for extreme QPS (>100k)
+    ##
+    distributorThreads: 1
+    
+    ## @param config.performance.signingThreads Number of DNSSEC signing threads
+    ## Only relevant if DNSSEC is enabled
+    ## Recommended: 2-4 for most deployments
+    ##
+    signingThreads: 3
+    
+    ## @param config.performance.reuseport Enable SO_REUSEPORT for better multi-thread scaling
+    ## CRITICAL for multi-replica Kubernetes deployments
+    ## Allows multiple processes/pods to bind to same port
+    ## Kernel load-balances incoming packets across all listeners
+    ##
+    reuseport: true
+    
+    ## @param config.performance.udpTruncationThreshold UDP response size before truncation
+    ## Larger values reduce TCP fallback but may cause fragmentation
+    ## Recommended: 1232 for IPv6 compatibility, up to 4096 for IPv4-only
+    ##
+    udpTruncationThreshold: 1232
   
   ## TCP settings
   maxTcpConnectionDuration: 0
@@ -454,10 +485,34 @@ config:
   versionString: "anonymous"
   securityPollSuffix: ""
   
-  ## Cache settings
-  cacheTtl: 20
-  negqueryCacheTtl: 60
-  queryCacheEnabled: true
+  ## Cache settings - CRITICAL for GeoDNS performance
+  ## These caches are per-pod, reducing database queries significantly
+  ##
+  cache:
+    ## @param config.cache.ttl Packet cache TTL (seconds)
+    ## Caches complete DNS responses for identical queries
+    ## Higher = better performance, but slower propagation of changes
+    ## Recommended: 10-60s for dynamic content, 300+ for static
+    ##
+    ttl: 20
+    
+    ## @param config.cache.negTtl Negative query cache TTL (seconds)
+    ## Caches NXDOMAIN and NODATA responses
+    ## Reduces database load for non-existent domains
+    ##
+    negTtl: 60
+    
+    ## @param config.cache.queryEnabled Enable query cache
+    ## Caches backend query results (before packet assembly)
+    ## Highly recommended for database backends
+    ##
+    queryEnabled: true
+    
+    ## @param config.cache.queryTtl Query cache TTL (seconds)
+    ## How long to cache database query results
+    ## Lower than packet cache to allow fresher data
+    ##
+    queryTtl: 20
   
   ## SOA defaults (for new zones created via API)
   ## @param config.defaultSoaContent - Format: "primary hostmaster serial refresh retry expire minimum"
@@ -474,8 +529,99 @@ config:
   dnsupdateRequireTsig: true
   forwardDnsupdate: false
   
-  ## LUA records (experimental)
-  enableLuaRecords: false
+  ## LUA Records Configuration
+  ## LUA records enable dynamic GeoDNS with database backend
+  ## Supports million-scale domains with geo-aware responses
+  ## ref: https://doc.powerdns.com/authoritative/lua-records/
+  ##
+  luaRecords:
+    ## @param config.luaRecords.enabled Enable LUA records support
+    ## Required for dynamic GeoDNS with database backend
+    ##
+    enabled: false
+    
+    ## @param config.luaRecords.geoipDatabaseFiles GeoIP database files for LUA geo functions
+    ## Required for country(), continent(), region(), city(), pickclosest(), asnum() functions
+    ## These are MaxMind GeoLite2 or GeoIP2 format (.mmdb)
+    ## Note: Requires geoipVolume.enabled=true to mount database files
+    ##
+    geoipDatabaseFiles:
+      - /usr/share/GeoIP/GeoLite2-City.mmdb
+      - /usr/share/GeoIP/GeoLite2-Country.mmdb
+      - /usr/share/GeoIP/GeoLite2-ASN.mmdb
+    
+    ## @param config.luaRecords.ednsSubnetProcessing Enable EDNS Client Subnet (ECS) processing
+    ## CRITICAL for GeoDNS accuracy behind recursive resolvers (Google DNS, Cloudflare, etc.)
+    ## Without ECS: all queries from same resolver get identical geo result (resolver's location)
+    ## With ECS: queries include client subnet, enabling accurate geo targeting
+    ## Performance impact: minimal, highly recommended for production GeoDNS
+    ##
+    ednsSubnetProcessing: true
+    
+    ## @param config.luaRecords.execLimit Maximum Lua instructions per record execution
+    ## Prevents runaway scripts from blocking DNS responses
+    ## Simple geo lookup: 1000 is sufficient
+    ## Complex multi-condition logic: 5000-10000
+    ## Very complex scripts with loops: up to 50000
+    ##
+    execLimit: 5000
+    
+    ## Health check settings for ifportup() and ifurlup() functions
+    ## CRITICAL for high-QPS: without caching, health checks run on EVERY DNS query
+    ## which will overwhelm backends and cause severe latency
+    ##
+    healthChecks:
+      ## @param config.luaRecords.healthChecks.enabled Enable health check functions
+      ## If disabled, ifportup/ifurlup will not perform actual checks
+      ##
+      enabled: true
+      
+      ## @param config.luaRecords.healthChecks.interval Interval between health checks (seconds)
+      ## This controls how often PowerDNS re-checks backend health
+      ## Lower = faster failover detection, more health check traffic
+      ## Higher = slower failover, less backend load
+      ## Recommended: 1-5s for critical services, 10-30s for stable backends
+      ##
+      interval: 5
+      
+      ## @param config.luaRecords.healthChecks.expireDelay Health check result cache time (seconds)
+      ## Results are cached this long before mandatory re-check
+      ## Should be >= interval, typically much larger
+      ## Prevents thundering herd on backend failure
+      ## Recommended: 60-3600s depending on failover requirements
+      ##
+      expireDelay: 3600
+      
+      ## @param config.luaRecords.healthChecks.maxConcurrent Maximum concurrent health checks
+      ## Limits parallel health check connections
+      ## Increase for deployments with many backend servers
+      ## PowerDNS default: 4, recommended: 8-64 for large deployments
+      ##
+      maxConcurrent: 16
+      
+      ## @param config.luaRecords.healthChecks.timeout Timeout for health check connections (ms)
+      ## How long to wait for health check response
+      ## Lower = faster failure detection, risk of false positives
+      ## Recommended: 1000-5000ms
+      ##
+      timeout: 2000
+    
+    ## @param config.luaRecords.axfrFormat AXFR format for LUA records
+    ## "native": Transfer LUA script as-is (requires LUA support on secondary)
+    ## "compat": Expand LUA records to regular records during AXFR
+    ## Use "native" when all servers support LUA, "compat" for mixed environments
+    ##
+    axfrFormat: "native"
+    
+    ## Shared Lua state configuration
+    ## For high-concurrency scenarios with many receiver threads
+    ##
+    sharedLua:
+      ## @param config.luaRecords.sharedLua.enabled Enable shared Lua states across threads
+      ## Reduces memory usage when using many receiver threads
+      ## May slightly reduce performance due to locking
+      ##
+      enabled: false
   
   ## @param config.extra Additional configuration as key-value pairs
   ## e.g:
@@ -635,7 +781,7 @@ geoipVolume:
   ## @param geoipVolume.enabled Enable GeoIP volume
   ##
   enabled: false
-  ## @param geoipVolume.type Volume type (pvc, configMap, hostPath, existingClaim)
+  ## @param geoipVolume.type Volume type (pvc, configMap, hostPath)
   ##
   type: pvc
   ## PVC configuration
@@ -644,9 +790,6 @@ geoipVolume:
     ## @param geoipVolume.pvc.claimName PVC claim name
     ##
     claimName: geoip-data
-    ## @param geoipVolume.pvc.readOnly Mount as read-only
-    ##
-    readOnly: true
   ## ConfigMap configuration
   ##
   configMap:
@@ -659,6 +802,202 @@ geoipVolume:
     ## @param geoipVolume.hostPath.path Host path
     ##
     path: /var/lib/GeoIP
+
+## @section GeoIP Update CronJob Configuration
+##
+## Automatic GeoIP database updates using MaxMind geoipupdate tool
+## Requires a MaxMind account (free GeoLite2 or paid GeoIP2)
+## ref: https://dev.maxmind.com/geoip/updating-databases
+##
+geoipUpdate:
+  ## @param geoipUpdate.enabled Enable GeoIP update CronJob
+  ##
+  enabled: false
+  
+  ## @param geoipUpdate.schedule Cron schedule for updates
+  ## Default: Every Wednesday at 00:00 UTC (MaxMind updates on Tuesdays)
+  ##
+  schedule: "0 0 * * 3"
+  
+  ## @param geoipUpdate.concurrencyPolicy How to handle concurrent jobs
+  ## Options: Allow, Forbid, Replace
+  ##
+  concurrencyPolicy: Forbid
+  
+  ## @param geoipUpdate.startingDeadlineSeconds Deadline for starting the job (seconds)
+  ##
+  startingDeadlineSeconds: 600
+  
+  ## @param geoipUpdate.successfulJobsHistoryLimit Number of successful jobs to keep
+  ##
+  successfulJobsHistoryLimit: 3
+  
+  ## @param geoipUpdate.failedJobsHistoryLimit Number of failed jobs to keep
+  ##
+  failedJobsHistoryLimit: 3
+  
+  ## @param geoipUpdate.ttlSecondsAfterFinished Auto-cleanup completed jobs after (seconds)
+  ##
+  ttlSecondsAfterFinished: 86400
+  
+  ## @param geoipUpdate.backoffLimit Number of retries before marking job as failed
+  ##
+  backoffLimit: 3
+  
+  ## @param geoipUpdate.suspend Suspend the CronJob
+  ##
+  suspend: false
+  
+  ## @param geoipUpdate.restartPolicy Pod restart policy
+  ##
+  restartPolicy: OnFailure
+  
+  ## MaxMind geoipupdate image
+  ## ref: https://hub.docker.com/r/maxmindinc/geoipupdate
+  ##
+  image:
+    registry: docker.io
+    repository: maxmindinc/geoipupdate
+    tag: v7
+    pullPolicy: IfNotPresent
+  
+  ## MaxMind account credentials
+  ## Get your free account at: https://www.maxmind.com/en/geolite2/signup
+  ##
+  ## @param geoipUpdate.accountId MaxMind account ID
+  ##
+  accountId: ""
+  
+  ## @param geoipUpdate.licenseKey MaxMind license key
+  ##
+  licenseKey: ""
+  
+  ## @param geoipUpdate.editionIds GeoIP database editions to download
+  ## Free editions: GeoLite2-City, GeoLite2-Country, GeoLite2-ASN
+  ## Paid editions: GeoIP2-City, GeoIP2-Country, GeoIP2-ISP, etc.
+  ##
+  editionIds:
+    - GeoLite2-City
+    - GeoLite2-Country
+    - GeoLite2-ASN
+  
+  ## @param geoipUpdate.databaseDirectory Directory to store GeoIP databases
+  ##
+  databaseDirectory: /usr/share/GeoIP
+  
+  ## @param geoipUpdate.frequency Run frequency in hours (0 = run once and exit)
+  ## Only used if running as a long-lived container, not relevant for CronJob
+  ##
+  frequency: 0
+  
+  ## @param geoipUpdate.host Override MaxMind host (for testing or proxy)
+  ##
+  host: ""
+  
+  ## @param geoipUpdate.proxy HTTP proxy for updates
+  ## Format: scheme://[user:password@]host:port
+  ##
+  proxy: ""
+  
+  ## @param geoipUpdate.proxyUserPassword Proxy authentication (stored in secret)
+  ##
+  proxyUserPassword: ""
+  
+  ## @param geoipUpdate.preserveFileTimes Preserve file modification times
+  ##
+  preserveFileTimes: false
+  
+  ## @param geoipUpdate.verbose Enable verbose logging
+  ##
+  verbose: false
+  
+  ## Use existing secret for MaxMind credentials
+  ##
+  existingSecret:
+    ## @param geoipUpdate.existingSecret.enabled Use existing secret
+    ##
+    enabled: false
+    ## @param geoipUpdate.existingSecret.name Secret name
+    ##
+    name: ""
+    ## @param geoipUpdate.existingSecret.keys Secret key mappings
+    ##
+    keys:
+      accountId: account-id
+      licenseKey: license-key
+      proxyUserPassword: proxy-user-password
+  
+  ## Resource requests and limits
+  ## @param geoipUpdate.resourcesPreset Resource preset (none, nano, micro, small, medium, large)
+  ##
+  resourcesPreset: "micro"
+  
+  ## @param geoipUpdate.resources Custom resource requests and limits
+  ##
+  resources: {}
+  
+  ## Security context
+  ##
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1000
+  
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    runAsNonRoot: true
+    readOnlyRootFilesystem: false
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+  
+  ## @param geoipUpdate.podAnnotations Additional pod annotations
+  ##
+  podAnnotations: {}
+  
+  ## @param geoipUpdate.nodeSelector Node selector
+  ##
+  nodeSelector: {}
+  
+  ## @param geoipUpdate.tolerations Tolerations
+  ##
+  tolerations: []
+  
+  ## @param geoipUpdate.affinity Affinity rules
+  ##
+  affinity: {}
+  
+  ## @param geoipUpdate.extraEnvVars Additional environment variables
+  ##
+  extraEnvVars: []
+  
+  ## @param geoipUpdate.extraVolumes Additional volumes
+  ##
+  extraVolumes: []
+  
+  ## @param geoipUpdate.extraVolumeMounts Additional volume mounts
+  ##
+  extraVolumeMounts: []
+  
+  ## Auto-reload configuration
+  ## When enabled, CronJob will calculate hash of GeoIP databases and update a ConfigMap
+  ## PowerDNS pods reference this ConfigMap, triggering rolling update when hash changes
+  ##
+  autoReload:
+    ## @param geoipUpdate.autoReload.enabled Enable auto-reload of PowerDNS pods after GeoIP update
+    ## Requires RBAC permissions to update ConfigMap
+    ##
+    enabled: true
+    
+    ## Image for hash calculation container (needs kubectl and sha256sum)
+    ##
+    image:
+      registry: docker.io
+      repository: bitnami/kubectl
+      tag: "1.31"
+      pullPolicy: IfNotPresent
 
 ## @section TSIG Keys Configuration
 

@@ -97,10 +97,64 @@ spec:
       {{- if .Values.terminationGracePeriodSeconds }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       {{- end }}
-      {{- if .Values.initContainers }}
       initContainers:
+        {{- if .Values.dbSync.enabled }}
+        - name: wait-for-db
+          {{- if eq .Values.database.type "mysql" }}
+          image: {{ template "powerdns-auth.dbSync.mysql.image" . }}
+          imagePullPolicy: {{ .Values.dbSync.mysql.image.pullPolicy }}
+          {{- else }}
+          image: {{ template "powerdns-auth.dbSync.postgresql.image" . }}
+          imagePullPolicy: {{ .Values.dbSync.postgresql.image.pullPolicy }}
+          {{- end }}
+          {{- if .Values.dbSync.containerSecurityContext.enabled }}
+          securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.dbSync.containerSecurityContext "context" $) | nindent 12 }}
+          {{- end }}
+          env:
+            {{- if .Values.database.existingSecret.enabled }}
+            - name: DB_USER
+              value: {{ include "powerdns-auth.databaseUsername" . }}
+            - name: DB_PASSWORD
+              value: {{ include "powerdns-auth.databasePassword" . | quote }}
+            {{- else }}
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns-auth.databaseSecretName" . }}
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns-auth.databaseSecretName" . }}
+                  key: DB_PASSWORD
+            {{- end }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              {{- if eq .Values.database.type "mysql" }}
+              until mysql -h "{{ include "powerdns-auth.databaseHost" . }}" -P "{{ include "powerdns-auth.databasePort" . }}" \
+                -u "${DB_USER}" -p"${DB_PASSWORD}" "{{ include "powerdns-auth.databaseName" . }}" \
+                -e "SELECT 1 FROM domains LIMIT 1" >/dev/null 2>&1; do
+                echo "Waiting for database schema to be ready..."
+                sleep 5
+              done
+              {{- else }}
+              export PGHOST="{{ include "powerdns-auth.databaseHost" . }}"
+              export PGPORT="{{ include "powerdns-auth.databasePort" . }}"
+              export PGDATABASE="{{ include "powerdns-auth.databaseName" . }}"
+              export PGUSER="${DB_USER}"
+              export PGPASSWORD="${DB_PASSWORD}"
+              until psql -c "SELECT 1 FROM domains LIMIT 1" >/dev/null 2>&1; do
+                echo "Waiting for database schema to be ready..."
+                sleep 5
+              done
+              {{- end }}
+              echo "Database schema is ready!"
+        {{- end }}
+        {{- if .Values.initContainers }}
         {{- include "common.tplvalues.render" (dict "value" .Values.initContainers "context" $) | nindent 8 }}
-      {{- end }}
+        {{- end }}
       containers:
         - name: powerdns-auth
           image: {{ template "powerdns-auth.image" . }}

@@ -263,16 +263,17 @@ helm uninstall my-pdns-auth
 | `database.type` | 数据库类型 | `postgresql` |
 | `database.connection.maxRetries` | 最大重试次数 | `15` |
 | `database.connection.retryInterval` | 重试间隔 (秒) | `5` |
-| `database.existingSecret.enabled` | 使用已有 Secret | `false` |
+| `database.existingSecret.enabled` | 使用已有 Secret (仅管理员凭据) | `false` |
 | `database.existingSecret.name` | Secret 名称 | `""` |
-| `database.existingSecret.adminPasswordKey` | 管理员密码键 | `admin-password` |
-| `database.existingSecret.userPasswordKey` | 用户密码键 | `user-password` |
+| `database.existingSecret.adminUserKey` | 管理员用户名键 | `user` |
+| `database.existingSecret.adminPasswordKey` | 管理员密码键 | `password` |
 | `database.postgresql.host` | PostgreSQL 主机 | `""` |
 | `database.postgresql.port` | PostgreSQL 端口 | `5432` |
 | `database.postgresql.database` | 数据库名 | `pdns` |
-| `database.postgresql.username` | 用户名 | `pdns` |
-| `database.postgresql.password` | 密码 | `pdns` |
-| `database.postgresql.adminUsername` | 管理员用户名 | `postgres` |
+| `database.postgresql.username` | 应用用户名 | `pdns` |
+| `database.postgresql.password` | 应用用户密码 | `pdns` |
+| `database.postgresql.adminUsername` | 管理员用户名 (existingSecret 禁用时) | `postgres` |
+| `database.postgresql.prepareStatements` | 使用预编译语句 (使用 PgBouncer 时设为 false) | `true` |
 | `database.postgresql.adminPassword` | 管理员密码 | `""` |
 | `database.mysql.host` | MySQL 主机 | `""` |
 | `database.mysql.port` | MySQL 端口 | `3306` |
@@ -565,13 +566,52 @@ database:
   type: postgresql
   existingSecret:
     enabled: true
-    name: pdns-db-credentials
-    adminPasswordKey: postgres-password
-    userPasswordKey: pdns-password
+    name: my-postgres-admin-secret
+    adminUserKey: username
+    adminPasswordKey: password
   postgresql:
     host: postgresql.database.svc.cluster.local
     database: pdns
     username: pdns
+    password: my-pdns-password  # 应用用户密码
+```
+
+### 使用 Percona PostgreSQL Operator (直连 Primary，推荐)
+
+```yaml
+database:
+  type: postgresql
+  existingSecret:
+    enabled: true
+    name: percona-postgresql-pg-pguser-postgres
+    adminUserKey: user
+    adminPasswordKey: password
+  postgresql:
+    host: percona-postgresql-pg-primary.kube-infra.svc.cluster.local  # 直连 Primary
+    port: 5432
+    database: pdns
+    username: pdns
+    password: my-pdns-password
+    prepareStatements: true  # 直连支持预编译语句，性能更好
+```
+
+### 使用 Percona PostgreSQL Operator (通过 PgBouncer 连接池)
+
+```yaml
+database:
+  type: postgresql
+  existingSecret:
+    enabled: true
+    name: percona-postgresql-pg-pguser-postgres
+    adminUserKey: user
+    adminPasswordKey: password
+  postgresql:
+    host: percona-postgresql-pg-pgbouncer.kube-infra.svc.cluster.local  # 通过 PgBouncer
+    port: 5432
+    database: pdns
+    username: pdns
+    password: my-pdns-password
+    prepareStatements: false  # PgBouncer 不支持预编译语句
 ```
 
 ### 启用监控

@@ -500,21 +500,22 @@ database:
     ## @param database.connection.retryInterval Retry interval in seconds
     ##
     retryInterval: 5
-  ## Use existing secret for database credentials
+  ## Use existing secret for database admin credentials (used by db-init job)
+  ## Note: Application user password always uses database.postgresql.password
   ##
   existingSecret:
-    ## @param database.existingSecret.enabled Enable using existing secret
+    ## @param database.existingSecret.enabled Enable using existing secret for admin credentials
     ##
     enabled: false
-    ## @param database.existingSecret.name Secret name
+    ## @param database.existingSecret.name Secret name containing admin credentials
     ##
     name: ""
-    ## @param database.existingSecret.adminPasswordKey Key for admin password
+    ## @param database.existingSecret.adminUserKey Key for admin username in the secret
     ##
-    adminPasswordKey: "admin-password"
-    ## @param database.existingSecret.userPasswordKey Key for user password
+    adminUserKey: "user"
+    ## @param database.existingSecret.adminPasswordKey Key for admin password in the secret
     ##
-    userPasswordKey: "user-password"
+    adminPasswordKey: "password"
   ## PostgreSQL configuration
   ##
   postgresql:
@@ -539,6 +540,9 @@ database:
     ## @param database.postgresql.adminPassword Admin password for db-init job (ignored if existingSecret.enabled)
     ##
     adminPassword: ""
+    ## @param database.postgresql.prepareStatements Use prepared statements for better performance (set to false when using PgBouncer)
+    ##
+    prepareStatements: true
   ## MySQL configuration
   ##
   mysql:

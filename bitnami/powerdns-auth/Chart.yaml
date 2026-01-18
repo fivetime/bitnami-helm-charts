@@ -4,7 +4,7 @@ annotations:
     - name: powerdns-auth
       image: docker.io/powerdns/pdns-auth-50:5.0.2
     - name: postgresql
-      image: docker.io/library/postgres:16-alpine
+      image: docker.io/library/postgres:17-alpine
     - name: mysql
       image: docker.io/library/mysql:8.0
   licenses: Apache-2.0
@@ -29,8 +29,8 @@ keywords:
 - dnssec
 - geoip
 maintainers:
-- name: Simon Li
-  url: https://github.com/simonli/powerdns-helm
+- name: Simon Zhou
+  url: https://github.com/fivetime/powerdns-helm
 name: powerdns-auth
 sources:
 - https://github.com/PowerDNS/pdns

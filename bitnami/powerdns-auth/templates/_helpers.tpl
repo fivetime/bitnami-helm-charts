@@ -302,6 +302,7 @@ gpgsql-dbname={{ include "powerdns-auth.databaseName" . }}
 gpgsql-user={{ include "powerdns-auth.databaseUsername" . }}
 gpgsql-password={{ include "powerdns-auth.databasePassword" . }}
 gpgsql-dnssec=yes
+gpgsql-prepare-statements={{ if .Values.database.postgresql.prepareStatements }}yes{{ else }}no{{ end }}
 {{- else }}
 launch={{ if .Values.geoip.enabled }}geoip,{{ end }}gmysql
 gmysql-host={{ include "powerdns-auth.databaseHost" . }}

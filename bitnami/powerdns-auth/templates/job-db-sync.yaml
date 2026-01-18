@@ -50,6 +50,12 @@ spec:
           resources: {{- include "common.resources.preset" (dict "type" .Values.dbSync.resourcesPreset) | nindent 12 }}
           {{- end }}
           env:
+            {{- if .Values.database.existingSecret.enabled }}
+            - name: DB_USER
+              value: {{ include "powerdns-auth.databaseUsername" . }}
+            - name: DB_PASSWORD
+              value: {{ include "powerdns-auth.databasePassword" . | quote }}
+            {{- else }}
             - name: DB_USER
               valueFrom:
                 secretKeyRef:
@@ -60,6 +66,7 @@ spec:
                 secretKeyRef:
                   name: {{ include "powerdns-auth.databaseSecretName" . }}
                   key: DB_PASSWORD
+            {{- end }}
           command:
             - /bin/bash
             - /scripts/db-sync.sh

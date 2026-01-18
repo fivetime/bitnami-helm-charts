@@ -9,7 +9,6 @@ on:
       - synchronize
     branches:
       - main
-      - bitnami:main
 # Remove all permissions by default
 permissions: {}
 jobs:
@@ -19,7 +18,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: actions/checkout@v4
         name: Checkout Repository
         with:
           ref: ${{ github.event.pull_request.head.ref }}

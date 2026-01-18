@@ -417,12 +417,15 @@ autoscaling:
     ##
     annotations: {}
     ## @param autoscaling.vpa.controlledResources VPA controlled resources (cpu, memory)
+    ## 注意：如果启用 VPA 但不配置 controlledResources，VPA 将不会生效
     ## e.g:
     ## controlledResources:
     ##   - cpu
     ##   - memory
     ##
-    controlledResources: []
+    controlledResources:
+      - cpu
+      - memory
     ## @param autoscaling.vpa.maxAllowed VPA max resources limits
     ## e.g:
     ## maxAllowed:
@@ -1076,15 +1079,103 @@ startupScript: |
   #!/bin/bash
   set -e
 
+  echo "=========================================="
   echo "Starting Apache Traffic Server..."
+  echo "=========================================="
 
-  # Show configuration
-  echo "Current configuration:"
+  # Show configuration files
+  echo "Configuration files:"
   ls -la /opt/etc/trafficserver/
 
-  # Start traffic_server in foreground
+  # Validate configuration (if traffic_ctl is available)
+  if command -v /opt/bin/traffic_ctl &> /dev/null; then
+    echo ""
+    echo "Validating configuration..."
+    # Note: traffic_ctl config requires traffic_server running, skip for now
+  fi
+
+  # Check critical directories
+  echo ""
+  echo "Checking directories..."
+  for dir in /opt/var/cache/trafficserver /opt/var/log/trafficserver /opt/var/trafficserver; do
+    if [ -d "$dir" ]; then
+      echo "  ✓ $dir exists"
+    else
+      echo "  ✗ $dir missing, creating..."
+      mkdir -p "$dir"
+    fi
+  done
+
+  # Check critical config files
+  echo ""
+  echo "Checking configuration files..."
+  for cfg in records.yaml remap.config; do
+    if [ -f "/opt/etc/trafficserver/$cfg" ]; then
+      echo "  ✓ $cfg exists"
+    else
+      echo "  ✗ $cfg missing!"
+      exit 1
+    fi
+  done
+
+  echo ""
   echo "Starting traffic_server..."
   exec /opt/bin/traffic_server
+
+## @param startupScriptWithLogForwarding Startup script with log forwarding to stdout
+## 启用 logsPersistence.toStdout 时使用此脚本，将日志转发到控制台
+##
+startupScriptWithLogForwarding: |
+  #!/bin/bash
+  set -e
+
+  echo "=========================================="
+  echo "Starting Apache Traffic Server with log forwarding..."
+  echo "=========================================="
+
+  # Show configuration files
+  echo "Configuration files:"
+  ls -la /opt/etc/trafficserver/
+
+  # Check critical directories
+  echo ""
+  echo "Checking directories..."
+  for dir in /opt/var/cache/trafficserver /opt/var/log/trafficserver /opt/var/trafficserver; do
+    if [ -d "$dir" ]; then
+      echo "  ✓ $dir exists"
+    else
+      echo "  ✗ $dir missing, creating..."
+      mkdir -p "$dir"
+    fi
+  done
+
+  # Check critical config files
+  echo ""
+  echo "Checking configuration files..."
+  for cfg in records.yaml remap.config; do
+    if [ -f "/opt/etc/trafficserver/$cfg" ]; then
+      echo "  ✓ $cfg exists"
+    else
+      echo "  ✗ $cfg missing!"
+      exit 1
+    fi
+  done
+
+  # Start traffic_server in background
+  echo ""
+  echo "Starting traffic_server..."
+  /opt/bin/traffic_server &
+  ATS_PID=$!
+
+  # Wait for log files to be created
+  sleep 3
+
+  # Tail logs to stdout for K8s log collection
+  echo "Forwarding logs to stdout for K8s log collection..."
+  tail -F /opt/var/log/trafficserver/*.log 2>/dev/null &
+
+  # Wait for traffic_server process
+  wait $ATS_PID
 
 ## @section Traffic Exposure parameters
 
@@ -1337,6 +1428,35 @@ persistence:
   ##
   selector: {}
   ## @param persistence.existingClaim Name of an existing PVC to use (only in `standalone` mode)
+  ##
+  existingClaim: ""
+
+## Logs Persistence Parameters
+## 日志持久化配置
+##
+logsPersistence:
+  ## @param logsPersistence.enabled Enable Apache Traffic Server logs persistence using PVC
+  ## 如果禁用，使用 emptyDir（Pod 重启后日志丢失）
+  ##
+  enabled: false
+  ## @param logsPersistence.toStdout Forward logs to stdout for Kubernetes log collection (Fluentd, Loki, etc.)
+  ## 启用后日志会输出到控制台，便于 K8s 日志采集系统收集（云原生最佳实践）
+  ##
+  toStdout: true
+  ## @param logsPersistence.storageClass PVC Storage Class for logs volume
+  ##
+  storageClass: ""
+  ## @param logsPersistence.accessModes PVC Access Modes for logs volume
+  ##
+  accessModes:
+    - ReadWriteOnce
+  ## @param logsPersistence.size PVC Storage Request for logs volume
+  ##
+  size: 10Gi
+  ## @param logsPersistence.annotations Annotations for the logs PVC
+  ##
+  annotations: {}
+  ## @param logsPersistence.existingClaim Name of an existing PVC to use for logs
   ##
   existingClaim: ""
 

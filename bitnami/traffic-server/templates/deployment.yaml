@@ -37,7 +37,44 @@ spec:
         checksum/remap-config: {{ include (print $.Template.BasePath "/remap-configmap.yaml") . | sha256sum }}
         checksum/plugin-config: {{ include (print $.Template.BasePath "/plugin-configmap.yaml") . | sha256sum }}
         checksum/storage-config: {{ include (print $.Template.BasePath "/storage-configmap.yaml") . | sha256sum }}
+        checksum/ip-allow-config: {{ include (print $.Template.BasePath "/ip-allow-configmap.yaml") . | sha256sum }}
         checksum/startup-script: {{ include (print $.Template.BasePath "/startup-configmap.yaml") . | sha256sum }}
+        {{- if or .Values.cacheConfig .Values.existingCacheConfigmap }}
+        checksum/cache-config: {{ include (print $.Template.BasePath "/cache-configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if or .Values.sniConfig .Values.existingSniConfigmap }}
+        checksum/sni-config: {{ include (print $.Template.BasePath "/sni-configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if or .Values.loggingConfig .Values.existingLoggingConfigmap }}
+        checksum/logging-config: {{ include (print $.Template.BasePath "/logging-configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if or .Values.parentConfig .Values.existingParentConfigmap }}
+        checksum/parent-config: {{ include (print $.Template.BasePath "/parent-configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if or .Values.strategiesConfig .Values.existingStrategiesConfigmap }}
+        checksum/strategies-config: {{ include (print $.Template.BasePath "/strategies-configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if or .Values.sslMulticertConfig .Values.existingSslMulticertConfigmap }}
+        checksum/ssl-multicert-config: {{ include (print $.Template.BasePath "/ssl-multicert-configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if or .Values.hostingConfig .Values.existingHostingConfigmap }}
+        checksum/hosting-config: {{ include (print $.Template.BasePath "/hosting-configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if or .Values.volumeConfig .Values.existingVolumeConfigmap }}
+        checksum/volume-config: {{ include (print $.Template.BasePath "/volume-configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if or .Values.splitdnsConfig .Values.existingSplitdnsConfigmap }}
+        checksum/splitdns-config: {{ include (print $.Template.BasePath "/splitdns-configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if or .Values.socksConfig .Values.existingSocksConfigmap }}
+        checksum/socks-config: {{ include (print $.Template.BasePath "/socks-configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if or .Values.jsonrpcConfig .Values.existingJsonrpcConfigmap }}
+        checksum/jsonrpc-config: {{ include (print $.Template.BasePath "/jsonrpc-configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if .Values.bodyFactory.enabled }}
+        checksum/body-factory: {{ include (print $.Template.BasePath "/body-factory-configmap.yaml") . | sha256sum }}
+        {{- end }}
     spec:
       {{- include "trafficserver.imagePullSecrets" . | nindent 6 }}
       shareProcessNamespace: {{ .Values.sidecarSingleProcessNamespace }}
@@ -271,7 +308,12 @@ spec:
           emptyDir: {}
           {{- end }}
         - name: logs
+          {{- if .Values.logsPersistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.logsPersistence.existingClaim | default (printf "%s-logs" (include "common.names.fullname" .)) }}
+          {{- else }}
           emptyDir: {}
+          {{- end }}
         - name: state
           emptyDir: {}
         - name: records-config

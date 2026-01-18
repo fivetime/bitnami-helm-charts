@@ -312,6 +312,53 @@ ingress:
   tls: true
 ```
 
+### 日志配置
+
+#### 方式一：输出到 stdout（推荐）
+
+默认启用，日志输出到标准输出，由 Kubernetes 日志采集系统（如 Fluentd、Loki、ELK）处理：
+
+```yaml
+logsPersistence:
+  toStdout: true  # 默认值
+  enabled: false
+```
+
+这是云原生最佳实践，适用于大多数场景。
+
+#### 方式二：日志持久化
+
+如果需要将日志写入持久化存储：
+
+```yaml
+logsPersistence:
+  enabled: true
+  toStdout: false
+  storageClass: "standard"
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+```
+
+> **注意**: 多副本部署时，建议使用 `toStdout: true`，因为共享日志 PVC 可能导致文件锁冲突。
+
+### RBAC 配置
+
+如果需要 Pod 访问 Kubernetes API（如读取 ConfigMap 或 Secret）：
+
+```yaml
+rbac:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: ["configmaps", "secrets"]
+      verbs: ["get", "list", "watch"]
+
+serviceAccount:
+  create: true
+  automountServiceAccountToken: true
+```
+
 ## 部署场景
 
 ### 场景一：开发测试环境
@@ -441,31 +488,92 @@ persistence:
 
 ### 场景四：容器镜像代理
 
+支持 Docker Hub、GHCR、GCR、Quay.io 等容器镜像仓库的代理和缓存，包含 SSL 和认证 Token 透传支持。
+
 ```yaml
 # registry-proxy-values.yaml
-remapConfig: |
-  # Docker Hub
-  map http://docker.mirrors.local/ https://registry-1.docker.io/
-  
-  # Google Container Registry
-  map http://gcr.mirrors.local/ https://gcr.io/
-  
-  # Quay.io
-  map http://quay.mirrors.local/ https://quay.io/
-
+# 核心配置 - 启用 SSL 连接到 HTTPS 源站
 recordsConfig:
   records:
     http:
+      server_ports: "8080 8080:ipv6"
       cache:
         cache_responses_to_cookies: 0
       insert_request_via_str: 0
       insert_response_via_str: 0
+    ssl:
+      client:
+        # 启用与上游 HTTPS 站点的 SSL 连接
+        verify:
+          server:
+            policy: PERMISSIVE
+        cert:
+          filename: ""
+        private_key:
+          filename: ""
+        CA:
+          cert:
+            filename: ""
 
+# URL 重映射配置
+remapConfig: |
+  # Docker Hub
+  map http://docker.mirrors.local/ https://registry-1.docker.io/
+
+  # GitHub Container Registry
+  map http://ghcr.mirrors.local/ https://ghcr.io/
+
+  # Google Container Registry
+  map http://gcr.mirrors.local/ https://gcr.io/
+
+  # Quay.io
+  map http://quay.mirrors.local/ https://quay.io/
+
+  # Kubernetes Container Registry
+  map http://registry-k8s.mirrors.local/ https://registry.k8s.io/
+
+# 缓存策略 - 支持认证透传
 cacheConfig: |
-  # 缓存镜像层 7 天
+  # 不缓存认证相关的请求
+  url_regex=/v2/token action=never-cache
+  url_regex=/token action=never-cache
+  url_regex=/oauth2/token action=never-cache
+  url_regex=/auth action=never-cache
+
+  # 不缓存 401/403 响应
+  dest_domain=. scheme=https response_code=401 action=never-cache
+  dest_domain=. scheme=https response_code=403 action=never-cache
+
+  # 缓存镜像层和 manifest (7 天)
   dest_domain=registry-1.docker.io ttl-in-cache=7d
+  dest_domain=ghcr.io ttl-in-cache=7d
   dest_domain=gcr.io ttl-in-cache=7d
   dest_domain=quay.io ttl-in-cache=7d
+  dest_domain=registry.k8s.io ttl-in-cache=7d
+```
+
+#### 客户端配置
+
+配置 Docker/containerd 使用代理：
+
+```bash
+# Docker daemon.json
+{
+  "registry-mirrors": ["http://docker.mirrors.local"]
+}
+
+# 或者在 pull 时指定
+docker pull docker.mirrors.local/library/nginx:latest
+```
+
+#### 私有仓库认证
+
+客户端登录后，Authorization header 会自动透传到上游仓库：
+
+```bash
+# 登录会话会透传认证
+docker login docker.mirrors.local -u username -p token
+docker pull docker.mirrors.local/myorg/private-image:tag
 ```
 
 ### 场景五：多租户隔离
@@ -504,12 +612,17 @@ containerSecurityContext:
 # 查看当前版本
 helm list -n trafficserver
 
-# 更新配置
+# 更新配置（使用 values 文件）
 helm upgrade ats ./trafficserver -n trafficserver -f my-values.yaml
+
+# 更新并保留之前的参数（不使用 values 文件时推荐）
+helm upgrade ats ./trafficserver -n trafficserver --reuse-values
 
 # 更新并等待完成
 helm upgrade ats ./trafficserver -n trafficserver -f my-values.yaml --wait --timeout 10m
 ```
+
+> **重要**: 如果不使用 `-f values.yaml`，请添加 `--reuse-values` 参数保留之前的配置，否则所有参数会恢复为默认值。
 
 ### 查看历史版本
 

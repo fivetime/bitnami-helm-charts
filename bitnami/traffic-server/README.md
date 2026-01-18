@@ -356,7 +356,7 @@ autoscaling:
       updateMode: Auto
 ```
 
-> **注意**: VPA 需要在集群中预先安装 [Vertical Pod Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)。
+> **注意**: VPA 需要在集群中预先安装 [Vertical Pod Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)。`controlledResources` 默认为 `["cpu", "memory"]`，如果设置为空数组会显示验证警告。
 
 ### Prometheus 监控
 
@@ -557,7 +557,7 @@ metrics:
 | `autoscaling.hpa.targetMemory`            | HPA 目标内存使用率百分比                                                               | `80`             |
 | `autoscaling.vpa.enabled`                 | 启用 VPA 垂直自动伸缩                                                                  | `false`          |
 | `autoscaling.vpa.annotations`             | VPA 资源注解                                                                           | `{}`             |
-| `autoscaling.vpa.controlledResources`     | VPA 控制的资源类型 (cpu, memory)                                                       | `[]`             |
+| `autoscaling.vpa.controlledResources`     | VPA 控制的资源类型 (cpu, memory)                                                       | `["cpu", "memory"]` |
 | `autoscaling.vpa.maxAllowed`              | VPA 最大资源限制                                                                       | `{}`             |
 | `autoscaling.vpa.minAllowed`              | VPA 最小资源限制                                                                       | `{}`             |
 | `autoscaling.vpa.controlledValues`        | VPA 控制值类型 (RequestsAndLimits, RequestsOnly)                                       | `""`             |
@@ -608,12 +608,26 @@ metrics:
 | `persistence.selector`       | 匹配现有持久卷的选择器                                                                 | `{}`             |
 | `persistence.existingClaim`  | 要使用的现有 PVC 的名称                                                                | `""`             |
 
+### 日志持久化参数
+
+| 名称                              | 描述                                                                           | 值               |
+| --------------------------------- | ------------------------------------------------------------------------------ | ---------------- |
+| `logsPersistence.enabled`         | 使用 PVC 启用日志持久化                                                        | `false`          |
+| `logsPersistence.toStdout`        | 将日志转发到 stdout，便于 K8s 日志采集（Fluentd、Loki 等）                     | `true`           |
+| `logsPersistence.storageClass`    | 日志卷的 PVC 存储类                                                            | `""`             |
+| `logsPersistence.accessModes`     | 日志卷的 PVC 访问模式                                                          | `["ReadWriteOnce"]` |
+| `logsPersistence.size`            | 日志卷的 PVC 存储请求                                                          | `10Gi`           |
+| `logsPersistence.annotations`     | 日志 PVC 的注释                                                                | `{}`             |
+| `logsPersistence.existingClaim`   | 要使用的现有日志 PVC 的名称                                                    | `""`             |
+
 ### RBAC 参数
 
 | 名称          | 描述                              | 值      |
 | ------------- | --------------------------------- | ------- |
 | `rbac.create` | 是否创建和使用 RBAC 资源          | `false` |
 | `rbac.rules`  | 自定义 RBAC 规则                  | `[]`    |
+
+> **注意**: 启用 RBAC 后，默认会创建 Role 和 RoleBinding，授予对 ConfigMap 和 Secret 的读取权限。可通过 `rbac.rules` 自定义规则。
 
 ### ServiceAccount 参数
 

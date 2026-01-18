@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(helm dependency:*)",
-      "Bash(helm template:*)"
+      "Bash(helm template:*)",
+      "Bash(.yml$ \")"
     ]
   }
 }

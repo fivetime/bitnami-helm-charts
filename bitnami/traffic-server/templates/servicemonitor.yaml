@@ -21,7 +21,7 @@ spec:
   jobLabel: {{ .Values.metrics.serviceMonitor.jobLabel }}
   {{- end }}
   endpoints:
-    - port: http
+    - port: metrics
       path: {{ .Values.metrics.path }}
       {{- if .Values.metrics.serviceMonitor.interval }}
       interval: {{ .Values.metrics.serviceMonitor.interval }}

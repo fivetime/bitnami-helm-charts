@@ -218,6 +218,7 @@ Compile all warnings into a single message, and call fail.
 {{- define "trafficserver.validateValues" -}}
 {{- $messages := list -}}
 {{- $messages := append $messages (include "trafficserver.validateValues.extraVolumes" .) -}}
+{{- $messages := append $messages (include "trafficserver.validateValues.vpa" .) -}}
 {{- $messages := without $messages "" -}}
 {{- $message := join "\n" $messages -}}
 
@@ -232,5 +233,16 @@ Compile all warnings into a single message, and call fail.
 trafficserver: missing-extra-volume-mounts
     You specified extra volumes but not mount points for them. Please set
     the extraVolumeMounts value or use them in sidecars
+{{- end -}}
+{{- end -}}
+
+{{/* Validate values of Apache Traffic Server - VPA controlledResources */}}
+{{- define "trafficserver.validateValues.vpa" -}}
+{{- if and .Values.autoscaling.vpa.enabled (not .Values.autoscaling.vpa.controlledResources) -}}
+trafficserver: vpa-missing-controlled-resources
+    VPA is enabled but controlledResources is empty. VPA will not manage any resources.
+    Please set autoscaling.vpa.controlledResources to ["cpu", "memory"] or similar.
+    VPA 已启用但 controlledResources 为空，VPA 将不会管理任何资源。
+    请设置 autoscaling.vpa.controlledResources 为 ["cpu", "memory"] 或类似值。
 {{- end -}}
 {{- end -}}

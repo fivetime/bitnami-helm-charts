@@ -27,10 +27,24 @@ Return the proper PostgreSQL image name for db-init
 {{- end -}}
 
 {{/*
+Return the proper MySQL image name for db-sync
+*/}}
+{{- define "powerdns-auth.dbSync.mysql.image" -}}
+{{ include "common.images.image" (dict "imageRoot" .Values.dbSync.mysql.image "global" .Values.global) }}
+{{- end -}}
+
+{{/*
+Return the proper PostgreSQL image name for db-sync
+*/}}
+{{- define "powerdns-auth.dbSync.postgresql.image" -}}
+{{ include "common.images.image" (dict "imageRoot" .Values.dbSync.postgresql.image "global" .Values.global) }}
+{{- end -}}
+
+{{/*
 Return the proper Docker Image Registry Secret Names
 */}}
 {{- define "powerdns-auth.imagePullSecrets" -}}
-{{- include "common.images.pullSecrets" (dict "images" (list .Values.image .Values.dbInit.mysql.image .Values.dbInit.postgresql.image) "global" .Values.global) -}}
+{{- include "common.images.pullSecrets" (dict "images" (list .Values.image .Values.dbInit.mysql.image .Values.dbInit.postgresql.image .Values.dbSync.mysql.image .Values.dbSync.postgresql.image) "global" .Values.global) -}}
 {{- end -}}
 
 {{/*

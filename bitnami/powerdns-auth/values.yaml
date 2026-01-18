@@ -1240,7 +1240,7 @@ dbInit:
     image:
       registry: docker.io
       repository: library/postgres
-      tag: "16-alpine"
+      tag: "17-alpine"
       pullPolicy: IfNotPresent
   ## @param dbInit.resources Set container requests and limits for db-init job
   ## @param dbInit.resourcesPreset Set container resources according to one common preset
@@ -1270,6 +1270,30 @@ dbSync:
   ## @param dbSync.enabled Enable database sync job
   ##
   enabled: true
+  ## MySQL image for db-sync job
+  ## @param dbSync.mysql.image.registry MySQL image registry
+  ## @param dbSync.mysql.image.repository MySQL image repository
+  ## @param dbSync.mysql.image.tag MySQL image tag
+  ## @param dbSync.mysql.image.pullPolicy MySQL image pull policy
+  ##
+  mysql:
+    image:
+      registry: docker.io
+      repository: library/mysql
+      tag: "8.0"
+      pullPolicy: IfNotPresent
+  ## PostgreSQL image for db-sync job
+  ## @param dbSync.postgresql.image.registry PostgreSQL image registry
+  ## @param dbSync.postgresql.image.repository PostgreSQL image repository
+  ## @param dbSync.postgresql.image.tag PostgreSQL image tag
+  ## @param dbSync.postgresql.image.pullPolicy PostgreSQL image pull policy
+  ##
+  postgresql:
+    image:
+      registry: docker.io
+      repository: library/postgres
+      tag: "17-alpine"
+      pullPolicy: IfNotPresent
   ## @param dbSync.resources Set container requests and limits for db-sync job
   ## @param dbSync.resourcesPreset Set container resources according to one common preset
   ##

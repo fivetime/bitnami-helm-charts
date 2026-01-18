@@ -39,8 +39,13 @@ spec:
       {{- end }}
       containers:
         - name: db-sync
-          image: {{ template "powerdns-auth.image" . }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if eq .Values.database.type "mysql" }}
+          image: {{ template "powerdns-auth.dbSync.mysql.image" . }}
+          imagePullPolicy: {{ .Values.dbSync.mysql.image.pullPolicy }}
+          {{- else }}
+          image: {{ template "powerdns-auth.dbSync.postgresql.image" . }}
+          imagePullPolicy: {{ .Values.dbSync.postgresql.image.pullPolicy }}
+          {{- end }}
           {{- if .Values.dbSync.containerSecurityContext.enabled }}
           securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.dbSync.containerSecurityContext "context" $) | nindent 12 }}
           {{- end }}

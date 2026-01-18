@@ -359,11 +359,10 @@ EOSQL
     fi
 
     # Grant privileges to powerdns user (idempotent)
-    echo "Granting privileges to {{ include "powerdns-auth.databaseUsername" . }}..."
-    psql <<EOSQL
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO {{ include "powerdns-auth.databaseUsername" . }};
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO {{ include "powerdns-auth.databaseUsername" . }};
-EOSQL
+    DB_APP_USER="{{ include "powerdns-auth.databaseUsername" . }}"
+    echo "Granting privileges to ${DB_APP_USER}..."
+    psql -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ${DB_APP_USER};"
+    psql -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${DB_APP_USER};"
     {{- end }}
 
     echo "Database sync completed successfully"

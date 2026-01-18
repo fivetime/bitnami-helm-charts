@@ -113,25 +113,50 @@ jobs:
               console.log(`\n✓ 已删除 ${totalDeleted} 个旧版本`);
             }
 
-      - name: Rebuild index.yaml
+      - name: Rebuild index.yaml from releases
         if: ${{ inputs.dry_run == false }}
         env:
-          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 安装 chart-releaser
-          curl -sSLo cr.tar.gz https://github.com/helm/chart-releaser/releases/download/v1.6.0/chart-releaser_1.6.0_linux_amd64.tar.gz
-          tar -xzf cr.tar.gz cr
-          chmod +x cr
+          set -e
           
-          # 清空旧的 index.yaml
-          rm -f index.yaml
+          # 创建临时目录存放 chart 包
+          mkdir -p .charts
           
-          # 重新生成 index.yaml
-          ./cr index \
-            --owner fivetime \
-            --git-repo bitnami-helm-charts \
-            --pages-branch gh-pages \
-            --token "$CR_TOKEN" \
-            --push
+          # 获取所有 releases 并下载 chart 包
+          echo "下载所有 chart 包..."
+          gh release list --limit 200 --json tagName,assets -q '.[] | select(.assets | length > 0) | .assets[].url' | while read url; do
+            if [[ "$url" == *.tgz ]]; then
+              echo "  下载: $(basename $url)"
+              curl -sSL -o ".charts/$(basename $url)" "$url"
+            fi
+          done
           
-          echo "✓ index.yaml 已重新生成"
+          # 统计下载的包
+          count=$(ls -1 .charts/*.tgz 2>/dev/null | wc -l)
+          echo "共下载 $count 个 chart 包"
+          
+          if [ "$count" -eq 0 ]; then
+            echo "没有找到 chart 包，跳过"
+            exit 0
+          fi
+          
+          # 生成新的 index.yaml
+          echo "生成 index.yaml..."
+          helm repo index .charts --url https://github.com/fivetime/bitnami-helm-charts/releases/download
+          
+          # 替换旧的 index.yaml
+          mv .charts/index.yaml index.yaml
+          
+          # 提交更改
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.yaml
+          
+          if git diff --cached --quiet; then
+            echo "index.yaml 无变化"
+          else
+            git commit -m "Rebuild index.yaml from releases"
+            git push
+            echo "✓ index.yaml 已重新生成并推送"
+          fi

@@ -359,7 +359,6 @@ EOSQL
     fi
 
     # Grant privileges to powerdns user (idempotent)
-    DB_APP_USER="{{ include "powerdns-auth.databaseUsername" . }}"
     echo "Granting privileges to ${DB_APP_USER}..."
     psql -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ${DB_APP_USER};"
     psql -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${DB_APP_USER};"

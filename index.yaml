@@ -1,5 +1,50 @@
 apiVersion: v1
 entries:
+  powerdns-admin:
+  - annotations:
+      category: Infrastructure
+      images: |
+        - name: powerdns-admin
+          image: docker.io/powerdnsadmin/pda-legacy:v0.4.2
+        - name: postgresql
+          image: docker.io/bitnami/postgresql:16
+        - name: mariadb
+          image: docker.io/bitnami/mariadb:11.2
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.4.2
+    created: "2026-01-18T14:07:08.328044307Z"
+    dependencies:
+    - name: common
+      repository: file://../common
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: PowerDNS-Admin is a PowerDNS web interface with advanced features
+      including user management, zone templating, LDAP/OAuth/SAML authentication,
+      two-factor authentication, and API access.
+    digest: f815898da8a2eede61c16cea29a4cd598cf183fb76495e5d5c7d2f8b4fc53c84
+    home: https://github.com/PowerDNS-Admin/PowerDNS-Admin
+    icon: https://raw.githubusercontent.com/PowerDNS-Admin/PowerDNS-Admin/master/powerdnsadmin/static/img/favicon.png
+    keywords:
+    - dns
+    - powerdns
+    - admin
+    - web-interface
+    - management
+    - ldap
+    - oauth
+    - saml
+    maintainers:
+    - name: Simon Li
+      url: https://github.com/simonli/powerdns-helm
+    name: powerdns-admin
+    sources:
+    - https://github.com/PowerDNS-Admin/PowerDNS-Admin
+    - https://github.com/PowerDNS-Admin/PowerDNS-Admin/wiki
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/powerdns-admin-2.0.2/powerdns-admin-2.0.2.tgz
+    version: 2.0.2
   powerdns-auth:
   - annotations:
       category: Infrastructure
@@ -43,4 +88,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/powerdns-auth-1.3.0/powerdns-auth-1.3.0.tgz
     version: 1.3.0
-generated: "2026-01-18T10:57:49.749168032Z"
+generated: "2026-01-18T14:07:08.526214335Z"

@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   # 确保 gh-pages 分支存在
-  ensure-gh-pages:
+  ensure:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -54,7 +54,7 @@ jobs:
           fi
 
   release:
-    needs: ensure-gh-pages
+    needs: ensure
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

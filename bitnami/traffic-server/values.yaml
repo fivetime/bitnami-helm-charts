@@ -635,10 +635,15 @@ recordsConfig:
         CA:
           cert:
             filename: null
+        cert:
+          filename: null
         verify:
           server:
             policy: PERMISSIVE
             properties: ALL
+      ## Enable HTTPS to origin servers
+      origin_server:
+        max_retry: 3
     ## URL remap
     url_remap:
       pristine_host_hdr: 0
@@ -650,11 +655,67 @@ recordsConfig:
 ## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/remap.config.en.html
 ##
 remapConfig: |
-  # Example remap rules
-  # Ubuntu mirror
-  # map http://ubuntu.mirrors.example.local/ http://jp.archive.ubuntu.com/ubuntu/
-  # Debian mirror
-  # map http://debian.mirrors.example.local/ http://deb.debian.org/debian/
+  ##############################################
+  # Linux Distribution Mirrors
+  ##############################################
+
+  # Ubuntu
+  map http://ubuntu.mirrors.local/ http://archive.ubuntu.com/ubuntu/
+  map http://ubuntu-security.mirrors.local/ http://security.ubuntu.com/ubuntu/
+
+  # Debian
+  map http://debian.mirrors.local/ http://deb.debian.org/debian/
+  map http://debian-security.mirrors.local/ http://deb.debian.org/debian-security/
+
+  # CentOS Stream
+  map http://centos.mirrors.local/ http://mirror.stream.centos.org/
+
+  # Rocky Linux
+  map http://rocky.mirrors.local/ http://download.rockylinux.org/pub/rocky/
+
+  # AlmaLinux
+  map http://alma.mirrors.local/ http://repo.almalinux.org/almalinux/
+
+  # Fedora
+  map http://fedora.mirrors.local/ http://download.fedoraproject.org/pub/fedora/linux/
+
+  # EPEL
+  map http://epel.mirrors.local/ http://download.fedoraproject.org/pub/epel/
+
+  # Arch Linux
+  map http://arch.mirrors.local/ http://geo.mirror.pkgbuild.com/
+
+  # openSUSE
+  map http://opensuse.mirrors.local/ http://download.opensuse.org/
+
+  # Alpine Linux
+  map http://alpine.mirrors.local/ http://dl-cdn.alpinelinux.org/alpine/
+
+  ##############################################
+  # Container Registries
+  ##############################################
+
+  # Docker Hub
+  map http://docker.mirrors.local/ https://registry-1.docker.io/
+  map http://docker-auth.mirrors.local/ https://auth.docker.io/
+
+  # GitHub Container Registry
+  map http://ghcr.mirrors.local/ https://ghcr.io/
+
+  # Google Container Registry
+  map http://gcr.mirrors.local/ https://gcr.io/
+
+  # Kubernetes Registry
+  map http://k8s.mirrors.local/ https://registry.k8s.io/
+
+  # Quay.io
+  map http://quay.mirrors.local/ https://quay.io/
+
+  # Elastic
+  map http://elastic.mirrors.local/ https://docker.elastic.co/
+
+  # NVIDIA Container Registry
+  map http://nvcr.mirrors.local/ https://nvcr.io/
 
 ## @param pluginConfig Apache Traffic Server plugin.config configuration
 ## This will be used for /opt/etc/trafficserver/plugin.config
@@ -746,7 +807,25 @@ loggingConfig: |
 ##   dest_domain=static.example.com ttl-in-cache=7d
 ##   url_regex=\.jpg$ ttl-in-cache=30d
 ##
-cacheConfig: ""
+cacheConfig: |
+  # Do not cache authentication endpoints for container registries
+  dest_domain=auth.docker.io action=never-cache
+  dest_domain=token.actions.githubusercontent.com action=never-cache
+  # Do not cache 401/403 responses
+  url_regex=. response_code=401 action=never-cache
+  url_regex=. response_code=403 action=never-cache
+  # Cache container manifests for shorter time (they change more often)
+  url_regex=/v2/.*/manifests/ ttl-in-cache=1h
+  # Cache container blobs for longer time (content-addressable, immutable)
+  url_regex=/v2/.*/blobs/ ttl-in-cache=30d
+  # Cache Linux package metadata for shorter time
+  url_regex=Packages\.gz$ ttl-in-cache=1h
+  url_regex=Release$ ttl-in-cache=1h
+  url_regex=repomd\.xml$ ttl-in-cache=1h
+  # Cache Linux packages for longer time
+  url_regex=\.deb$ ttl-in-cache=30d
+  url_regex=\.rpm$ ttl-in-cache=30d
+  url_regex=\.pkg\.tar\.(xz|zst)$ ttl-in-cache=30d
 
 ## @param parentConfig Apache Traffic Server parent.config configuration
 ## This will be used for /opt/etc/trafficserver/parent.config

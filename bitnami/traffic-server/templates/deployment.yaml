@@ -177,6 +177,8 @@ spec:
               mountPath: /opt/var/cache/trafficserver
             - name: logs
               mountPath: /opt/var/log/trafficserver
+            - name: state
+              mountPath: /opt/var/trafficserver
             - name: records-config
               mountPath: /opt/etc/trafficserver/records.yaml
               subPath: records.yaml
@@ -269,6 +271,8 @@ spec:
           emptyDir: {}
           {{- end }}
         - name: logs
+          emptyDir: {}
+        - name: state
           emptyDir: {}
         - name: records-config
           configMap:

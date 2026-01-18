@@ -996,36 +996,16 @@ existingJsonrpcConfigmap: ""
 startupScript: |
   #!/bin/bash
   set -e
-  
+
   echo "Starting Apache Traffic Server..."
-  
-  # Ensure directories exist
-  mkdir -p /opt/var/cache/trafficserver
-  mkdir -p /opt/var/log/trafficserver
-  mkdir -p /opt/var/trafficserver
-  
-  # Remove legacy records.config if exists (ATS 10.x uses records.yaml)
-  if [ -f /opt/etc/trafficserver/records.config ]; then
-    echo "Removing legacy records.config"
-    rm -f /opt/etc/trafficserver/records.config
-  fi
-  
+
   # Show configuration
   echo "Current configuration:"
   ls -la /opt/etc/trafficserver/
-  
-  # Start traffic_server
+
+  # Start traffic_server in foreground
   echo "Starting traffic_server..."
-  /opt/bin/traffic_server &
-  
-  # Wait for startup
-  sleep 5
-  
-  # Keep container running and tail logs
-  echo "ATS started, tailing logs..."
-  mkdir -p /opt/var/log/trafficserver
-  touch /opt/var/log/trafficserver/error.log
-  tail -f /opt/var/log/trafficserver/error.log
+  exec /opt/bin/traffic_server
 
 ## @section Traffic Exposure parameters
 

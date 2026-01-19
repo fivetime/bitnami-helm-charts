@@ -1,0 +1,29 @@
+{{- /*
+Copyright Simon Li. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if .Values.hashConfigMap.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "geoip-database.hashConfigMapName" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  # This ConfigMap is updated by the geoip-update job
+  # Dependent pods can use this hash as an annotation to trigger rolling updates
+  #
+  # Example usage in a Deployment:
+  #   spec:
+  #     template:
+  #       metadata:
+  #         annotations:
+  #           geoip-database/hash: {{ "{{ .Values.geoipHashConfigMap }}" }}
+  #
+  hash: "initial"
+  updatedAt: "{{ now | date "2006-01-02T15:04:05Z" }}"
+{{- end }}

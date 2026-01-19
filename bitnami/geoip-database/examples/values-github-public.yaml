@@ -1,0 +1,31 @@
+# 示例配置：GitHub Relay 模式（公开仓库）
+#
+# 使用方法:
+#   helm install geoip ./geoip-database -f examples/values-github-public.yaml
+
+source:
+  type: github
+  github:
+    owner: "YOUR_GITHUB_USERNAME"
+    repo: "geoip-update-relay"
+    # 公开仓库不需要 token
+
+storage:
+  storageClass: "nfs-client"  # 替换为你的 RWX StorageClass
+  size: 1Gi
+
+databases:
+  editionIds:
+    - GeoLite2-City
+    - GeoLite2-Country
+    - GeoLite2-ASN
+
+update:
+  enabled: true
+  schedule: "0 3 * * *"
+  verbose: true
+  image:
+    registry: ghcr.io
+    repository: YOUR_GITHUB_USERNAME/geoip-update-relay
+    tag: latest
+    pullPolicy: Always

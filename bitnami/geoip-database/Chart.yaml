@@ -1,0 +1,22 @@
+apiVersion: v2
+name: geoip-database
+description: GeoIP Database as a Service - Shared GeoLite2/GeoIP2 databases via RWX PVC
+type: application
+version: 0.1.0
+appVersion: "2025.01"
+home: https://github.com/maxmind/geoipupdate
+sources:
+  - https://github.com/maxmind/geoipupdate
+  - https://dev.maxmind.com/geoip/geolite2-free-geolocation-data
+maintainers:
+  - name: Simon Li
+keywords:
+  - geoip
+  - geolite2
+  - maxmind
+  - ip-geolocation
+  - database
+dependencies:
+  - name: common
+    version: 2.x.x
+    repository: oci://registry-1.docker.io/bitnamicharts

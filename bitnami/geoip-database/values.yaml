@@ -1,0 +1,290 @@
+## @section Global parameters
+## Global Docker image parameters
+##
+global:
+  ## @param global.imageRegistry Global Docker image registry
+  ##
+  imageRegistry: ""
+  ## @param global.imagePullSecrets Global Docker registry secret names as an array
+  ##
+  imagePullSecrets: []
+  ## @param global.storageClass Global StorageClass for Persistent Volume(s)
+  ##
+  storageClass: ""
+
+## @section Common parameters
+##
+## @param nameOverride String to partially override common.names.fullname
+##
+nameOverride: ""
+## @param fullnameOverride String to fully override common.names.fullname
+##
+fullnameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+##
+namespaceOverride: ""
+## @param commonLabels Labels to add to all deployed objects
+##
+commonLabels: {}
+## @param commonAnnotations Annotations to add to all deployed objects
+##
+commonAnnotations: {}
+
+## @section Storage Configuration
+##
+storage:
+  ## @param storage.storageClass StorageClass for RWX PVC (must support ReadWriteMany)
+  ## Examples: nfs, cephfs, azurefile, efs
+  ##
+  storageClass: ""
+  ## @param storage.accessModes PVC access modes
+  ##
+  accessModes:
+    - ReadWriteMany
+  ## @param storage.size PVC size
+  ##
+  size: 1Gi
+  ## @param storage.existingClaim Use existing PVC instead of creating one
+  ##
+  existingClaim: ""
+  ## @param storage.resourcePolicy Set to "keep" to prevent PVC deletion on helm uninstall
+  ## This adds the "helm.sh/resource-policy": keep annotation
+  ##
+  resourcePolicy: ""
+  ## @param storage.annotations Additional annotations for PVC
+  ##
+  annotations: {}
+
+## @section Data Source Configuration
+## Choose between MaxMind direct or GitHub relay mode
+##
+source:
+  ## @param source.type Data source type: "maxmind" or "github"
+  ##
+  type: "maxmind"
+  
+  ## MaxMind direct mode configuration
+  ## Used when source.type is "maxmind"
+  ##
+  maxmind:
+    ## @param source.maxmind.accountId MaxMind account ID
+    ##
+    accountId: ""
+    ## @param source.maxmind.licenseKey MaxMind license key
+    ##
+    licenseKey: ""
+    ## @param source.maxmind.host Override MaxMind host (for testing or proxy)
+    ##
+    host: ""
+    ## @param source.maxmind.proxy HTTP proxy for updates
+    ##
+    proxy: ""
+    ## @param source.maxmind.proxyUserPassword Proxy authentication
+    ##
+    proxyUserPassword: ""
+  
+  ## GitHub relay mode configuration
+  ## Used when source.type is "github"
+  ##
+  github:
+    ## @param source.github.owner GitHub repository owner
+    ##
+    owner: ""
+    ## @param source.github.repo GitHub repository name
+    ##
+    repo: "geoip-update-relay"
+    ## @param source.github.token GitHub token (required for private repos)
+    ##
+    token: ""
+  
+  ## @param source.existingSecret Use existing secret for credentials
+  ##
+  existingSecret:
+    enabled: false
+    name: ""
+    keys:
+      accountId: account-id
+      licenseKey: license-key
+      proxyUserPassword: proxy-user-password
+      githubToken: github-token
+
+## @section Database Configuration
+##
+databases:
+  ## @param databases.editionIds GeoIP database editions to download
+  ## Free editions: GeoLite2-City, GeoLite2-Country, GeoLite2-ASN
+  ## Paid editions: GeoIP2-City, GeoIP2-Country, GeoIP2-ISP, etc.
+  ##
+  editionIds:
+    - GeoLite2-City
+    - GeoLite2-Country
+    - GeoLite2-ASN
+  ## @param databases.directory Directory to store GeoIP databases (inside PVC)
+  ##
+  directory: /usr/share/GeoIP
+  ## @param databases.preserveFileTimes Preserve file modification times
+  ##
+  preserveFileTimes: false
+
+## @section Update Job Configuration
+##
+update:
+  ## @param update.enabled Enable automatic database updates via CronJob
+  ##
+  enabled: true
+  ## @param update.schedule CronJob schedule (default: daily at 03:00 UTC)
+  ##
+  schedule: "0 3 * * *"
+  ## @param update.runOnInstall Run initial update job on Helm install
+  ##
+  runOnInstall: true
+  ## @param update.ttlSecondsAfterFinished TTL for completed jobs
+  ##
+  ttlSecondsAfterFinished: 86400
+  ## @param update.backoffLimit Job retry limit
+  ##
+  backoffLimit: 3
+  ## @param update.restartPolicy Job restart policy
+  ##
+  restartPolicy: OnFailure
+  ## @param update.startingDeadlineSeconds Deadline in seconds for starting the job if it misses scheduled time
+  ##
+  startingDeadlineSeconds: 600
+  
+  ## Update job image configuration
+  ##
+  image:
+    ## @param update.image.registry Image registry
+    ##
+    registry: ghcr.io
+    ## @param update.image.repository Image repository
+    ## Use maxmind/geoipupdate for MaxMind mode
+    ## Use YOUR_USER/geoip-update-relay for GitHub mode
+    ##
+    repository: maxmind/geoipupdate
+    ## @param update.image.tag Image tag
+    ##
+    tag: v7.1
+    ## @param update.image.pullPolicy Image pull policy
+    ##
+    pullPolicy: IfNotPresent
+    ## @param update.image.pullSecrets Image pull secrets (for private registries)
+    ##
+    pullSecrets: []
+  
+  ## kubectl image for hash-update container
+  ##
+  kubectlImage:
+    ## @param update.kubectlImage.registry kubectl image registry
+    ##
+    registry: docker.io
+    ## @param update.kubectlImage.repository kubectl image repository
+    ##
+    repository: bitnami/kubectl
+    ## @param update.kubectlImage.tag kubectl image tag
+    ##
+    tag: "1.31"
+    ## @param update.kubectlImage.pullPolicy kubectl image pull policy
+    ##
+    pullPolicy: IfNotPresent
+  
+  ## @param update.verbose Enable verbose logging
+  ##
+  verbose: false
+  
+  ## Resource configuration
+  ## @param update.resourcesPreset Resource preset (none, nano, micro, small, medium, large)
+  ##
+  resourcesPreset: "micro"
+  ## @param update.resources Custom resource requests and limits
+  ##
+  resources: {}
+  
+  ## Security context
+  ##
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    runAsNonRoot: true
+    readOnlyRootFilesystem: false
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+  
+  ## @param update.podAnnotations Additional pod annotations
+  ##
+  podAnnotations: {}
+  ## @param update.podLabels Additional pod labels
+  ##
+  podLabels: {}
+  ## @param update.nodeSelector Node selector
+  ##
+  nodeSelector: {}
+  ## @param update.tolerations Tolerations
+  ##
+  tolerations: []
+  ## @param update.affinity Affinity rules
+  ##
+  affinity: {}
+  ## @param update.topologySpreadConstraints Topology spread constraints
+  ##
+  topologySpreadConstraints: []
+  ## @param update.priorityClassName Priority class name
+  ##
+  priorityClassName: ""
+  ## @param update.extraEnvVars Additional environment variables
+  ##
+  extraEnvVars: []
+  ## @param update.extraVolumes Additional volumes
+  ##
+  extraVolumes: []
+  ## @param update.extraVolumeMounts Additional volume mounts
+  ##
+  extraVolumeMounts: []
+
+## @section Hash ConfigMap (for dependent apps to detect updates)
+##
+hashConfigMap:
+  ## @param hashConfigMap.enabled Create ConfigMap with database hash (for triggering rolling updates)
+  ##
+  enabled: true
+  ## @param hashConfigMap.name ConfigMap name (default: <release>-geoip-hash)
+  ##
+  name: ""
+
+## @section Service Account
+##
+serviceAccount:
+  ## @param serviceAccount.create Create ServiceAccount
+  ##
+  create: true
+  ## @param serviceAccount.name ServiceAccount name
+  ##
+  name: ""
+  ## @param serviceAccount.annotations ServiceAccount annotations
+  ##
+  annotations: {}
+
+## @section RBAC
+##
+rbac:
+  ## @param rbac.create Create RBAC resources (needed for hash ConfigMap updates)
+  ##
+  create: true
+
+## @section Extra Deploy
+##
+## @param extraDeploy Array of extra objects to deploy with the release
+##
+extraDeploy: []
+

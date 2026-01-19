@@ -1,0 +1,69 @@
+# 示例配置：GitHub Relay 模式（私有仓库）
+#
+# 前置条件:
+#   1. 创建 ghcr.io 拉取密钥:
+#      kubectl create secret docker-registry ghcr-pull-secret \
+#        --docker-server=ghcr.io \
+#        --docker-username=YOUR_GITHUB_USERNAME \
+#        --docker-password=YOUR_GITHUB_PAT \
+#        -n YOUR_NAMESPACE
+#
+# 使用方法:
+#   helm install geoip ./geoip-database -f examples/values-github-private.yaml
+
+source:
+  type: github
+  github:
+    owner: "YOUR_GITHUB_USERNAME"
+    repo: "geoip-update-relay"
+    # 私有仓库需要 token 来下载 releases
+    token: "ghp_xxxxxxxxxxxx"
+
+storage:
+  storageClass: "nfs-client"  # 替换为你的 RWX StorageClass
+  size: 1Gi
+
+databases:
+  editionIds:
+    - GeoLite2-City
+    - GeoLite2-Country
+    - GeoLite2-ASN
+
+update:
+  enabled: true
+  schedule: "0 3 * * *"
+  verbose: true
+  image:
+    registry: ghcr.io
+    repository: YOUR_GITHUB_USERNAME/geoip-update-relay
+    tag: latest
+    pullPolicy: Always
+    # 私有镜像需要 pull secret
+    pullSecrets:
+      - ghcr-pull-secret
+
+# ============================================================================
+# 使用 existingSecret 的方式 (推荐用于生产环境)
+# ============================================================================
+#
+# 1. 先创建 Secret:
+#
+#    kubectl create secret generic geoip-credentials \
+#      --from-literal=github-token=ghp_xxxxxxxxxxxx \
+#      -n YOUR_NAMESPACE
+#
+# 2. 然后修改配置:
+#
+#    source:
+#      type: github
+#      github:
+#        owner: "YOUR_GITHUB_USERNAME"
+#        repo: "geoip-update-relay"
+#        # 不要在这里设置 token
+#      existingSecret:
+#        enabled: true
+#        name: "geoip-credentials"
+#        keys:
+#          githubToken: github-token
+#
+# ============================================================================

@@ -1,0 +1,38 @@
+{{- /*
+Copyright Simon Li. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if .Values.update.runOnInstall }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "common.names.fullname" . }}-init
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: geoip-init
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded,hook-failed
+    {{- if .Values.commonAnnotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.update.ttlSecondsAfterFinished }}
+  ttlSecondsAfterFinished: {{ .Values.update.ttlSecondsAfterFinished }}
+  {{- end }}
+  backoffLimit: {{ .Values.update.backoffLimit | default 3 }}
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 8 }}
+        app.kubernetes.io/component: geoip-init
+        {{- if .Values.update.podLabels }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.update.podLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+      {{- if .Values.update.podAnnotations }}
+      annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.update.podAnnotations "context" $ ) | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- include "geoip-database.update.podSpec" . | nindent 6 }}
+{{- end }}

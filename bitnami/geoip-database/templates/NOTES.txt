@@ -1,0 +1,93 @@
+{{- /*
+Copyright Simon Li. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+🌍 GeoIP Database Service has been deployed!
+
+{{- if eq .Values.source.type "github" }}
+📦 Data Source: GitHub Relay ({{ .Values.source.github.owner }}/{{ .Values.source.github.repo }})
+{{- else }}
+📦 Data Source: MaxMind Direct
+{{- end }}
+
+📂 Databases: {{ join ", " .Values.databases.editionIds }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔗 To use the GeoIP databases in your pods, add this volume configuration:
+
+  volumes:
+    - name: geoip-data
+      persistentVolumeClaim:
+        claimName: {{ include "geoip-database.pvcName" . }}
+
+  volumeMounts:
+    - name: geoip-data
+      mountPath: {{ .Values.databases.directory }}
+      readOnly: true
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{{- if .Values.hashConfigMap.enabled }}
+🔄 To trigger pod rolling updates when databases change, add this annotation:
+
+  spec:
+    template:
+      metadata:
+        annotations:
+          checksum/geoip: {{ "{{ index (lookup \"v1\" \"ConfigMap\" .Release.Namespace \"" }}{{ include "geoip-database.hashConfigMapName" . }}{{ "\").data \"hash\" }}" }}
+
+Or use Reloader (https://github.com/stakater/Reloader):
+
+  metadata:
+    annotations:
+      configmap.reloader.stakater.com/reload: "{{ include "geoip-database.hashConfigMapName" . }}"
+{{- end }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 Database file paths:
+{{- range .Values.databases.editionIds }}
+   - {{ $.Values.databases.directory }}/{{ . }}.mmdb
+{{- end }}
+
+{{- if .Values.update.enabled }}
+
+⏰ Update Schedule: {{ .Values.update.schedule }}
+{{- end }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 Example: Using with PowerDNS Auth
+
+  # In your powerdns-auth values.yaml:
+  geoipVolume:
+    enabled: true
+    type: existingClaim
+    existingClaim:
+      claimName: {{ include "geoip-database.pvcName" . }}
+
+  geoipUpdate:
+    enabled: false  # Disable built-in updater, use this chart instead
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 Example: Using with nginx (ngx_http_geoip2_module)
+
+  volumes:
+    - name: geoip
+      persistentVolumeClaim:
+        claimName: {{ include "geoip-database.pvcName" . }}
+  
+  containers:
+    - name: nginx
+      volumeMounts:
+        - name: geoip
+          mountPath: /usr/share/GeoIP
+          readOnly: true
+
+  # nginx.conf:
+  # geoip2 /usr/share/GeoIP/GeoLite2-Country.mmdb { ... }
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

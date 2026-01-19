@@ -1,0 +1,28 @@
+# 示例配置：MaxMind 直连模式
+#
+# 使用方法:
+#   helm install geoip ./geoip-database -f examples/values-maxmind.yaml
+
+source:
+  type: maxmind
+  maxmind:
+    accountId: "YOUR_ACCOUNT_ID"
+    licenseKey: "YOUR_LICENSE_KEY"
+
+storage:
+  storageClass: "nfs-client"  # 替换为你的 RWX StorageClass
+  size: 1Gi
+
+databases:
+  editionIds:
+    - GeoLite2-City
+    - GeoLite2-Country
+    - GeoLite2-ASN
+
+update:
+  enabled: true
+  schedule: "0 3 * * *"
+  verbose: true
+  image:
+    repository: maxmind/geoipupdate
+    tag: v7.1

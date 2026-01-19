@@ -1,0 +1,43 @@
+{{- /*
+Copyright Simon Li. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if .Values.update.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "common.names.fullname" . }}-update
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: geoip-update
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  schedule: {{ .Values.update.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  {{- if .Values.update.startingDeadlineSeconds }}
+  startingDeadlineSeconds: {{ .Values.update.startingDeadlineSeconds }}
+  {{- end }}
+  jobTemplate:
+    spec:
+      {{- if .Values.update.ttlSecondsAfterFinished }}
+      ttlSecondsAfterFinished: {{ .Values.update.ttlSecondsAfterFinished }}
+      {{- end }}
+      backoffLimit: {{ .Values.update.backoffLimit | default 3 }}
+      template:
+        metadata:
+          labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 12 }}
+            app.kubernetes.io/component: geoip-update
+            {{- if .Values.update.podLabels }}
+            {{- include "common.tplvalues.render" ( dict "value" .Values.update.podLabels "context" $ ) | nindent 12 }}
+            {{- end }}
+          {{- if .Values.update.podAnnotations }}
+          annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.update.podAnnotations "context" $ ) | nindent 12 }}
+          {{- end }}
+        spec:
+          {{- include "geoip-database.update.podSpec" . | nindent 10 }}
+{{- end }}

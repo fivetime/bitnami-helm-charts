@@ -1,0 +1,36 @@
+{{- /*
+Copyright Simon Li. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if not .Values.storage.existingClaim }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "geoip-database.pvcName" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+  {{- if or .Values.storage.annotations .Values.storage.resourcePolicy .Values.commonAnnotations }}
+  annotations:
+    {{- if .Values.storage.resourcePolicy }}
+    "helm.sh/resource-policy": {{ .Values.storage.resourcePolicy | quote }}
+    {{- end }}
+    {{- if .Values.commonAnnotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.storage.annotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.storage.annotations "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  accessModes:
+    {{- range .Values.storage.accessModes }}
+    - {{ . | quote }}
+    {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.size | quote }}
+  {{- if or .Values.storage.storageClass .Values.global.storageClass }}
+  storageClassName: {{ .Values.storage.storageClass | default .Values.global.storageClass | quote }}
+  {{- end }}
+{{- end }}

@@ -212,6 +212,15 @@ autoscaling:
     minReplicas: 3
     maxReplicas: 10
     targetCPU: 70
+
+# Service 配置 (Cilium BGP LoadBalancer 示例)
+service:
+  type: LoadBalancer
+  labels:
+    io.cilium/bgp: "private"           # Cilium BGP 选择器
+  annotations:
+    lbipam.cilium.io/ips: "10.224.18.17"  # 指定 LoadBalancer IP
+  externalTrafficPolicy: Local
 ```
 
 ### LUA Record 示例
@@ -613,6 +622,7 @@ kubectl create job --from=cronjob/pdns-auth-geoip-update geoip-manual-update
 | `service.loadBalancerSourceRanges` | LoadBalancer 源范围 | `[]` |
 | `service.externalTrafficPolicy` | 外部流量策略 | `Local` |
 | `service.annotations` | Service 注解 | `{}` |
+| `service.labels` | Service 自定义标签 (如 Cilium BGP) | `{}` |
 | `service.extraPorts` | 额外端口 | `[]` |
 | `service.sessionAffinity` | 会话亲和性 | `None` |
 | `service.sessionAffinityConfig` | 会话亲和性配置 | `{}` |

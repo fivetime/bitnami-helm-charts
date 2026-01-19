@@ -741,25 +741,10 @@ geoip:
 ##
 geoipZones:
   ## @param geoipZones.enabled Enable GeoIP zones ConfigMap
+  ## Required when using LUA Records with GeoIP functions (pickclosest, country, etc.)
+  ## The ConfigMap content is defined in templates/configmap-geoip-zones.yaml
   ##
   enabled: false
-  ## @param geoipZones.domains Domain configurations for GeoIP
-  ## Example:
-  ## domains:
-  ##   - domain: geo.example.com
-  ##     ttl: 300
-  ##     records:
-  ##       geo.example.com:
-  ##         - soa: ns1.example.com hostmaster.example.com 2024010101 7200 3600 1209600 3600
-  ##         - ns: ns1.example.com
-  ##       us.cdn.example.com:
-  ##         - a: 192.0.2.1
-  ##       eu.cdn.example.com:
-  ##         - a: 198.51.100.1
-  ##     services:
-  ##       www.example.com: '%co.cdn.example.com'
-  ##
-  domains: []
 
 ## GeoIP Volume Configuration
 ##

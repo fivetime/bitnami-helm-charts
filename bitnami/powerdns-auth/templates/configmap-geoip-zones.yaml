@@ -1,0 +1,40 @@
+{{/*
+GeoIP Zones ConfigMap
+Required when GeoIP backend is loaded (for LUA Records GeoDNS functions)
+*/}}
+{{- $needGeoipBackend := or .Values.geoip.enabled (and .Values.config.luaRecords.enabled .Values.config.luaRecords.geoipDatabaseFiles) }}
+{{- if and $needGeoipBackend .Values.geoipZones.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "common.names.fullname" . }}-geoip-zones
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: auth
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  geoip-zones.yaml: |
+    # GeoIP Backend zones configuration
+    # Zones are stored in PostgreSQL/MySQL via LUA Records
+    # This empty config satisfies GeoIP backend requirements
+
+    ## @param geoipZones.domains Domain configurations for GeoIP
+    ## Example:
+    ## domains:
+    ##   - domain: geo.example.com
+    ##     ttl: 300
+    ##     records:
+    ##       geo.example.com:
+    ##         - soa: ns1.example.com hostmaster.example.com 2024010101 7200 3600 1209600 3600
+    ##         - ns: ns1.example.com
+    ##       us.cdn.example.com:
+    ##         - a: 192.0.2.1
+    ##       eu.cdn.example.com:
+    ##         - a: 198.51.100.1
+    ##     services:
+    ##       www.example.com: '%co.cdn.example.com'
+    ##
+    domains: []
+{{- end }}

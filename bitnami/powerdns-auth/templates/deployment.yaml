@@ -295,6 +295,12 @@ spec:
               mountPath: /etc/pdns/geo-zones.yaml
               subPath: geo-zones.yaml
               readOnly: true
+            {{- else if and .Values.config.luaRecords.enabled .Values.config.luaRecords.geoipDatabaseFiles }}
+            # Empty zones file for GeoIP backend when used only for LUA Records
+            - name: geoip-zones
+              mountPath: /etc/pdns/geoip-zones.yaml
+              subPath: geoip-zones.yaml
+              readOnly: true
             {{- end }}
             {{- if .Values.geoipVolume.enabled }}
             - name: geoip-data
@@ -321,6 +327,12 @@ spec:
         - name: run
           emptyDir: {}
         {{- if and .Values.geoip.enabled .Values.geoipZones.enabled }}
+        - name: geoip-zones
+          configMap:
+            name: {{ include "common.names.fullname" . }}-geoip-zones
+            defaultMode: 0444
+        {{- else if and .Values.config.luaRecords.enabled .Values.config.luaRecords.geoipDatabaseFiles }}
+        # Empty zones file for GeoIP backend when used only for LUA Records
         - name: geoip-zones
           configMap:
             name: {{ include "common.names.fullname" . }}-geoip-zones

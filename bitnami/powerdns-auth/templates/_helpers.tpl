@@ -375,6 +375,8 @@ gmysql-timeout={{ .Values.database.mysql.timeout }}
 # GeoIP backend configuration (for LUA Records GeoDNS functions)
 {{- if and .Values.config.luaRecords.enabled .Values.config.luaRecords.geoipDatabaseFiles }}
 geoip-database-files={{ join " " .Values.config.luaRecords.geoipDatabaseFiles }}
+# Empty zones file required when geoip backend is loaded for LUA Records only
+geoip-zones-file=/etc/pdns/geoip-zones.yaml
 {{- else if .Values.geoip.enabled }}
 geoip-database-files={{ join " " .Values.geoip.databases }}
 {{- end }}

@@ -369,7 +369,7 @@ gpgsql-dbname={{ include "powerdns-auth.databaseName" . }}
 gpgsql-user={{ include "powerdns-auth.databaseUsername" . }}
 gpgsql-password={{ include "powerdns-auth.databasePassword" . }}
 gpgsql-dnssec=yes
-gpgsql-prepare-statements={{ if .Values.database.postgresql.prepareStatements }}yes{{ else }}no{{ end }}
+{{- /* NOTE: gpgsql-prepare-statements removed in PowerDNS 5.0 - prepared statements are always enabled */}}
 {{- else }}
 launch={{ if .Values.geoip.enabled }}geoip,{{ end }}gmysql
 gmysql-host={{ include "powerdns-auth.databaseHost" . }}

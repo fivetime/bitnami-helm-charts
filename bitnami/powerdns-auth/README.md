@@ -512,7 +512,6 @@ kubectl create job --from=cronjob/pdns-auth-geoip-update geoip-manual-update
 | `database.postgresql.username` | 应用用户名 | `pdns` |
 | `database.postgresql.password` | 应用用户密码 | `pdns` |
 | `database.postgresql.adminUsername` | 管理员用户名 (existingSecret 禁用时) | `postgres` |
-| `database.postgresql.prepareStatements` | 使用预编译语句 (使用 PgBouncer 时设为 false) | `true` |
 | `database.postgresql.adminPassword` | 管理员密码 | `""` |
 | `database.mysql.host` | MySQL 主机 | `""` |
 | `database.mysql.port` | MySQL 端口 | `3306` |
@@ -960,10 +959,11 @@ database:
     database: pdns
     username: pdns
     password: my-pdns-password
-    prepareStatements: true  # 直连支持预编译语句，性能更好
 ```
 
 ### 使用 Percona PostgreSQL Operator (通过 PgBouncer 连接池)
+
+> **注意**: PowerDNS 5.0+ 默认启用预编译语句且不可配置。如需使用 PgBouncer，请将其配置为 `session` 模式以支持预编译语句。
 
 ```yaml
 database:
@@ -974,12 +974,11 @@ database:
     adminUserKey: user
     adminPasswordKey: password
   postgresql:
-    host: percona-postgresql-pg-pgbouncer.kube-infra.svc.cluster.local  # 通过 PgBouncer
+    host: percona-postgresql-pg-pgbouncer.kube-infra.svc.cluster.local  # 通过 PgBouncer (需 session 模式)
     port: 5432
     database: pdns
     username: pdns
     password: my-pdns-password
-    prepareStatements: false  # PgBouncer 不支持预编译语句
 ```
 
 ### 启用监控

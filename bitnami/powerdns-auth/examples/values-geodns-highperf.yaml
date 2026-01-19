@@ -125,8 +125,6 @@ database:
     database: pdns
     username: pdns
     password: ""  # 使用 existingSecret
-    ## 预编译语句 - 提升数据库查询性能
-    prepareStatements: true
   ## 使用已有 Secret
   existingSecret:
     enabled: true

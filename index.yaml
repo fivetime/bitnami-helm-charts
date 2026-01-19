@@ -1431,6 +1431,34 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/flux-2.4.37/flux-2.4.37.tgz
     version: 2.4.37
+  geoip-database:
+  - apiVersion: v2
+    appVersion: "2025.01"
+    created: "2026-01-19T15:29:28.798532258Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 2.x.x
+    description: GeoIP Database as a Service - Shared GeoLite2/GeoIP2 databases via
+      RWX PVC
+    digest: 858cf060a30189022e00710d396da5c857e9a55a870dfcf0abccfc0c01934f4d
+    home: https://github.com/maxmind/geoipupdate
+    keywords:
+    - geoip
+    - geolite2
+    - maxmind
+    - ip-geolocation
+    - database
+    maintainers:
+    - name: Simon Li
+    name: geoip-database
+    sources:
+    - https://github.com/maxmind/geoipupdate
+    - https://dev.maxmind.com/geoip/geolite2-free-geolocation-data
+    type: application
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/geoip-database-0.1.0/geoip-database-0.1.0.tgz
+    version: 0.1.0
   ghost:
   - annotations:
       images: |
@@ -5259,4 +5287,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-01-19T05:04:47.911521451Z"
+generated: "2026-01-19T15:29:28.798565401Z"

@@ -183,7 +183,7 @@ update:
     repository: bitnami/kubectl
     ## @param update.kubectlImage.tag kubectl image tag
     ##
-    tag: "1.31"
+    tag: "latest"
     ## @param update.kubectlImage.pullPolicy kubectl image pull policy
     ##
     pullPolicy: IfNotPresent

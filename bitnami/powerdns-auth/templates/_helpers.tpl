@@ -326,9 +326,6 @@ forward-dnsupdate=yes
 {{- if .Values.config.luaRecords.enabled }}
 enable-lua-records=yes
 {{- with .Values.config.luaRecords }}
-{{- if .geoipDatabaseFiles }}
-geoip-database-files={{ join " " .geoipDatabaseFiles }}
-{{- end }}
 {{- if .ednsSubnetProcessing }}
 edns-subnet-processing=yes
 {{- end }}
@@ -361,8 +358,9 @@ lua-health-checks-timeout={{ .timeout }}
 {{- end }}
 
 # Backend configuration
+{{- $needGeoip := or .Values.geoip.enabled (and .Values.config.luaRecords.enabled .Values.config.luaRecords.geoipDatabaseFiles) }}
 {{- if eq .Values.database.type "postgresql" }}
-launch={{ if .Values.geoip.enabled }}geoip,{{ end }}gpgsql
+launch={{ if $needGeoip }}geoip,{{ end }}gpgsql
 gpgsql-host={{ include "powerdns-auth.databaseHost" . }}
 gpgsql-port={{ include "powerdns-auth.databasePort" . }}
 gpgsql-dbname={{ include "powerdns-auth.databaseName" . }}
@@ -371,7 +369,7 @@ gpgsql-password={{ include "powerdns-auth.databasePassword" . }}
 gpgsql-dnssec=yes
 {{- /* NOTE: gpgsql-prepare-statements removed in PowerDNS 5.0 - prepared statements are always enabled */}}
 {{- else }}
-launch={{ if .Values.geoip.enabled }}geoip,{{ end }}gmysql
+launch={{ if $needGeoip }}geoip,{{ end }}gmysql
 gmysql-host={{ include "powerdns-auth.databaseHost" . }}
 gmysql-port={{ include "powerdns-auth.databasePort" . }}
 gmysql-dbname={{ include "powerdns-auth.databaseName" . }}
@@ -381,15 +379,20 @@ gmysql-dnssec=yes
 gmysql-timeout={{ .Values.database.mysql.timeout }}
 {{- end }}
 
-{{- if .Values.geoip.enabled }}
-# GeoIP backend configuration
+{{- if $needGeoip }}
+# GeoIP backend configuration (for LUA Records GeoDNS functions)
+{{- if and .Values.config.luaRecords.enabled .Values.config.luaRecords.geoipDatabaseFiles }}
+geoip-database-files={{ join " " .Values.config.luaRecords.geoipDatabaseFiles }}
+{{- else if .Values.geoip.enabled }}
 geoip-database-files={{ join " " .Values.geoip.databases }}
+{{- end }}
+{{- if .Values.geoip.enabled }}
+{{- if .Values.geoip.zonesFile }}
 geoip-zones-file={{ .Values.geoip.zonesFile }}
-{{- if .Values.geoip.ednsSubnetProcessing }}
-edns-subnet-processing=yes
 {{- end }}
 {{- if .Values.geoip.dnssecKeydir }}
 geoip-dnssec-keydir={{ .Values.geoip.dnssecKeydir }}
+{{- end }}
 {{- end }}
 {{- end }}
 

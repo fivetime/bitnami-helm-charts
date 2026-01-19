@@ -166,10 +166,19 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout gh-pages
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          path: main
+
+      - name: Checkout gh-pages branch
         uses: actions/checkout@v4
         with:
           ref: gh-pages
+          path: gh-pages
+
+      - name: Copy index.html to gh-pages
+        run: cp main/.github/pages/index.html gh-pages/
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -177,7 +186,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: gh-pages
 
       - name: Deploy to GitHub Pages
         id: deployment

@@ -263,58 +263,23 @@ curl -X POST http://pdns-api:8081/api/v1/servers/localhost/zones/example.com./re
 4. **使用 reuseport** - 多副本场景下的关键配置
 5. **预热 GeoIP 数据库** - 首次查询会加载 mmdb 文件到内存
 
-### GeoIP 数据库更新
+### GeoIP 数据库配置
 
-Chart 内置了 GeoIP 数据库自动更新功能，通过 CronJob 定期从 MaxMind 下载最新数据库。
-
-**前置要求**: 注册免费的 MaxMind 账号获取 License Key: https://www.maxmind.com/en/geolite2/signup
+GeoIP 数据库由独立的 `geoip-database` Chart 管理，PowerDNS Auth 只作为消费端挂载 PVC。
 
 **配置方式**:
 
 ```yaml
-# 1. 创建 Secret 存储 MaxMind 凭据
-kubectl create secret generic maxmind-credentials \
-  --from-literal=account-id=YOUR_ACCOUNT_ID \
-  --from-literal=license-key=YOUR_LICENSE_KEY
+# 1. 先部署 geoip-database chart
+helm install geoip-database fivetime/geoip-database -n kube-infra
 
-# 2. 在 values.yaml 中启用自动更新
+# 2. 在 powerdns-auth values.yaml 中挂载 PVC
 geoipVolume:
   enabled: true
-  type: pvc
-  pvc:
-    claimName: geoip-data
-    readOnly: false  # 必须设为 false 以允许更新
-
-geoipUpdate:
-  enabled: true
-  schedule: "0 2 * * 3"  # 每周三凌晨 2 点
-  editionIds:
-    - GeoLite2-City
-    - GeoLite2-Country
-    - GeoLite2-ASN
-  existingSecret:
-    enabled: true
-    name: maxmind-credentials
+  existingClaim: geoip-database-data  # geoip-database chart 创建的 PVC
 ```
 
-**配置参数**:
-
-| 参数 | 描述 | 默认值 |
-|------|------|--------|
-| `geoipUpdate.enabled` | 启用自动更新 | `false` |
-| `geoipUpdate.schedule` | Cron 表达式 | `0 0 * * 3` |
-| `geoipUpdate.editionIds` | 数据库版本列表 | `[GeoLite2-City, GeoLite2-Country, GeoLite2-ASN]` |
-| `geoipUpdate.accountId` | MaxMind 账号 ID | `""` |
-| `geoipUpdate.licenseKey` | MaxMind License Key | `""` |
-| `geoipUpdate.existingSecret.enabled` | 使用已有 Secret | `false` |
-| `geoipUpdate.existingSecret.name` | Secret 名称 | `""` |
-
-**手动触发更新**:
-
-```bash
-# 创建一次性 Job 立即更新
-kubectl create job --from=cronjob/pdns-auth-geoip-update geoip-manual-update
-```
+**滚动更新**: 如需在数据库更新后自动重启 Pod，请监听 `geoip-database-hash` ConfigMap 的变化。
 
 ## 参数
 
@@ -548,49 +513,9 @@ kubectl create job --from=cronjob/pdns-auth-geoip-update geoip-manual-update
 | `geoip.dnssecKeydir` | DNSSEC 密钥目录 | `""` |
 | `geoipZones.enabled` | 启用 GeoIP zones ConfigMap | `false` |
 | `geoipZones.domains` | GeoIP 域配置列表 | `[]` |
-| `geoipVolume.enabled` | 启用 GeoIP 卷 | `false` |
-| `geoipVolume.type` | 卷类型 (pvc/configMap/hostPath) | `pvc` |
-| `geoipVolume.pvc.claimName` | PVC 名称 | `geoip-data` |
-| `geoipVolume.configMap.name` | ConfigMap 名称 | `geoip-data` |
-| `geoipVolume.hostPath.path` | 主机路径 | `/var/lib/GeoIP` |
-
-### GeoIP 自动更新 CronJob 参数
-
-| 参数 | 描述 | 默认值 |
-|------|------|--------|
-| `geoipUpdate.enabled` | 启用 GeoIP 自动更新 CronJob | `false` |
-| `geoipUpdate.schedule` | Cron 调度表达式 | `0 0 * * 3` |
-| `geoipUpdate.concurrencyPolicy` | 并发策略 | `Forbid` |
-| `geoipUpdate.startingDeadlineSeconds` | 启动截止时间（秒） | `600` |
-| `geoipUpdate.successfulJobsHistoryLimit` | 成功 Job 保留数 | `3` |
-| `geoipUpdate.failedJobsHistoryLimit` | 失败 Job 保留数 | `3` |
-| `geoipUpdate.ttlSecondsAfterFinished` | Job 完成后清理时间（秒） | `86400` |
-| `geoipUpdate.backoffLimit` | 失败重试次数 | `3` |
-| `geoipUpdate.suspend` | 暂停 CronJob | `false` |
-| `geoipUpdate.restartPolicy` | Pod 重启策略 | `OnFailure` |
-| `geoipUpdate.image.registry` | 镜像仓库 | `docker.io` |
-| `geoipUpdate.image.repository` | 镜像名称 | `maxmindinc/geoipupdate` |
-| `geoipUpdate.image.tag` | 镜像标签 | `v7.1` |
-| `geoipUpdate.image.pullPolicy` | 拉取策略 | `IfNotPresent` |
-| `geoipUpdate.accountId` | MaxMind 账号 ID | `""` |
-| `geoipUpdate.licenseKey` | MaxMind License Key | `""` |
-| `geoipUpdate.editionIds` | 下载的数据库版本列表 | `[GeoLite2-City, GeoLite2-Country, GeoLite2-ASN]` |
-| `geoipUpdate.databaseDirectory` | 数据库存储目录 | `/usr/share/GeoIP` |
-| `geoipUpdate.host` | MaxMind 服务器地址（可选） | `""` |
-| `geoipUpdate.proxy` | HTTP 代理 | `""` |
-| `geoipUpdate.proxyUserPassword` | 代理认证 | `""` |
-| `geoipUpdate.preserveFileTimes` | 保留文件时间戳 | `false` |
-| `geoipUpdate.verbose` | 详细日志 | `false` |
-| `geoipUpdate.existingSecret.enabled` | 使用已有 Secret | `false` |
-| `geoipUpdate.existingSecret.name` | Secret 名称 | `""` |
-| `geoipUpdate.existingSecret.keys.accountId` | 账号 ID 的 key | `account-id` |
-| `geoipUpdate.existingSecret.keys.licenseKey` | License Key 的 key | `license-key` |
-| `geoipUpdate.resourcesPreset` | 资源预设 | `micro` |
-| `geoipUpdate.resources` | 自定义资源配置 | `{}` |
-| `geoipUpdate.autoReload.enabled` | 数据库更新后自动重载 Pod | `true` |
-| `geoipUpdate.autoReload.image.registry` | kubectl 镜像仓库 | `docker.io` |
-| `geoipUpdate.autoReload.image.repository` | kubectl 镜像名称 | `bitnami/kubectl` |
-| `geoipUpdate.autoReload.image.tag` | kubectl 镜像标签 | `1.31` |
+| `geoipVolume.enabled` | 启用 GeoIP 卷挂载 | `false` |
+| `geoipVolume.existingClaim` | 已有 PVC 名称（如 geoip-database-data） | `""` |
+| `geoipVolume.mountPath` | 挂载路径 | `/usr/share/GeoIP` |
 
 ### TSIG 密钥配置参数
 
@@ -876,26 +801,10 @@ config:
     # NOTE: timeout/maxConcurrent 是 LUA 函数参数，不是全局配置
     # 示例: ifportup(443, {'192.0.2.1'}, {timeout=2000})
 
-# 必须挂载 GeoIP 数据库
+# 必须挂载 GeoIP 数据库（使用 geoip-database chart）
 geoipVolume:
   enabled: true
-  type: pvc
-  pvc:
-    claimName: geoip-data
-
-# GeoIP 数据库自动更新（可选但推荐）
-geoipUpdate:
-  enabled: true
-  schedule: "0 2 * * 3"         # 每周三凌晨 2 点
-  editionIds:
-    - GeoLite2-City
-    - GeoLite2-Country
-    - GeoLite2-ASN
-  existingSecret:
-    enabled: true
-    name: maxmind-credentials   # 包含 account-id 和 license-key
-  autoReload:
-    enabled: true               # 数据库更新后自动重载 Pod
+  existingClaim: geoip-database-data  # 来自 geoip-database chart
 
 # 不需要启用 GeoIP Backend（两者独立）
 geoip:

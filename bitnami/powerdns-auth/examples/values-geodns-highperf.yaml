@@ -137,47 +137,11 @@ database:
       password: password
 
 ## GeoIP 数据库挂载配置
+## 使用独立的 geoip-database chart 管理数据库
+## 先部署: helm install geoip-database fivetime/geoip-database -n kube-infra
 geoipVolume:
   enabled: true
-  type: pvc
-  pvc:
-    claimName: geoip-data
-
-## GeoIP 数据库自动更新 CronJob
-## 需要 MaxMind 免费账号: https://www.maxmind.com/en/geolite2/signup
-geoipUpdate:
-  enabled: true
-  ## 每周三凌晨 2 点更新 (MaxMind 每周二发布更新)
-  schedule: "0 2 * * 3"
-  ## 要下载的数据库版本 (免费版)
-  editionIds:
-    - GeoLite2-City
-    - GeoLite2-Country
-    - GeoLite2-ASN
-  ## 使用已有 Secret 存储凭据 (推荐)
-  existingSecret:
-    enabled: true
-    name: maxmind-credentials
-    keys:
-      accountId: account-id
-      licenseKey: license-key
-  ## 如果不使用 existingSecret，直接填写 (不推荐用于生产)
-  # accountId: "your-account-id"
-  # licenseKey: "your-license-key"
-  ## 保留历史 Job 记录
-  successfulJobsHistoryLimit: 3
-  failedJobsHistoryLimit: 3
-  ## 资源限制
-  resources:
-    requests:
-      cpu: "100m"
-      memory: "128Mi"
-    limits:
-      cpu: "500m"
-      memory: "256Mi"
-  ## 自动重载 - 数据库更新后自动触发 Pod 滚动更新
-  autoReload:
-    enabled: true
+  existingClaim: geoip-database-data  # 来自 geoip-database chart
 
 ## 不使用 GeoIP Backend (我们使用 LUA Records)
 geoip:

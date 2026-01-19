@@ -34,9 +34,6 @@ spec:
         {{- if (include "powerdns-auth.createDatabaseSecret" .) }}
         checksum/db-secret: {{ include (print $.Template.BasePath "/secret-db.yaml") . | sha256sum }}
         {{- end }}
-        {{- if and .Values.geoip.enabled .Values.geoipZones.enabled }}
-        checksum/geoip-zones: {{ include (print $.Template.BasePath "/configmap-geoip.yaml") . | sha256sum }}
-        {{- end }}
         {{- if .Values.podAnnotations }}
         {{- include "common.tplvalues.render" (dict "value" .Values.podAnnotations "context" $) | nindent 8 }}
         {{- end }}
@@ -182,11 +179,11 @@ spec:
                 ELAPSED=$((ELAPSED + 5))
               done
               echo "ERROR: GeoIP databases not found after ${MAX_WAIT}s"
-              echo "Please ensure geoipUpdate.enabled=true or manually populate the GeoIP volume"
+              echo "Please ensure geoip-database chart is deployed and PVC is populated"
               exit 1
           volumeMounts:
             - name: geoip-data
-              mountPath: /usr/share/GeoIP
+              mountPath: {{ .Values.geoipVolume.mountPath }}
               readOnly: true
         {{- end }}
         {{- if .Values.initContainers }}
@@ -219,14 +216,6 @@ spec:
           args: {{- include "common.tplvalues.render" (dict "value" .Values.args "context" $) | nindent 12 }}
           {{- end }}
           env:
-            {{- if and .Values.geoipVolume.enabled .Values.geoipUpdate.enabled .Values.geoipUpdate.autoReload.enabled }}
-            # GeoIP hash from ConfigMap - triggers rolling update when database is updated
-            - name: GEOIP_DATABASE_HASH
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "common.names.fullname" . }}-geoip-hash
-                  key: geoip-hash
-            {{- end }}
             {{- if .Values.extraEnvVars }}
             {{- include "common.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
             {{- end }}
@@ -336,7 +325,7 @@ spec:
             {{- end }}
             {{- if .Values.geoipVolume.enabled }}
             - name: geoip-data
-              mountPath: /usr/share/GeoIP
+              mountPath: {{ .Values.geoipVolume.mountPath }}
               readOnly: true
             {{- end }}
             {{- if .Values.persistence.enabled }}
@@ -365,21 +354,10 @@ spec:
             name: {{ include "common.names.fullname" . }}-geoip-zones
             defaultMode: 0444
         {{- end }}
-        {{- if .Values.geoipVolume.enabled }}
+        {{- if and .Values.geoipVolume.enabled .Values.geoipVolume.existingClaim }}
         - name: geoip-data
-          {{- if eq .Values.geoipVolume.type "pvc" }}
           persistentVolumeClaim:
-            claimName: {{ .Values.geoipVolume.pvc.claimName }}
-          {{- else if eq .Values.geoipVolume.type "configMap" }}
-          configMap:
-            name: {{ .Values.geoipVolume.configMap.name }}
-          {{- else if eq .Values.geoipVolume.type "hostPath" }}
-          hostPath:
-            path: {{ .Values.geoipVolume.hostPath.path }}
-            type: Directory
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
+            claimName: {{ .Values.geoipVolume.existingClaim }}
         {{- end }}
         {{- if .Values.persistence.enabled }}
         - name: data

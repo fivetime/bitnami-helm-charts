@@ -412,40 +412,14 @@ GeoDNS 根据客户端地理位置返回不同的 DNS 解析结果，适用于 C
 
 ### 6.2 准备 GeoIP 数据库
 
-#### 6.2.1 创建 MaxMind 账号
-
-1. 访问 https://www.maxmind.com/en/geolite2/signup 注册免费账号
-2. 登录后获取 Account ID 和 License Key
-3. 创建 Kubernetes Secret：
+GeoIP 数据库由独立的 `geoip-database` Chart 管理：
 
 ```bash
-kubectl create secret generic maxmind-credentials \
-  --namespace dns \
-  --from-literal=account-id=YOUR_ACCOUNT_ID \
-  --from-literal=license-key=YOUR_LICENSE_KEY
+# 部署 geoip-database chart（在 kube-infra 命名空间）
+helm install geoip-database fivetime/geoip-database -n kube-infra -f geoip-values.yaml
 ```
 
-#### 6.2.2 创建 GeoIP 数据 PVC
-
-```yaml
-# geoip-pvc.yaml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: geoip-data
-  namespace: dns
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
-  storageClassName: standard  # 根据环境修改
-```
-
-```bash
-kubectl apply -f geoip-pvc.yaml
-```
+详细配置请参考 `geoip-database` Chart 文档。
 
 ### 6.3 LUA Records GeoDNS 部署
 
@@ -488,26 +462,10 @@ config:
       timeout: 2000
     axfrFormat: native
 
-# GeoIP 数据库挂载
+# GeoIP 数据库挂载（使用 geoip-database chart 的 PVC）
 geoipVolume:
   enabled: true
-  type: pvc
-  pvc:
-    claimName: geoip-data
-
-# GeoIP 数据库自动更新
-geoipUpdate:
-  enabled: true
-  schedule: "0 2 * * 3"          # 每周三凌晨 2 点
-  editionIds:
-    - GeoLite2-City
-    - GeoLite2-Country
-    - GeoLite2-ASN
-  existingSecret:
-    enabled: true
-    name: maxmind-credentials
-  autoReload:
-    enabled: true                # 数据库更新后自动重载 Pod
+  existingClaim: geoip-database-data  # 来自 geoip-database chart
 
 # 不需要 GeoIP Backend
 geoip:
@@ -659,35 +617,11 @@ dig @pdns-auth.dns.svc.cluster.local www.example.com +subnet=185.0.0.0/24
 
 ### 6.7 GeoIP 数据库更新
 
-#### 6.7.1 自动更新 (推荐)
-
-启用 `geoipUpdate.enabled: true` 后，CronJob 会自动：
-1. 从 MaxMind 下载最新数据库
-2. 计算数据库 hash
-3. 如果 hash 变化，更新 ConfigMap
-4. Deployment 检测到 ConfigMap 变化后自动滚动更新 Pod
-
-#### 6.7.2 手动触发更新
+GeoIP 数据库更新由 `geoip-database` Chart 管理。如需在数据库更新后自动重启 PowerDNS Pod，可监听 `geoip-database-hash` ConfigMap 的变化，或使用 Reloader 等工具。
 
 ```bash
-# 创建临时 Job 立即执行更新
-kubectl create job --from=cronjob/pdns-auth-geoip-update geoip-manual-$(date +%s) -n dns
-
-# 查看 Job 状态
-kubectl get jobs -n dns | grep geoip
-
-# 查看 Job 日志
-kubectl logs -n dns job/geoip-manual-xxx
-```
-
-#### 6.7.3 查看更新状态
-
-```bash
-# 查看当前 hash
-kubectl get configmap pdns-auth-geoip-hash -n dns -o yaml
-
-# 查看 Pod 环境变量中的 hash
-kubectl exec -it deploy/pdns-auth -n dns -- env | grep GEOIP
+# 查看当前数据库 hash
+kubectl get configmap geoip-database-hash -n kube-infra -o yaml
 ```
 
 ### 6.8 GeoDNS 性能调优
@@ -1043,36 +977,26 @@ kubectl exec -it deploy/pdns-auth -n dns -- \
 
 ### 9.7 GeoIP 更新失败
 
-**症状**: CronJob 执行失败或 Pod 未滚动更新
+**症状**: GeoIP 数据库未更新或 Pod 未重启
 
 **排查步骤**:
 
 ```bash
-# 检查 CronJob 状态
-kubectl get cronjob -n dns
-kubectl describe cronjob pdns-auth-geoip-update -n dns
+# 检查 geoip-database chart 状态
+kubectl get cronjob -n kube-infra | grep geoip
 
-# 查看最近的 Job
-kubectl get jobs -n dns | grep geoip
-
-# 查看 Job 日志
-kubectl logs -n dns job/pdns-auth-geoip-update-xxx
-
-# 检查 MaxMind 凭据
-kubectl get secret maxmind-credentials -n dns -o yaml
+# 查看数据库文件
+kubectl run -it --rm check-geoip -n kube-infra --image=busybox --restart=Never \
+  --overrides='{"spec":{"containers":[{"name":"check","image":"busybox","command":["ls","-lh","/data"],"volumeMounts":[{"name":"geoip","mountPath":"/data"}]}],"volumes":[{"name":"geoip","persistentVolumeClaim":{"claimName":"geoip-database-data"}}]}}'
 
 # 检查 ConfigMap hash
-kubectl get configmap pdns-auth-geoip-hash -n dns -o yaml
-
-# 手动触发更新测试
-kubectl create job --from=cronjob/pdns-auth-geoip-update geoip-test -n dns
+kubectl get configmap geoip-database-hash -n kube-infra -o yaml
 ```
 
 **常见原因**:
-- MaxMind 账号 ID 或 License Key 错误
-- 网络无法访问 MaxMind 服务器
-- PVC 存储空间不足
-- ServiceAccount 无权限更新 ConfigMap
+- geoip-database chart 未正确部署
+- PVC 未正确挂载到 PowerDNS Pod
+- 跨命名空间 PVC 访问问题
 
 ### 9.8 健康检查导致性能问题
 

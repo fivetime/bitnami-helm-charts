@@ -35,4 +35,4 @@ name: powerdns-auth
 sources:
 - https://github.com/PowerDNS/pdns
 - https://doc.powerdns.com/authoritative/
-version: 1.3.6
+version: 1.3.7

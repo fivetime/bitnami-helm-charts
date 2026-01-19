@@ -126,14 +126,15 @@ jobs:
           
           echo "下载所有 chart 包..."
           
-          # 用 gh api 获取所有 releases 及其 assets
-          gh api repos/${{ github.repository }}/releases --paginate -q '.[].assets[] | select(.name | endswith(".tgz")) | .browser_download_url' | while read url; do
+          # 用 gh api 获取所有 releases 及其 assets，按 tag 分目录存放
+          gh api repos/${{ github.repository }}/releases --paginate -q '.[] | select(.assets | length > 0) | "\(.tag_name) \(.assets[] | select(.name | endswith(".tgz")) | .browser_download_url)"' | while read tag url; do
             filename=$(basename "$url")
-            echo "  下载: $filename"
-            curl -sSL -o ".charts/$filename" "$url"
+            mkdir -p ".charts/$tag"
+            echo "  下载: $tag/$filename"
+            curl -sSL -o ".charts/$tag/$filename" "$url"
           done
           
-          count=$(ls -1 .charts/*.tgz 2>/dev/null | wc -l || echo 0)
+          count=$(find .charts -name "*.tgz" 2>/dev/null | wc -l || echo 0)
           echo "共下载 $count 个 chart 包"
           
           if [ "$count" -eq 0 ]; then

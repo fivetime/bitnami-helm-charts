@@ -11,7 +11,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 3.0.5
-    created: "2026-01-19T00:07:00.865094051Z"
+    created: "2026-01-19T00:11:22.054641607Z"
     dependencies:
     - condition: redis.enabled
       name: redis
@@ -44,7 +44,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/airflow
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/airflow-25.1.0.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/airflow-25.1.0/airflow-25.1.0.tgz
     version: 25.1.0
   apache:
   - annotations:
@@ -59,7 +59,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 2.4.65
-    created: "2026-01-19T00:07:00.867262533Z"
+    created: "2026-01-19T00:11:22.056858939Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -86,7 +86,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/apache
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/apache-11.4.30.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/apache-11.4.30/apache-11.4.30.tgz
     version: 11.4.30
   apisix:
   - annotations:
@@ -101,7 +101,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 3.13.0
-    created: "2026-01-19T00:07:00.876161768Z"
+    created: "2026-01-19T00:11:22.066275835Z"
     dependencies:
     - condition: etcd.enabled
       name: etcd
@@ -136,7 +136,7 @@ entries:
     - https://github.com/bitnami/charts/tree/main/bitnami/apisix-dashboard
     - https://github.com/bitnami/charts/tree/main/bitnami/apisix-ingress-controller
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/apisix-6.0.2.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/apisix-6.0.2/apisix-6.0.2.tgz
     version: 6.0.2
   appsmith:
   - annotations:
@@ -151,7 +151,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 1.85.0
-    created: "2026-01-19T00:07:00.890943613Z"
+    created: "2026-01-19T00:11:22.085281878Z"
     dependencies:
     - condition: redis.enabled
       name: redis
@@ -181,7 +181,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/appsmith
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/appsmith-7.0.4.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/appsmith-7.0.4/appsmith-7.0.4.tgz
     version: 7.0.4
   argo-cd:
   - annotations:
@@ -198,7 +198,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 3.1.1
-    created: "2026-01-19T00:07:00.905404396Z"
+    created: "2026-01-19T00:11:22.100308574Z"
     dependencies:
     - condition: redis.enabled
       name: redis
@@ -225,7 +225,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/argo-cd
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/argo-cd-11.0.2.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/argo-cd-11.0.2/argo-cd-11.0.2.tgz
     version: 11.0.2
   argo-workflows:
   - annotations:
@@ -240,7 +240,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 3.7.1
-    created: "2026-01-19T00:07:00.922254218Z"
+    created: "2026-01-19T00:11:22.113264546Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -273,7 +273,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/argo-workflows
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/argo-workflows-13.0.7.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/argo-workflows-13.0.7/argo-workflows-13.0.7.tgz
     version: 13.0.7
   aspnet-core:
   - annotations:
@@ -288,7 +288,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 9.0.8
-    created: "2026-01-19T00:07:00.924256711Z"
+    created: "2026-01-19T00:11:22.115323903Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -311,7 +311,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/aspnet-core
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/aspnet-core-8.0.0.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/aspnet-core-8.0.0/aspnet-core-8.0.0.tgz
     version: 8.0.0
   cadvisor:
   - annotations:
@@ -322,7 +322,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 0.53.0
-    created: "2026-01-19T00:07:00.926140052Z"
+    created: "2026-01-19T00:11:22.117144584Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -345,7 +345,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/cadvisor
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/cadvisor-0.1.14.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/cadvisor-0.1.14/cadvisor-0.1.14.tgz
     version: 0.1.14
   cassandra:
   - annotations:
@@ -360,7 +360,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 5.0.5
-    created: "2026-01-19T00:07:00.928826718Z"
+    created: "2026-01-19T00:11:22.120515867Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -384,7 +384,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/cassandra
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/cassandra-12.3.13.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/cassandra-12.3.13/cassandra-12.3.13.tgz
     version: 12.3.13
   cert-manager:
   - annotations:
@@ -401,7 +401,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 1.18.2
-    created: "2026-01-19T00:07:00.933579684Z"
+    created: "2026-01-19T00:11:22.124208054Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -425,7 +425,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/cert-manager
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/cert-manager-1.5.15.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/cert-manager-1.5.15/cert-manager-1.5.15.tgz
     version: 1.5.15
   chainloop:
   - annotations:
@@ -442,7 +442,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 1.43.1
-    created: "2026-01-19T00:07:00.951229337Z"
+    created: "2026-01-19T00:11:22.137921879Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -495,7 +495,7 @@ entries:
     - https://github.com/bitnami/containers/tree/main/bitnami/chainloop-artifact-cas
     - https://github.com/chainloop-dev/chainloop
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/chainloop-4.0.76.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/chainloop-4.0.76/chainloop-4.0.76.tgz
     version: 4.0.76
   cilium:
   - annotations:
@@ -516,7 +516,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 1.18.1
-    created: "2026-01-19T00:07:00.961761425Z"
+    created: "2026-01-19T00:11:22.148853187Z"
     dependencies:
     - condition: etcd.enabled
       name: etcd
@@ -553,7 +553,7 @@ entries:
     - https://github.com/bitnami/containers/tree/main/bitnami/hubble-ui
     - https://github.com/bitnami/containers/tree/main/bitnami/hubble-ui-backend
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/cilium-3.1.10.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/cilium-3.1.10/cilium-3.1.10.tgz
     version: 3.1.10
   citus:
   - annotations:
@@ -561,7 +561,7 @@ entries:
       licenses: AGPL-3.0
     apiVersion: v2
     appVersion: 13.0.3
-    created: "2026-01-19T00:07:00.964529001Z"
+    created: "2026-01-19T00:11:22.152485377Z"
     dependencies:
     - name: common
       repository: file://../common
@@ -594,7 +594,7 @@ entries:
     - https://github.com/citusdata/docker
     type: application
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/citus-1.0.0.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/citus-1.0.0/citus-1.0.0.tgz
     version: 1.0.0
   clickhouse:
   - annotations:
@@ -609,7 +609,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 25.7.5
-    created: "2026-01-19T00:07:00.968796362Z"
+    created: "2026-01-19T00:11:22.155996947Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -632,7 +632,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/clickhouse
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/clickhouse-9.4.5.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/clickhouse-9.4.5/clickhouse-9.4.5.tgz
     version: 9.4.5
   clickhouse-operator:
   - annotations:
@@ -648,7 +648,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 0.25.3
-    created: "2026-01-19T00:07:00.972142714Z"
+    created: "2026-01-19T00:11:22.160085249Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -674,7 +674,7 @@ entries:
     - https://github.com/bitnami/charts/tree/main/bitnami/clickhouse-operator
     - https://github.com/bitnami/containers/tree/main/bitnami/clickhouse-operator
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/clickhouse-operator-0.2.34.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/clickhouse-operator-0.2.34/clickhouse-operator-0.2.34.tgz
     version: 0.2.34
   cloudnative-pg:
   - annotations:
@@ -691,7 +691,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 1.27.0
-    created: "2026-01-19T00:07:00.979493802Z"
+    created: "2026-01-19T00:11:22.167876365Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -714,14 +714,14 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/cloudnative-pg
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/cloudnative-pg-1.0.13.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/cloudnative-pg-1.0.13/cloudnative-pg-1.0.13.tgz
     version: 1.0.13
   common:
   - annotations:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 2.31.7
-    created: "2026-01-19T00:07:00.980131067Z"
+    created: "2026-01-19T00:11:22.168560624Z"
     description: A Library Helm Chart for grouping common logic between bitnami charts.
       This chart is not deployable by itself.
     digest: 15c9b59a4c42e4e46c41077b476753ef0e02d9d310fac440e1d626cf1ef2c6a2
@@ -741,7 +741,7 @@ entries:
     - https://github.com/bitnami/charts/tree/main/bitnami/common
     type: library
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/common-2.31.7.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/common-2.31.7/common-2.31.7.tgz
     version: 2.31.7
   concourse:
   - annotations:
@@ -754,7 +754,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 7.13.2
-    created: "2026-01-19T00:07:00.988152664Z"
+    created: "2026-01-19T00:11:22.176909137Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -785,7 +785,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/concourse
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/concourse-5.1.47.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/concourse-5.1.47/concourse-5.1.47.tgz
     version: 5.1.47
   consul:
   - annotations:
@@ -800,7 +800,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 1.21.4
-    created: "2026-01-19T00:07:00.991297571Z"
+    created: "2026-01-19T00:11:22.179166584Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -823,7 +823,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/consul
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/consul-11.4.33.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/consul-11.4.33/consul-11.4.33.tgz
     version: 11.4.33
   contour:
   - annotations:
@@ -838,7 +838,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 1.32.1
-    created: "2026-01-19T00:07:01.000935431Z"
+    created: "2026-01-19T00:11:22.189377275Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -861,7 +861,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/contour
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/contour-21.1.5.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/contour-21.1.5/contour-21.1.5.tgz
     version: 21.1.5
   deepspeed:
   - annotations:
@@ -876,7 +876,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 0.17.5
-    created: "2026-01-19T00:07:01.003682338Z"
+    created: "2026-01-19T00:11:22.192077088Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -903,7 +903,7 @@ entries:
     - https://github.com/bitnami/charts/tree/main/bitnami/deepspeed
     - https://github.com/bitnami/charts/tree/main/bitnami/pytorch
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/deepspeed-2.3.51.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/deepspeed-2.3.51/deepspeed-2.3.51.tgz
     version: 2.3.51
   discourse:
   - annotations:
@@ -916,7 +916,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 3.5.0
-    created: "2026-01-19T00:07:01.017172189Z"
+    created: "2026-01-19T00:11:22.205855717Z"
     dependencies:
     - condition: redis.enabled
       name: redis
@@ -951,7 +951,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/discourse
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/discourse-17.0.2.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/discourse-17.0.2/discourse-17.0.2.tgz
     version: 17.0.2
   dnsdist:
   - annotations:
@@ -959,7 +959,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 2.0.2
-    created: "2026-01-19T00:07:01.01960368Z"
+    created: "2026-01-19T00:11:22.208215686Z"
     dependencies:
     - name: common
       repository: file://../common
@@ -986,7 +986,7 @@ entries:
     - https://github.com/PowerDNS/pdns
     type: application
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/dnsdist-1.1.0.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/dnsdist-1.1.0/dnsdist-1.1.0.tgz
     version: 1.1.0
   dremio:
   - annotations:
@@ -1001,7 +1001,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 26.0.0
-    created: "2026-01-19T00:07:01.033268602Z"
+    created: "2026-01-19T00:11:22.221057044Z"
     dependencies:
     - condition: minio.enabled
       name: minio
@@ -1033,7 +1033,7 @@ entries:
     - https://github.com/bitnami/containers/tree/main/bitnami/dremio
     - https://github.com/dremio/dremio-oss
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/dremio-3.1.0.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/dremio-3.1.0/dremio-3.1.0.tgz
     version: 3.1.0
   drupal:
   - annotations:
@@ -1048,7 +1048,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 11.2.3
-    created: "2026-01-19T00:07:01.039344528Z"
+    created: "2026-01-19T00:11:22.227345231Z"
     dependencies:
     - condition: mariadb.enabled
       name: mariadb
@@ -1080,7 +1080,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/drupal
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/drupal-23.0.1.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/drupal-23.0.1/drupal-23.0.1.tgz
     version: 23.0.1
   ejbca:
   - annotations:
@@ -1091,7 +1091,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 9.1.1
-    created: "2026-01-19T00:07:01.045908195Z"
+    created: "2026-01-19T00:11:22.233885238Z"
     dependencies:
     - condition: mariadb.enabled
       name: mariadb
@@ -1121,7 +1121,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/ejbca
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/ejbca-19.0.1.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/ejbca-19.0.1/ejbca-19.0.1.tgz
     version: 19.0.1
   elasticsearch:
   - annotations:
@@ -1136,7 +1136,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 9.1.2
-    created: "2026-01-19T00:07:01.053646362Z"
+    created: "2026-01-19T00:11:22.241689415Z"
     dependencies:
     - condition: global.kibanaEnabled
       name: kibana
@@ -1162,7 +1162,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/elasticsearch
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/elasticsearch-22.1.7.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/elasticsearch-22.1.7/elasticsearch-22.1.7.tgz
     version: 22.1.7
   envoy-gateway:
   - annotations:
@@ -1177,7 +1177,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 1.5.0
-    created: "2026-01-19T00:07:01.06686548Z"
+    created: "2026-01-19T00:11:22.255677422Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1202,7 +1202,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/envoy-gateway
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/envoy-gateway-2.0.5.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/envoy-gateway-2.0.5/envoy-gateway-2.0.5.tgz
     version: 2.0.5
   etcd:
   - annotations:
@@ -1215,7 +1215,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 3.6.4
-    created: "2026-01-19T00:07:01.069876358Z"
+    created: "2026-01-19T00:11:22.258905643Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1241,7 +1241,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/etcd
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/etcd-12.0.20.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/etcd-12.0.20/etcd-12.0.20.tgz
     version: 12.0.20
   external-dns:
   - annotations:
@@ -1252,7 +1252,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 0.18.0
-    created: "2026-01-19T00:07:01.072804372Z"
+    created: "2026-01-19T00:11:22.263021426Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1275,7 +1275,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/external-dns
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/external-dns-9.0.4.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/external-dns-9.0.4/external-dns-9.0.4.tgz
     version: 9.0.4
   flink:
   - annotations:
@@ -1286,7 +1286,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 2.1.0
-    created: "2026-01-19T00:07:01.075011025Z"
+    created: "2026-01-19T00:11:22.265134433Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1309,7 +1309,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/flink
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/flink-2.0.8.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/flink-2.0.8/flink-2.0.8.tgz
     version: 2.0.8
   fluent-bit:
   - annotations:
@@ -1320,7 +1320,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 4.0.8
-    created: "2026-01-19T00:07:01.078202877Z"
+    created: "2026-01-19T00:11:22.26731156Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1344,7 +1344,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/fluent-bit
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/fluent-bit-3.1.14.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/fluent-bit-3.1.14/fluent-bit-3.1.14.tgz
     version: 3.1.14
   fluentd:
   - annotations:
@@ -1355,7 +1355,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 1.19.0
-    created: "2026-01-19T00:07:01.081340891Z"
+    created: "2026-01-19T00:11:22.271386606Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1380,7 +1380,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/fluentd
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/fluentd-7.2.6.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/fluentd-7.2.6/fluentd-7.2.6.tgz
     version: 7.2.6
   flux:
   - annotations:
@@ -1403,7 +1403,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 1.6.2
-    created: "2026-01-19T00:07:01.089952686Z"
+    created: "2026-01-19T00:11:22.279988425Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1429,7 +1429,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/flux
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/flux-2.4.37.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/flux-2.4.37/flux-2.4.37.tgz
     version: 2.4.37
   ghost:
   - annotations:
@@ -1442,7 +1442,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 6.0.5
-    created: "2026-01-19T00:07:01.096206834Z"
+    created: "2026-01-19T00:11:22.286852329Z"
     dependencies:
     - condition: mysql.enabled
       name: mysql
@@ -1476,7 +1476,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/ghost
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/ghost-25.0.5.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/ghost-25.0.5/ghost-25.0.5.tgz
     version: 25.0.5
   gitea:
   - annotations:
@@ -1489,7 +1489,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 1.24.5
-    created: "2026-01-19T00:07:01.103533564Z"
+    created: "2026-01-19T00:11:22.294040525Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -1519,7 +1519,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/gitea
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/gitea-3.2.23.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/gitea-3.2.23/gitea-3.2.23.tgz
     version: 3.2.23
   gitlab-runner:
   - annotations:
@@ -1532,7 +1532,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 18.3.0
-    created: "2026-01-19T00:07:01.105843218Z"
+    created: "2026-01-19T00:11:22.296310385Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1555,7 +1555,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/gitlab-runner
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/gitlab-runner-1.1.9.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/gitlab-runner-1.1.9/gitlab-runner-1.1.9.tgz
     version: 1.1.9
   grafana:
   - annotations:
@@ -1568,7 +1568,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 12.1.1
-    created: "2026-01-19T00:07:01.109130513Z"
+    created: "2026-01-19T00:11:22.298815956Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1592,7 +1592,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/grafana
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/grafana-12.1.9.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/grafana-12.1.9/grafana-12.1.9.tgz
     version: 12.1.9
   grafana-alloy:
   - annotations:
@@ -1604,7 +1604,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 1.10.2
-    created: "2026-01-19T00:07:01.11147946Z"
+    created: "2026-01-19T00:11:22.301469853Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1633,7 +1633,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/grafana-alloy
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/grafana-alloy-1.0.8.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/grafana-alloy-1.0.8/grafana-alloy-1.0.8.tgz
     version: 1.0.8
   grafana-k6-operator:
   - annotations:
@@ -1648,7 +1648,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 0.0.23
-    created: "2026-01-19T00:07:01.115034883Z"
+    created: "2026-01-19T00:11:22.304957831Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1672,7 +1672,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/grafana-k6-operator
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/grafana-k6-operator-1.0.12.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/grafana-k6-operator-1.0.12/grafana-k6-operator-1.0.12.tgz
     version: 1.0.12
   grafana-loki:
   - annotations:
@@ -1687,7 +1687,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 3.5.3
-    created: "2026-01-19T00:07:01.127330551Z"
+    created: "2026-01-19T00:11:22.31872668Z"
     dependencies:
     - alias: grafanaalloy
       condition: grafanaalloy.enabled
@@ -1737,7 +1737,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/grafana-loki
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/grafana-loki-6.0.8.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/grafana-loki-6.0.8/grafana-loki-6.0.8.tgz
     version: 6.0.8
   grafana-mimir:
   - annotations:
@@ -1754,7 +1754,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 2.17.0
-    created: "2026-01-19T00:07:01.143012549Z"
+    created: "2026-01-19T00:11:22.333686873Z"
     dependencies:
     - condition: minio.enabled
       name: minio
@@ -1802,7 +1802,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/grafana-mimir
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/grafana-mimir-3.0.19.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/grafana-mimir-3.0.19/grafana-mimir-3.0.19.tgz
     version: 3.0.19
   grafana-operator:
   - annotations:
@@ -1815,7 +1815,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 5.19.4
-    created: "2026-01-19T00:07:01.146203151Z"
+    created: "2026-01-19T00:11:22.337594406Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1838,7 +1838,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/grafana-operator
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/grafana-operator-4.9.38.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/grafana-operator-4.9.38/grafana-operator-4.9.38.tgz
     version: 4.9.38
   grafana-tempo:
   - annotations:
@@ -1855,7 +1855,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 2.8.2
-    created: "2026-01-19T00:07:01.154481933Z"
+    created: "2026-01-19T00:11:22.345894657Z"
     dependencies:
     - condition: memcached.enabled
       name: memcached
@@ -1884,7 +1884,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/grafana-tempo
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/grafana-tempo-5.0.1.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/grafana-tempo-5.0.1/grafana-tempo-5.0.1.tgz
     version: 5.0.1
   haproxy:
   - annotations:
@@ -1895,7 +1895,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 3.2.4
-    created: "2026-01-19T00:07:01.156349155Z"
+    created: "2026-01-19T00:11:22.3477212Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1919,7 +1919,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/haproxy
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/haproxy-3.0.0.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/haproxy-3.0.0/haproxy-3.0.0.tgz
     version: 3.0.0
   harbor:
   - annotations:
@@ -1946,7 +1946,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 2.13.2
-    created: "2026-01-19T00:07:01.174823511Z"
+    created: "2026-01-19T00:11:22.370525354Z"
     dependencies:
     - condition: redis.enabled
       name: redis
@@ -1979,7 +1979,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/harbor
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/harbor-27.0.4.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/harbor-27.0.4/harbor-27.0.4.tgz
     version: 27.0.4
   influxdb:
   - annotations:
@@ -1994,7 +1994,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 3.4.1
-    created: "2026-01-19T00:07:01.178725496Z"
+    created: "2026-01-19T00:11:22.373760492Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2018,7 +2018,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/influxdb
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/influxdb-7.1.21.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/influxdb-7.1.21/influxdb-7.1.21.tgz
     version: 7.1.21
   jaeger:
   - annotations:
@@ -2031,7 +2031,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 2.9.0
-    created: "2026-01-19T00:07:01.184147287Z"
+    created: "2026-01-19T00:11:22.379725471Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2058,7 +2058,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/jaeger
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/jaeger-6.0.6.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/jaeger-6.0.6/jaeger-6.0.6.tgz
     version: 6.0.6
   janusgraph:
   - annotations:
@@ -2073,7 +2073,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 1.1.0
-    created: "2026-01-19T00:07:01.189871292Z"
+    created: "2026-01-19T00:11:22.38441991Z"
     dependencies:
     - condition: storageBackend.cassandra.enabled
       name: cassandra
@@ -2103,7 +2103,7 @@ entries:
     - https://github.com/bitnami/containers/tree/main/bitnami/janusgraph
     - https://github.com/janusgraph/janusgraph
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/janusgraph-1.4.11.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/janusgraph-1.4.11/janusgraph-1.4.11.tgz
     version: 1.4.11
   jenkins:
   - annotations:
@@ -2118,7 +2118,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 2.516.2
-    created: "2026-01-19T00:07:01.192442863Z"
+    created: "2026-01-19T00:11:22.387689351Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2145,7 +2145,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/jenkins
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/jenkins-13.6.18.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/jenkins-13.6.18/jenkins-13.6.18.tgz
     version: 13.6.18
   jupyterhub:
   - annotations:
@@ -2162,7 +2162,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 5.3.0
-    created: "2026-01-19T00:07:01.200999715Z"
+    created: "2026-01-19T00:11:22.396444432Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -2189,7 +2189,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/jupyterhub
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/jupyterhub-10.0.6.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/jupyterhub-10.0.6/jupyterhub-10.0.6.tgz
     version: 10.0.6
   kafka:
   - annotations:
@@ -2206,7 +2206,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 4.0.0
-    created: "2026-01-19T00:07:01.207142407Z"
+    created: "2026-01-19T00:11:22.401792122Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2231,7 +2231,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/kafka
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/kafka-32.4.4.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/kafka-32.4.4/kafka-32.4.4.tgz
     version: 32.4.4
   keycloak:
   - annotations:
@@ -2244,7 +2244,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 26.3.3
-    created: "2026-01-19T00:07:01.214932871Z"
+    created: "2026-01-19T00:11:22.410938067Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -2271,7 +2271,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/keycloak
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/keycloak-25.3.0.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/keycloak-25.3.0/keycloak-25.3.0.tgz
     version: 25.3.0
   keydb:
   - annotations:
@@ -2286,7 +2286,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 6.3.4
-    created: "2026-01-19T00:07:01.218140505Z"
+    created: "2026-01-19T00:11:22.414185874Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2311,7 +2311,7 @@ entries:
     - https://github.com/bitnami/charts/tree/main/bitnami/keydb
     - https://github.com/bitnami/containers/tree/main/bitnami/keydb
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/keydb-0.5.23.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/keydb-0.5.23/keydb-0.5.23.tgz
     version: 0.5.23
   kiam:
   - annotations:
@@ -2322,7 +2322,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 4.2.0
-    created: "2026-01-19T00:07:01.221744972Z"
+    created: "2026-01-19T00:11:22.416774851Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2345,7 +2345,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/kiam
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/kiam-2.3.17.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/kiam-2.3.17/kiam-2.3.17.tgz
     version: 2.3.17
   kibana:
   - annotations:
@@ -2358,7 +2358,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 9.1.2
-    created: "2026-01-19T00:07:01.224186331Z"
+    created: "2026-01-19T00:11:22.420052427Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2384,7 +2384,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/kibana
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/kibana-12.1.11.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/kibana-12.1.11/kibana-12.1.11.tgz
     version: 12.1.11
   kong:
   - annotations:
@@ -2397,7 +2397,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 3.9.1
-    created: "2026-01-19T00:07:01.234738505Z"
+    created: "2026-01-19T00:11:22.430472828Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -2434,7 +2434,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/kong
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/kong-15.4.23.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/kong-15.4.23/kong-15.4.23.tgz
     version: 15.4.23
   kube-arangodb:
   - annotations:
@@ -2447,7 +2447,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 1.3.0
-    created: "2026-01-19T00:07:01.241684134Z"
+    created: "2026-01-19T00:11:22.433262519Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2471,7 +2471,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/kube-arangodb
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/kube-arangodb-0.1.24.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/kube-arangodb-0.1.24/kube-arangodb-0.1.24.tgz
     version: 0.1.24
   kube-prometheus:
   - annotations:
@@ -2490,7 +2490,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 0.85.0
-    created: "2026-01-19T00:07:01.276892155Z"
+    created: "2026-01-19T00:11:22.468141234Z"
     dependencies:
     - condition: exporters.enabled,exporters.node-exporter.enabled
       name: node-exporter
@@ -2526,7 +2526,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/kube-prometheus
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/kube-prometheus-11.3.11.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/kube-prometheus-11.3.11/kube-prometheus-11.3.11.tgz
     version: 11.3.11
   kube-state-metrics:
   - annotations:
@@ -2537,7 +2537,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 2.16.0
-    created: "2026-01-19T00:07:01.278877927Z"
+    created: "2026-01-19T00:11:22.471452054Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2560,7 +2560,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/kube-state-metrics
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/kube-state-metrics-5.1.1.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/kube-state-metrics-5.1.1/kube-state-metrics-5.1.1.tgz
     version: 5.1.1
   kuberay:
   - annotations:
@@ -2575,7 +2575,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 1.4.2
-    created: "2026-01-19T00:07:01.286278567Z"
+    created: "2026-01-19T00:11:22.483289649Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2598,7 +2598,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/kuberay
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/kuberay-1.4.30.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/kuberay-1.4.30/kuberay-1.4.30.tgz
     version: 1.4.30
   kubernetes-event-exporter:
   - annotations:
@@ -2609,7 +2609,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 1.7.0
-    created: "2026-01-19T00:07:01.288323099Z"
+    created: "2026-01-19T00:11:22.48513162Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2636,7 +2636,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/kubernetes-event-exporter
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/kubernetes-event-exporter-3.6.4.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/kubernetes-event-exporter-3.6.4/kubernetes-event-exporter-3.6.4.tgz
     version: 3.6.4
   logstash:
   - annotations:
@@ -2649,7 +2649,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 9.1.2
-    created: "2026-01-19T00:07:01.290375044Z"
+    created: "2026-01-19T00:11:22.487203109Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2673,7 +2673,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/logstash
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/logstash-7.0.12.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/logstash-7.0.12/logstash-7.0.12.tgz
     version: 7.0.12
   mariadb:
   - annotations:
@@ -2688,7 +2688,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 12.0.2
-    created: "2026-01-19T00:07:01.294246963Z"
+    created: "2026-01-19T00:11:22.492109124Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2714,7 +2714,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/mariadb
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/mariadb-23.0.1.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/mariadb-23.0.1/mariadb-23.0.1.tgz
     version: 23.0.1
   mariadb-galera:
   - annotations:
@@ -2727,7 +2727,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 12.0.2
-    created: "2026-01-19T00:07:01.297252614Z"
+    created: "2026-01-19T00:11:22.494765176Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2753,7 +2753,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/mariadb-galera
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/mariadb-galera-16.0.2.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/mariadb-galera-16.0.2/mariadb-galera-16.0.2.tgz
     version: 16.0.2
   mastodon:
   - annotations:
@@ -2766,7 +2766,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 4.4.3
-    created: "2026-01-19T00:07:01.325265067Z"
+    created: "2026-01-19T00:11:22.524826101Z"
     dependencies:
     - condition: redis.enabled
       name: redis
@@ -2809,7 +2809,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/mastodon
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/mastodon-14.0.1.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/mastodon-14.0.1/mastodon-14.0.1.tgz
     version: 14.0.1
   matomo:
   - annotations:
@@ -2824,7 +2824,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 5.3.2
-    created: "2026-01-19T00:07:01.332825556Z"
+    created: "2026-01-19T00:11:22.531263426Z"
     dependencies:
     - condition: mariadb.enabled
       name: mariadb
@@ -2854,7 +2854,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/matomo
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/matomo-11.0.1.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/matomo-11.0.1/matomo-11.0.1.tgz
     version: 11.0.1
   memcached:
   - annotations:
@@ -2869,7 +2869,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 1.6.39
-    created: "2026-01-19T00:07:01.335052287Z"
+    created: "2026-01-19T00:11:22.533719284Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2892,7 +2892,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/memcached
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/memcached-8.0.0.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/memcached-8.0.0/memcached-8.0.0.tgz
     version: 8.0.0
   metallb:
   - annotations:
@@ -2905,7 +2905,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 0.15.2
-    created: "2026-01-19T00:07:01.338850306Z"
+    created: "2026-01-19T00:11:22.536975617Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2933,7 +2933,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/metallb
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/metallb-6.4.23.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/metallb-6.4.23/metallb-6.4.23.tgz
     version: 6.4.23
   metrics-server:
   - annotations:
@@ -2944,7 +2944,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 0.8.0
-    created: "2026-01-19T00:07:01.340559754Z"
+    created: "2026-01-19T00:11:22.538755021Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2968,7 +2968,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/metrics-server
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/metrics-server-7.4.13.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/metrics-server-7.4.13/metrics-server-7.4.13.tgz
     version: 7.4.13
   milvus:
   - annotations:
@@ -2985,7 +2985,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 2.6.0
-    created: "2026-01-19T00:07:01.360705102Z"
+    created: "2026-01-19T00:11:22.559832925Z"
     dependencies:
     - condition: etcd.enabled
       name: etcd
@@ -3023,7 +3023,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/milvus
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/milvus-16.0.2.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/milvus-16.0.2/milvus-16.0.2.tgz
     version: 16.0.2
   minio:
   - annotations:
@@ -3040,7 +3040,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 2025.7.23
-    created: "2026-01-19T00:07:01.365031346Z"
+    created: "2026-01-19T00:11:22.563364793Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3066,7 +3066,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/minio
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/minio-17.0.23.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/minio-17.0.23/minio-17.0.23.tgz
     version: 17.0.23
   minio-operator:
   - annotations:
@@ -3081,7 +3081,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 7.1.1
-    created: "2026-01-19T00:07:01.367889187Z"
+    created: "2026-01-19T00:11:22.565614195Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3105,7 +3105,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/minio-operator
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/minio-operator-0.2.10.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/minio-operator-0.2.10/minio-operator-0.2.10.tgz
     version: 0.2.10
   mlflow:
   - annotations:
@@ -3120,7 +3120,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 3.3.2
-    created: "2026-01-19T00:07:01.379586486Z"
+    created: "2026-01-19T00:11:22.578140453Z"
     dependencies:
     - condition: minio.enabled
       name: minio
@@ -3156,7 +3156,7 @@ entries:
     - https://github.com/bitnami/containers/tree/main/bitnami/mlflow
     - https://github.com/mlflow/mlflow
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/mlflow-5.2.0.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/mlflow-5.2.0/mlflow-5.2.0.tgz
     version: 5.2.0
   mongodb:
   - annotations:
@@ -3175,7 +3175,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 8.0.13
-    created: "2026-01-19T00:07:01.385350522Z"
+    created: "2026-01-19T00:11:22.583143319Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3202,7 +3202,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/mongodb
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/mongodb-17.0.0.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/mongodb-17.0.0/mongodb-17.0.0.tgz
     version: 17.0.0
   mongodb-sharded:
   - annotations:
@@ -3217,7 +3217,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 8.0.13
-    created: "2026-01-19T00:07:01.390202646Z"
+    created: "2026-01-19T00:11:22.587357428Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3244,7 +3244,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/mongodb-sharded
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/mongodb-sharded-9.4.13.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/mongodb-sharded-9.4.13/mongodb-sharded-9.4.13.tgz
     version: 9.4.13
   moodle:
   - annotations:
@@ -3259,7 +3259,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 5.0.2
-    created: "2026-01-19T00:07:01.397073509Z"
+    created: "2026-01-19T00:11:22.594520758Z"
     dependencies:
     - condition: mariadb.enabled
       name: mariadb
@@ -3287,7 +3287,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/moodle
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/moodle-28.0.1.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/moodle-28.0.1/moodle-28.0.1.tgz
     version: 28.0.1
   multus-cni:
   - annotations:
@@ -3298,7 +3298,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 4.2.2
-    created: "2026-01-19T00:07:01.398670839Z"
+    created: "2026-01-19T00:11:22.596079239Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3322,7 +3322,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/multus-cni
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/multus-cni-2.2.22.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/multus-cni-2.2.22/multus-cni-2.2.22.tgz
     version: 2.2.22
   mysql:
   - annotations:
@@ -3337,7 +3337,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 9.4.0
-    created: "2026-01-19T00:07:01.402122366Z"
+    created: "2026-01-19T00:11:22.599490011Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3363,7 +3363,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/mysql
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/mysql-14.0.5.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/mysql-14.0.5/mysql-14.0.5.tgz
     version: 14.0.5
   nats:
   - annotations:
@@ -3376,7 +3376,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 2.11.8
-    created: "2026-01-19T00:07:01.405348504Z"
+    created: "2026-01-19T00:11:22.602526548Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3401,7 +3401,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/nats
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/nats-9.0.29.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/nats-9.0.29/nats-9.0.29.tgz
     version: 9.0.29
   neo4j:
   - annotations:
@@ -3414,7 +3414,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 5.26.11
-    created: "2026-01-19T00:07:01.40761064Z"
+    created: "2026-01-19T00:11:22.604893309Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3442,7 +3442,7 @@ entries:
     - https://github.com/bitnami/containers/tree/main/bitnami/neo4j
     - https://github.com/neo4j/neo4j
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/neo4j-0.4.15.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/neo4j-0.4.15/neo4j-0.4.15.tgz
     version: 0.4.15
   nessie:
   - annotations:
@@ -3457,7 +3457,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 0.104.10
-    created: "2026-01-19T00:07:01.414916386Z"
+    created: "2026-01-19T00:11:22.612186834Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -3486,7 +3486,7 @@ entries:
     - https://github.com/bitnami/containers/tree/main/bitnami/nessie
     - https://github.com/nessie/nessie
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/nessie-2.0.35.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/nessie-2.0.35/nessie-2.0.35.tgz
     version: 2.0.35
   nginx:
   - annotations:
@@ -3501,7 +3501,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 1.29.1
-    created: "2026-01-19T00:07:01.417525397Z"
+    created: "2026-01-19T00:11:22.614871349Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3527,7 +3527,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/nginx
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/nginx-22.1.0.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/nginx-22.1.0/nginx-22.1.0.tgz
     version: 22.1.0
   nginx-ingress-controller:
   - annotations:
@@ -3540,7 +3540,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 1.13.1
-    created: "2026-01-19T00:07:01.420560921Z"
+    created: "2026-01-19T00:11:22.618456944Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3567,7 +3567,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/nginx-ingress-controller
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/nginx-ingress-controller-12.0.8.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/nginx-ingress-controller-12.0.8/nginx-ingress-controller-12.0.8.tgz
     version: 12.0.8
   node-exporter:
   - annotations:
@@ -3578,7 +3578,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 1.9.1
-    created: "2026-01-19T00:07:01.423019148Z"
+    created: "2026-01-19T00:11:22.620310486Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3601,7 +3601,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/node-exporter
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/node-exporter-4.5.20.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/node-exporter-4.5.20/node-exporter-4.5.20.tgz
     version: 4.5.20
   oauth2-proxy:
   - annotations:
@@ -3612,7 +3612,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 7.12.0
-    created: "2026-01-19T00:07:01.430980268Z"
+    created: "2026-01-19T00:11:22.628213117Z"
     dependencies:
     - condition: redis.enabled
       name: redis
@@ -3643,7 +3643,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/oauth2-proxy
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/oauth2-proxy-8.0.3.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/oauth2-proxy-8.0.3/oauth2-proxy-8.0.3.tgz
     version: 8.0.3
   odoo:
   - annotations:
@@ -3654,7 +3654,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 18.0.20250805
-    created: "2026-01-19T00:07:01.438202599Z"
+    created: "2026-01-19T00:11:22.635609505Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -3684,7 +3684,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/odoo
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/odoo-28.2.11.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/odoo-28.2.11/odoo-28.2.11.tgz
     version: 28.2.11
   opensearch:
   - annotations:
@@ -3699,7 +3699,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 3.2.0
-    created: "2026-01-19T00:07:01.444501681Z"
+    created: "2026-01-19T00:11:22.642645454Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3721,7 +3721,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/opensearch
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/opensearch-2.0.11.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/opensearch-2.0.11/opensearch-2.0.11.tgz
     version: 2.0.11
   parse:
   - annotations:
@@ -3736,7 +3736,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 8.2.3
-    created: "2026-01-19T00:07:01.453064689Z"
+    created: "2026-01-19T00:11:22.651168093Z"
     dependencies:
     - name: mongodb
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3766,7 +3766,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/parse
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/parse-25.1.16.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/parse-25.1.16/parse-25.1.16.tgz
     version: 25.1.16
   phpmyadmin:
   - annotations:
@@ -3779,7 +3779,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 5.2.2
-    created: "2026-01-19T00:07:01.459488696Z"
+    created: "2026-01-19T00:11:22.656903146Z"
     dependencies:
     - condition: db.bundleTestDB
       name: mariadb
@@ -3809,7 +3809,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/phpmyadmin
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/phpmyadmin-20.0.1.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/phpmyadmin-20.0.1/phpmyadmin-20.0.1.tgz
     version: 20.0.1
   pinniped:
   - annotations:
@@ -3820,7 +3820,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 0.40.0
-    created: "2026-01-19T00:07:01.463935977Z"
+    created: "2026-01-19T00:11:22.66098183Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3843,7 +3843,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/pinniped
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/pinniped-2.4.24.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/pinniped-2.4.24/pinniped-2.4.24.tgz
     version: 2.4.24
   postgresql:
   - annotations:
@@ -3858,7 +3858,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 17.6.0
-    created: "2026-01-19T00:07:01.468155693Z"
+    created: "2026-01-19T00:11:22.665959203Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3885,7 +3885,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/postgresql
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/postgresql-17.0.1.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/postgresql-17.0.1/postgresql-17.0.1.tgz
     version: 17.0.1
   postgresql-ha:
   - annotations:
@@ -3902,7 +3902,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 17.6.0
-    created: "2026-01-19T00:07:01.473269666Z"
+    created: "2026-01-19T00:11:22.670470491Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3932,7 +3932,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/postgresql-ha
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/postgresql-ha-16.3.4.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/postgresql-ha-16.3.4/postgresql-ha-16.3.4.tgz
     version: 16.3.4
   powerdns-admin:
   - annotations:
@@ -3947,7 +3947,7 @@ entries:
       licenses: MIT
     apiVersion: v2
     appVersion: 0.4.2
-    created: "2026-01-19T00:07:01.47626796Z"
+    created: "2026-01-19T00:11:22.674030316Z"
     dependencies:
     - name: common
       repository: file://../common
@@ -3977,7 +3977,7 @@ entries:
     - https://github.com/PowerDNS-Admin/PowerDNS-Admin
     - https://github.com/PowerDNS-Admin/PowerDNS-Admin/wiki
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/powerdns-admin-2.0.2.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/powerdns-admin-2.0.2/powerdns-admin-2.0.2.tgz
     version: 2.0.2
   powerdns-auth:
   - annotations:
@@ -3992,7 +3992,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 5.0.2
-    created: "2026-01-19T00:07:01.480168723Z"
+    created: "2026-01-19T00:11:22.677388926Z"
     dependencies:
     - name: common
       repository: file://../common
@@ -4020,7 +4020,7 @@ entries:
     - https://github.com/PowerDNS/pdns
     - https://doc.powerdns.com/authoritative/
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/powerdns-auth-1.3.4.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/powerdns-auth-1.3.4/powerdns-auth-1.3.4.tgz
     version: 1.3.4
   powerdns-recursor:
   - annotations:
@@ -4028,7 +4028,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 5.3.4
-    created: "2026-01-19T00:07:01.482643675Z"
+    created: "2026-01-19T00:11:22.679807354Z"
     dependencies:
     - name: common
       repository: file://../common
@@ -4057,7 +4057,7 @@ entries:
     - https://doc.powerdns.com/recursor/
     type: application
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/powerdns-recursor-1.4.0.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/powerdns-recursor-1.4.0/powerdns-recursor-1.4.0.tgz
     version: 1.4.0
   prometheus:
   - annotations:
@@ -4074,7 +4074,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 3.5.0
-    created: "2026-01-19T00:07:01.487044039Z"
+    created: "2026-01-19T00:11:22.684086386Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4100,7 +4100,7 @@ entries:
     - https://github.com/prometheus/prometheus
     - https://github.com/prometheus-community/helm-charts
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/prometheus-2.2.1.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/prometheus-2.2.1/prometheus-2.2.1.tgz
     version: 2.2.1
   pytorch:
   - annotations:
@@ -4115,7 +4115,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 2.8.0
-    created: "2026-01-19T00:07:01.488902795Z"
+    created: "2026-01-19T00:11:22.685984311Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4140,7 +4140,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/pytorch
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/pytorch-5.0.0.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/pytorch-5.0.0/pytorch-5.0.0.tgz
     version: 5.0.0
   rabbitmq:
   - annotations:
@@ -4153,7 +4153,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 4.1.3
-    created: "2026-01-19T00:07:01.492253444Z"
+    created: "2026-01-19T00:11:22.689290888Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4177,7 +4177,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/rabbitmq
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/rabbitmq-16.0.16.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/rabbitmq-16.0.16/rabbitmq-16.0.16.tgz
     version: 16.0.16
   rabbitmq-cluster-operator:
   - annotations:
@@ -4194,7 +4194,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 2.16.1
-    created: "2026-01-19T00:07:01.496963261Z"
+    created: "2026-01-19T00:11:22.693792534Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4220,7 +4220,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/rabbitmq-cluster-operator
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/rabbitmq-cluster-operator-4.4.37.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/rabbitmq-cluster-operator-4.4.37/rabbitmq-cluster-operator-4.4.37.tgz
     version: 4.4.37
   redis:
   - annotations:
@@ -4239,7 +4239,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 8.2.1
-    created: "2026-01-19T00:07:01.502730675Z"
+    created: "2026-01-19T00:11:22.699740571Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4263,7 +4263,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/redis
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/redis-23.0.5.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/redis-23.0.5/redis-23.0.5.tgz
     version: 23.0.5
   redis-cluster:
   - annotations:
@@ -4278,7 +4278,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 8.2.1
-    created: "2026-01-19T00:07:01.50624552Z"
+    created: "2026-01-19T00:11:22.704412143Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4302,7 +4302,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/redis-cluster
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/redis-cluster-13.0.5.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/redis-cluster-13.0.5/redis-cluster-13.0.5.tgz
     version: 13.0.5
   redmine:
   - annotations:
@@ -4315,7 +4315,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 6.0.6
-    created: "2026-01-19T00:07:01.5181858Z"
+    created: "2026-01-19T00:11:22.715630153Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -4352,7 +4352,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/redmine
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/redmine-34.0.1.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/redmine-34.0.1/redmine-34.0.1.tgz
     version: 34.0.1
   schema-registry:
   - annotations:
@@ -4363,7 +4363,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 8.0.0
-    created: "2026-01-19T00:07:01.525385306Z"
+    created: "2026-01-19T00:11:22.723950029Z"
     dependencies:
     - condition: kafka.enabled
       name: kafka
@@ -4393,7 +4393,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/schema-registry
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/schema-registry-26.0.6.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/schema-registry-26.0.6/schema-registry-26.0.6.tgz
     version: 26.0.6
   scylladb:
   - annotations:
@@ -4406,7 +4406,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 2025.2.2
-    created: "2026-01-19T00:07:01.529414637Z"
+    created: "2026-01-19T00:11:22.72671875Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4430,7 +4430,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/scylladb
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/scylladb-5.0.8.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/scylladb-5.0.8/scylladb-5.0.8.tgz
     version: 5.0.8
   sealed-secrets:
   - annotations:
@@ -4441,7 +4441,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 0.31.0
-    created: "2026-01-19T00:07:01.531575575Z"
+    created: "2026-01-19T00:11:22.728760865Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4466,7 +4466,7 @@ entries:
     - https://github.com/bitnami/charts/tree/main/bitnami/sealed-secrets
     - https://github.com/bitnami-labs/sealed-secrets
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/sealed-secrets-2.5.20.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/sealed-secrets-2.5.20/sealed-secrets-2.5.20.tgz
     version: 2.5.20
   seaweedfs:
   - annotations:
@@ -4483,7 +4483,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 3.96.0
-    created: "2026-01-19T00:07:01.547356276Z"
+    created: "2026-01-19T00:11:22.744461737Z"
     dependencies:
     - condition: mariadb.enabled
       name: mariadb
@@ -4521,7 +4521,7 @@ entries:
     - https://github.com/bitnami/charts/tree/main/bitnami/seawwedfs
     - https://github.com/bitnami/containers/tree/main/bitnami/seaweedfs
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/seaweedfs-6.0.4.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/seaweedfs-6.0.4/seaweedfs-6.0.4.tgz
     version: 6.0.4
   solr:
   - annotations:
@@ -4534,7 +4534,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 9.9.0
-    created: "2026-01-19T00:07:01.552465055Z"
+    created: "2026-01-19T00:11:22.751116271Z"
     dependencies:
     - condition: zookeeper.enabled
       name: zookeeper
@@ -4562,7 +4562,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/solr
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/solr-9.6.11.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/solr-9.6.11/solr-9.6.11.tgz
     version: 9.6.11
   sonarqube:
   - annotations:
@@ -4577,7 +4577,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 25.8.0
-    created: "2026-01-19T00:07:01.560847082Z"
+    created: "2026-01-19T00:11:22.758796465Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -4606,7 +4606,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/sonarqube
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/sonarqube-8.1.18.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/sonarqube-8.1.18/sonarqube-8.1.18.tgz
     version: 8.1.18
   spark:
   - annotations:
@@ -4617,7 +4617,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 4.0.0
-    created: "2026-01-19T00:07:01.563495546Z"
+    created: "2026-01-19T00:11:22.76138977Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4640,7 +4640,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/spark
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/spark-10.0.4.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/spark-10.0.4/spark-10.0.4.tgz
     version: 10.0.4
   superset:
   - annotations:
@@ -4651,7 +4651,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 5.0.0
-    created: "2026-01-19T00:07:01.578125765Z"
+    created: "2026-01-19T00:11:22.775104775Z"
     dependencies:
     - condition: redis.enabled
       name: redis
@@ -4682,7 +4682,7 @@ entries:
     - https://github.com/bitnami/containers/tree/main/bitnami/superset
     - https://github.com/apache/superset
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/superset-5.0.1.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/superset-5.0.1/superset-5.0.1.tgz
     version: 5.0.1
   tensorflow-resnet:
   - annotations:
@@ -4695,7 +4695,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 2.19.1
-    created: "2026-01-19T00:07:01.57982765Z"
+    created: "2026-01-19T00:11:22.776788941Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4721,7 +4721,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/tensorflow-resnet
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/tensorflow-resnet-4.3.15.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/tensorflow-resnet-4.3.15/tensorflow-resnet-4.3.15.tgz
     version: 4.3.15
   thanos:
   - annotations:
@@ -4734,7 +4734,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 0.39.2
-    created: "2026-01-19T00:07:01.593508546Z"
+    created: "2026-01-19T00:11:22.790227368Z"
     dependencies:
     - condition: minio.enabled
       name: minio
@@ -4763,7 +4763,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/thanos
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/thanos-17.3.4.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/thanos-17.3.4/thanos-17.3.4.tgz
     version: 17.3.4
   tomcat:
   - annotations:
@@ -4778,7 +4778,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 11.0.10
-    created: "2026-01-19T00:07:01.596733419Z"
+    created: "2026-01-19T00:11:22.792554205Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4805,7 +4805,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/tomcat
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/tomcat-13.0.0.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/tomcat-13.0.0/tomcat-13.0.0.tgz
     version: 13.0.0
   trafficserver:
   - annotations:
@@ -4815,7 +4815,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 10.0.0
-    created: "2026-01-19T00:07:01.599994042Z"
+    created: "2026-01-19T00:11:22.796804556Z"
     dependencies:
     - name: common
       repository: file://../common
@@ -4845,7 +4845,7 @@ entries:
     - https://github.com/apache/trafficserver
     - https://trafficserver.apache.org/docs/
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/trafficserver-1.0.0.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/trafficserver-1.0.0/trafficserver-1.0.0.tgz
     version: 1.0.0
   valkey:
   - annotations:
@@ -4864,7 +4864,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 8.1.3
-    created: "2026-01-19T00:07:01.605285235Z"
+    created: "2026-01-19T00:11:22.801429626Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4888,7 +4888,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/valkey
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/valkey-4.0.2.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/valkey-4.0.2/valkey-4.0.2.tgz
     version: 4.0.2
   valkey-cluster:
   - annotations:
@@ -4903,7 +4903,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 8.1.3
-    created: "2026-01-19T00:07:01.60875693Z"
+    created: "2026-01-19T00:11:22.80563792Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4928,7 +4928,7 @@ entries:
     - https://github.com/bitnami/charts/tree/main/bitnami/valkey-cluster
     - https://github.com/bitnami/containers/tree/main/bitnami/vakey-cluster
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/valkey-cluster-3.0.25.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/valkey-cluster-3.0.25/valkey-cluster-3.0.25.tgz
     version: 3.0.25
   vault:
   - annotations:
@@ -4945,7 +4945,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 1.20.2
-    created: "2026-01-19T00:07:01.613270086Z"
+    created: "2026-01-19T00:11:22.809158628Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4970,7 +4970,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/vault
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/vault-1.9.1.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/vault-1.9.1/vault-1.9.1.tgz
     version: 1.9.1
   victoriametrics:
   - annotations:
@@ -4992,7 +4992,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 1.124.0
-    created: "2026-01-19T00:07:01.620170067Z"
+    created: "2026-01-19T00:11:22.816199116Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -5014,7 +5014,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/victoriametrics
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/victoriametrics-0.1.32.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/victoriametrics-0.1.32/victoriametrics-0.1.32.tgz
     version: 0.1.32
   whereabouts:
   - annotations:
@@ -5025,7 +5025,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 0.9.2
-    created: "2026-01-19T00:07:01.621776604Z"
+    created: "2026-01-19T00:11:22.818504Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -5049,7 +5049,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/whereabouts
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/whereabouts-1.2.20.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/whereabouts-1.2.20/whereabouts-1.2.20.tgz
     version: 1.2.20
   wildfly:
   - annotations:
@@ -5062,7 +5062,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 37.0.0
-    created: "2026-01-19T00:07:01.623787723Z"
+    created: "2026-01-19T00:11:22.820539993Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -5088,7 +5088,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/wildfly
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/wildfly-25.0.1.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/wildfly-25.0.1/wildfly-25.0.1.tgz
     version: 25.0.1
   wordpress:
   - annotations:
@@ -5103,7 +5103,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 6.8.2
-    created: "2026-01-19T00:07:01.633460097Z"
+    created: "2026-01-19T00:11:22.82991561Z"
     dependencies:
     - condition: memcached.enabled
       name: memcached
@@ -5139,7 +5139,7 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/wordpress
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/wordpress-27.0.0.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/wordpress-27.0.0/wordpress-27.0.0.tgz
     version: 27.0.0
   zipkin:
   - annotations:
@@ -5152,7 +5152,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 3.5.1
-    created: "2026-01-19T00:07:01.639194829Z"
+    created: "2026-01-19T00:11:22.834862651Z"
     dependencies:
     - condition: cassandra.enabled
       name: cassandra
@@ -5181,7 +5181,7 @@ entries:
     - https://github.com/bitnami/containers/tree/main/bitnami/zipkin
     - https://github.com/openzipkin/zipkin
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/zipkin-1.3.12.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/zipkin-1.3.12/zipkin-1.3.12.tgz
     version: 1.3.12
   zookeeper:
   - annotations:
@@ -5194,7 +5194,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 3.9.3
-    created: "2026-01-19T00:07:01.641757394Z"
+    created: "2026-01-19T00:11:22.838288701Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -5215,6 +5215,6 @@ entries:
     sources:
     - https://github.com/bitnami/charts/tree/main/bitnami/zookeeper
     urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8.tgz
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-01-19T00:07:00.839730754Z"
+generated: "2026-01-19T00:11:22.017797128Z"

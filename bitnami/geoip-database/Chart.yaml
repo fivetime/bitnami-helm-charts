@@ -2,8 +2,8 @@ apiVersion: v2
 name: geoip-database
 description: GeoIP Database as a Service - Shared GeoLite2/GeoIP2 databases via RWX PVC
 type: application
-version: 0.1.0
-appVersion: "2025.01"
+version: 0.1.1
+appVersion: "2026.01"
 home: https://github.com/maxmind/geoipupdate
 sources:
   - https://github.com/maxmind/geoipupdate

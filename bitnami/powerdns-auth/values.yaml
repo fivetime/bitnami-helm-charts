@@ -592,26 +592,15 @@ config:
       ##
       expireDelay: 3600
       
-      ## @param config.luaRecords.healthChecks.maxConcurrent Maximum concurrent health checks
-      ## Limits parallel health check connections
-      ## Increase for deployments with many backend servers
-      ## PowerDNS default: 4, recommended: 8-64 for large deployments
-      ##
-      maxConcurrent: 16
-      
-      ## @param config.luaRecords.healthChecks.timeout Timeout for health check connections (ms)
-      ## How long to wait for health check response
-      ## Lower = faster failure detection, risk of false positives
-      ## Recommended: 1000-5000ms
-      ##
-      timeout: 2000
+      ## NOTE: maxConcurrent and timeout are NOT global PowerDNS settings.
+      ## They are per-function options in LUA records, e.g.:
+      ##   ifportup(443, {'192.0.2.1'}, {timeout=2000})
+      ##   ifurlup('https://example.com/', {{'192.0.2.1'}}, {timeout=5000})
     
-    ## @param config.luaRecords.axfrFormat AXFR format for LUA records
-    ## "native": Transfer LUA script as-is (requires LUA support on secondary)
-    ## "compat": Expand LUA records to regular records during AXFR
-    ## Use "native" when all servers support LUA, "compat" for mixed environments
+    ## @param config.luaRecords.luaAxfrScript Path to Lua script for AXFR preprocessing
+    ## Optional script to preprocess incoming AXFRs
     ##
-    axfrFormat: "native"
+    luaAxfrScript: ""
     
     ## Shared Lua state configuration
     ## For high-concurrency scenarios with many receiver threads

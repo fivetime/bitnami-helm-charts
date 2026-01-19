@@ -175,8 +175,6 @@ config:
       enabled: true
       interval: 5
       expireDelay: 3600
-      maxConcurrent: 16
-      timeout: 2000
 
 # 挂载 GeoIP 数据库
 geoipVolume:
@@ -499,10 +497,7 @@ kubectl create job --from=cronjob/pdns-auth-geoip-update geoip-manual-update
 | `config.luaRecords.healthChecks.enabled` | 启用健康检查功能 | `true` |
 | `config.luaRecords.healthChecks.interval` | 健康检查间隔（秒） | `5` |
 | `config.luaRecords.healthChecks.expireDelay` | 健康检查结果缓存时间（秒） | `3600` |
-| `config.luaRecords.healthChecks.maxConcurrent` | 最大并发健康检查数 | `16` |
-| `config.luaRecords.healthChecks.timeout` | 健康检查超时（毫秒） | `2000` |
-| `config.luaRecords.axfrFormat` | AXFR 格式（native/compat） | `native` |
-| `config.luaRecords.sharedLua.enabled` | 启用共享 Lua 状态 | `false` |
+| `config.luaRecords.luaAxfrScript` | AXFR 预处理 Lua 脚本路径 | `""` |
 
 ### 数据库配置参数
 
@@ -878,9 +873,8 @@ config:
       enabled: true
       interval: 5               # 健康检查间隔，影响故障切换速度
       expireDelay: 3600         # 检查结果缓存，防止高 QPS 时打爆后端
-      maxConcurrent: 16         # 最大并发健康检查
-      timeout: 2000             # 检查超时（毫秒）
-    axfrFormat: native
+    # NOTE: timeout/maxConcurrent 是 LUA 函数参数，不是全局配置
+    # 示例: ifportup(443, {'192.0.2.1'}, {timeout=2000})
 
 # 必须挂载 GeoIP 数据库
 geoipVolume:

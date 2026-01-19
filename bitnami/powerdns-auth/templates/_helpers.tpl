@@ -332,11 +332,8 @@ edns-subnet-processing=yes
 {{- if .execLimit }}
 lua-records-exec-limit={{ .execLimit }}
 {{- end }}
-{{- if .axfrFormat }}
-lua-axfr-script={{ .axfrFormat }}
-{{- end }}
-{{- if and .sharedLua .sharedLua.enabled }}
-lua-records-shared={{ .sharedLua.enabled }}
+{{- if .luaAxfrScript }}
+lua-axfr-script={{ .luaAxfrScript }}
 {{- end }}
 {{- with .healthChecks }}
 {{- if not (eq .enabled false) }}
@@ -346,12 +343,7 @@ lua-health-checks-interval={{ .interval }}
 {{- if .expireDelay }}
 lua-health-checks-expire-delay={{ .expireDelay }}
 {{- end }}
-{{- if .maxConcurrent }}
-lua-health-checks-max-concurrent={{ .maxConcurrent }}
-{{- end }}
-{{- if .timeout }}
-lua-health-checks-timeout={{ .timeout }}
-{{- end }}
+{{- /* NOTE: lua-health-checks-max-concurrent and lua-health-checks-timeout are not valid PowerDNS settings */}}
 {{- end }}
 {{- end }}
 {{- end }}

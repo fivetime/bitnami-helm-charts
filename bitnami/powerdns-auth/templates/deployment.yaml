@@ -152,6 +152,43 @@ spec:
               {{- end }}
               echo "Database schema is ready!"
         {{- end }}
+        {{- if and .Values.geoipVolume.enabled .Values.config.luaRecords.enabled .Values.config.luaRecords.geoipDatabaseFiles }}
+        - name: wait-for-geoip
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          {{- if .Values.dbSync.containerSecurityContext.enabled }}
+          securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.dbSync.containerSecurityContext "context" $) | nindent 12 }}
+          {{- end }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for GeoIP databases..."
+              MAX_WAIT=300
+              ELAPSED=0
+              while [ $ELAPSED -lt $MAX_WAIT ]; do
+                ALL_FOUND=true
+                {{- range .Values.config.luaRecords.geoipDatabaseFiles }}
+                if [ ! -f "{{ . }}" ]; then
+                  ALL_FOUND=false
+                  echo "Waiting for {{ . }}..."
+                fi
+                {{- end }}
+                if [ "$ALL_FOUND" = "true" ]; then
+                  echo "All GeoIP databases are ready!"
+                  exit 0
+                fi
+                sleep 5
+                ELAPSED=$((ELAPSED + 5))
+              done
+              echo "ERROR: GeoIP databases not found after ${MAX_WAIT}s"
+              echo "Please ensure geoipUpdate.enabled=true or manually populate the GeoIP volume"
+              exit 1
+          volumeMounts:
+            - name: geoip-data
+              mountPath: /usr/share/GeoIP
+              readOnly: true
+        {{- end }}
         {{- if .Values.initContainers }}
         {{- include "common.tplvalues.render" (dict "value" .Values.initContainers "context" $) | nindent 8 }}
         {{- end }}
@@ -290,13 +327,8 @@ spec:
               mountPath: /tmp
             - name: run
               mountPath: /run
-            {{- if and .Values.geoip.enabled .Values.geoipZones.enabled }}
-            - name: geoip-zones
-              mountPath: /etc/pdns/geo-zones.yaml
-              subPath: geo-zones.yaml
-              readOnly: true
-            {{- else if and .Values.config.luaRecords.enabled .Values.config.luaRecords.geoipDatabaseFiles }}
-            # Empty zones file for GeoIP backend when used only for LUA Records
+            {{- $needGeoipBackend := or .Values.geoip.enabled (and .Values.config.luaRecords.enabled .Values.config.luaRecords.geoipDatabaseFiles) }}
+            {{- if and $needGeoipBackend .Values.geoipZones.enabled }}
             - name: geoip-zones
               mountPath: /etc/pdns/geoip-zones.yaml
               subPath: geoip-zones.yaml
@@ -326,13 +358,8 @@ spec:
           emptyDir: {}
         - name: run
           emptyDir: {}
-        {{- if and .Values.geoip.enabled .Values.geoipZones.enabled }}
-        - name: geoip-zones
-          configMap:
-            name: {{ include "common.names.fullname" . }}-geoip-zones
-            defaultMode: 0444
-        {{- else if and .Values.config.luaRecords.enabled .Values.config.luaRecords.geoipDatabaseFiles }}
-        # Empty zones file for GeoIP backend when used only for LUA Records
+        {{- $needGeoipBackend := or .Values.geoip.enabled (and .Values.config.luaRecords.enabled .Values.config.luaRecords.geoipDatabaseFiles) }}
+        {{- if and $needGeoipBackend .Values.geoipZones.enabled }}
         - name: geoip-zones
           configMap:
             name: {{ include "common.names.fullname" . }}-geoip-zones

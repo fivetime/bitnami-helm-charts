@@ -16,25 +16,4 @@ metadata:
   {{- end }}
 data:
   geoip-zones.yaml: |
-    # GeoIP Backend zones configuration
-    # Zones are stored in PostgreSQL/MySQL via LUA Records
-    # This empty config satisfies GeoIP backend requirements
-
-    ## @param geoipZones.domains Domain configurations for GeoIP
-    ## Example:
-    ## domains:
-    ##   - domain: geo.example.com
-    ##     ttl: 300
-    ##     records:
-    ##       geo.example.com:
-    ##         - soa: ns1.example.com hostmaster.example.com 2024010101 7200 3600 1209600 3600
-    ##         - ns: ns1.example.com
-    ##       us.cdn.example.com:
-    ##         - a: 192.0.2.1
-    ##       eu.cdn.example.com:
-    ##         - a: 198.51.100.1
-    ##     services:
-    ##       www.example.com: '%co.cdn.example.com'
-    ##
-    domains: []
-{{- end }}
+    # Empty GeoIP zones - zones are stored in database via LUA Records

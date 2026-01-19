@@ -372,21 +372,20 @@ gmysql-timeout={{ .Values.database.mysql.timeout }}
 {{- end }}
 
 {{- if $needGeoip }}
-# GeoIP backend configuration (for LUA Records GeoDNS functions)
+# GeoIP backend configuration
 {{- if and .Values.config.luaRecords.enabled .Values.config.luaRecords.geoipDatabaseFiles }}
 geoip-database-files={{ join " " .Values.config.luaRecords.geoipDatabaseFiles }}
-# Empty zones file required when geoip backend is loaded for LUA Records only
-geoip-zones-file=/etc/pdns/geoip-zones.yaml
 {{- else if .Values.geoip.enabled }}
 geoip-database-files={{ join " " .Values.geoip.databases }}
 {{- end }}
-{{- if .Values.geoip.enabled }}
-{{- if .Values.geoip.zonesFile }}
+{{- if .Values.geoipZones.enabled }}
+# Zones file from ConfigMap (either empty for LUA Records or with actual zones)
+geoip-zones-file=/etc/pdns/geoip-zones.yaml
+{{- else if and .Values.geoip.enabled .Values.geoip.zonesFile }}
 geoip-zones-file={{ .Values.geoip.zonesFile }}
 {{- end }}
-{{- if .Values.geoip.dnssecKeydir }}
+{{- if and .Values.geoip.enabled .Values.geoip.dnssecKeydir }}
 geoip-dnssec-keydir={{ .Values.geoip.dnssecKeydir }}
-{{- end }}
 {{- end }}
 {{- end }}
 
@@ -498,4 +497,197 @@ Return the GeoIP update secret name
 {{- else -}}
     {{- printf "%s-geoip-credentials" (include "common.names.fullname" .) -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+GeoIP Update Job Pod Spec - shared between Job and CronJob
+*/}}
+{{- define "powerdns-auth.geoipUpdate.podSpec" -}}
+{{- include "powerdns-auth.imagePullSecrets" . | nindent 0 }}
+serviceAccountName: {{ template "powerdns-auth.serviceAccountName" . }}
+restartPolicy: {{ .Values.geoipUpdate.restartPolicy | default "OnFailure" }}
+{{- if .Values.geoipUpdate.podSecurityContext.enabled }}
+securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.geoipUpdate.podSecurityContext "context" $) | nindent 2 }}
+{{- end }}
+{{- if .Values.geoipUpdate.nodeSelector }}
+nodeSelector: {{- include "common.tplvalues.render" ( dict "value" .Values.geoipUpdate.nodeSelector "context" $) | nindent 2 }}
+{{- end }}
+{{- if .Values.geoipUpdate.tolerations }}
+tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.geoipUpdate.tolerations "context" .) | nindent 2 }}
+{{- end }}
+{{- if .Values.geoipUpdate.affinity }}
+affinity: {{- include "common.tplvalues.render" ( dict "value" .Values.geoipUpdate.affinity "context" $) | nindent 2 }}
+{{- end }}
+initContainers:
+  # Step 1: Download GeoIP databases from MaxMind
+  - name: geoip-download
+    image: {{ include "powerdns-auth.geoipUpdate.image" . }}
+    imagePullPolicy: {{ .Values.geoipUpdate.image.pullPolicy }}
+    {{- if .Values.geoipUpdate.containerSecurityContext.enabled }}
+    securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.geoipUpdate.containerSecurityContext "context" $) | nindent 6 }}
+    {{- end }}
+    env:
+      - name: GEOIPUPDATE_ACCOUNT_ID
+        valueFrom:
+          secretKeyRef:
+            name: {{ include "powerdns-auth.geoipUpdate.secretName" . }}
+            key: {{ .Values.geoipUpdate.existingSecret.keys.accountId | default "account-id" }}
+      - name: GEOIPUPDATE_LICENSE_KEY
+        valueFrom:
+          secretKeyRef:
+            name: {{ include "powerdns-auth.geoipUpdate.secretName" . }}
+            key: {{ .Values.geoipUpdate.existingSecret.keys.licenseKey | default "license-key" }}
+      - name: GEOIPUPDATE_EDITION_IDS
+        value: {{ join " " .Values.geoipUpdate.editionIds | quote }}
+      {{- if .Values.geoipUpdate.host }}
+      - name: GEOIPUPDATE_HOST
+        value: {{ .Values.geoipUpdate.host | quote }}
+      {{- end }}
+      {{- if .Values.geoipUpdate.proxy }}
+      - name: GEOIPUPDATE_PROXY
+        value: {{ .Values.geoipUpdate.proxy | quote }}
+      {{- end }}
+      {{- if .Values.geoipUpdate.proxyUserPassword }}
+      - name: GEOIPUPDATE_PROXY_USER_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: {{ include "powerdns-auth.geoipUpdate.secretName" . }}
+            key: {{ .Values.geoipUpdate.existingSecret.keys.proxyUserPassword | default "proxy-user-password" }}
+      {{- end }}
+      {{- if .Values.geoipUpdate.preserveFileTimes }}
+      - name: GEOIPUPDATE_PRESERVE_FILE_TIMES
+        value: "1"
+      {{- end }}
+      {{- if .Values.geoipUpdate.verbose }}
+      - name: GEOIPUPDATE_VERBOSE
+        value: "1"
+      {{- end }}
+      - name: GEOIPUPDATE_DB_DIR
+        value: {{ .Values.geoipUpdate.databaseDirectory | default "/usr/share/GeoIP" | quote }}
+      {{- if .Values.geoipUpdate.extraEnvVars }}
+      {{- include "common.tplvalues.render" (dict "value" .Values.geoipUpdate.extraEnvVars "context" $) | nindent 6 }}
+      {{- end }}
+    {{- if .Values.geoipUpdate.resources }}
+    resources: {{- toYaml .Values.geoipUpdate.resources | nindent 6 }}
+    {{- else if ne .Values.geoipUpdate.resourcesPreset "none" }}
+    resources: {{- include "common.resources.preset" (dict "type" .Values.geoipUpdate.resourcesPreset) | nindent 6 }}
+    {{- end }}
+    volumeMounts:
+      - name: geoip-data
+        mountPath: {{ .Values.geoipUpdate.databaseDirectory | default "/usr/share/GeoIP" }}
+      {{- if .Values.geoipUpdate.extraVolumeMounts }}
+      {{- include "common.tplvalues.render" (dict "value" .Values.geoipUpdate.extraVolumeMounts "context" $) | nindent 6 }}
+      {{- end }}
+containers:
+  {{- if .Values.geoipUpdate.autoReload.enabled }}
+  # Step 2: Calculate hash and update ConfigMap to trigger Pod rolling update
+  - name: hash-update
+    image: {{ .Values.geoipUpdate.autoReload.image.registry }}/{{ .Values.geoipUpdate.autoReload.image.repository }}:{{ .Values.geoipUpdate.autoReload.image.tag }}
+    imagePullPolicy: {{ .Values.geoipUpdate.autoReload.image.pullPolicy | default "IfNotPresent" }}
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      runAsNonRoot: true
+      readOnlyRootFilesystem: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+    env:
+      - name: NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
+      - name: CONFIGMAP_NAME
+        value: {{ include "common.names.fullname" . }}-geoip-hash
+      - name: GEOIP_DIR
+        value: {{ .Values.geoipUpdate.databaseDirectory | default "/usr/share/GeoIP" | quote }}
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        
+        echo "=== GeoIP Hash Update ==="
+        echo "Directory: ${GEOIP_DIR}"
+        
+        # Check if any mmdb files exist (download succeeded)
+        MMDB_COUNT=$(find ${GEOIP_DIR} -name "*.mmdb" -type f 2>/dev/null | wc -l)
+        if [ "${MMDB_COUNT}" -eq 0 ]; then
+          echo "ERROR: No .mmdb files found in ${GEOIP_DIR}"
+          echo "Download may have failed. Skipping hash update."
+          exit 1
+        fi
+        
+        echo "Found ${MMDB_COUNT} mmdb file(s)"
+        
+        # Calculate combined hash of all mmdb files
+        NEW_HASH=$(find ${GEOIP_DIR} -name "*.mmdb" -type f -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)
+        echo "New hash: ${NEW_HASH}"
+        
+        # Get current hash from ConfigMap
+        CURRENT_HASH=$(kubectl get configmap ${CONFIGMAP_NAME} -n ${NAMESPACE} -o jsonpath='{.data.geoip-hash}' 2>/dev/null || echo "")
+        echo "Current hash: ${CURRENT_HASH:-<not set>}"
+        
+        # Compare hashes
+        if [ "${NEW_HASH}" = "${CURRENT_HASH}" ]; then
+          echo "Hash unchanged. No update needed."
+          echo "GeoIP databases are already up to date."
+          exit 0
+        fi
+        
+        # Update ConfigMap with new hash
+        TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        echo "Hash changed. Updating ConfigMap ${CONFIGMAP_NAME}..."
+        
+        kubectl patch configmap ${CONFIGMAP_NAME} -n ${NAMESPACE} \
+          --type merge \
+          -p "{\"data\":{\"geoip-hash\":\"${NEW_HASH}\",\"updated-at\":\"${TIMESTAMP}\",\"previous-hash\":\"${CURRENT_HASH}\"}}"
+        
+        echo "ConfigMap updated successfully."
+        echo "PowerDNS pods will perform rolling update to load new GeoIP databases."
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "32Mi"
+      limits:
+        cpu: "100m"
+        memory: "64Mi"
+    volumeMounts:
+      - name: geoip-data
+        mountPath: {{ .Values.geoipUpdate.databaseDirectory | default "/usr/share/GeoIP" }}
+        readOnly: true
+  {{- else }}
+  # No auto-reload: just a placeholder container that completes successfully
+  - name: complete
+    image: {{ .Values.geoipUpdate.autoReload.image.registry | default "docker.io" }}/{{ .Values.geoipUpdate.autoReload.image.repository | default "busybox" }}:{{ .Values.geoipUpdate.autoReload.image.tag | default "latest" }}
+    command: ["sh", "-c", "echo 'GeoIP databases updated. Auto-reload is disabled.'"]
+    securityContext:
+      runAsUser: 1000
+      runAsNonRoot: true
+      readOnlyRootFilesystem: true
+      allowPrivilegeEscalation: false
+    resources:
+      requests:
+        cpu: "10m"
+        memory: "8Mi"
+      limits:
+        cpu: "50m"
+        memory: "16Mi"
+  {{- end }}
+volumes:
+  - name: geoip-data
+    {{- if eq .Values.geoipVolume.type "pvc" }}
+    persistentVolumeClaim:
+      claimName: {{ .Values.geoipVolume.pvc.claimName }}
+    {{- else if eq .Values.geoipVolume.type "hostPath" }}
+    hostPath:
+      path: {{ .Values.geoipVolume.hostPath.path }}
+      type: DirectoryOrCreate
+    {{- else }}
+    emptyDir: {}
+    {{- end }}
+  {{- if .Values.geoipUpdate.extraVolumes }}
+  {{- include "common.tplvalues.render" (dict "value" .Values.geoipUpdate.extraVolumes "context" $) | nindent 2 }}
+  {{- end }}
 {{- end -}}

@@ -755,12 +755,25 @@ geoipVolume:
   ## @param geoipVolume.type Volume type (pvc, configMap, hostPath)
   ##
   type: pvc
-  ## PVC configuration
+  ## PVC configuration (created automatically when type=pvc)
   ##
   pvc:
     ## @param geoipVolume.pvc.claimName PVC claim name
     ##
     claimName: geoip-data
+    ## @param geoipVolume.pvc.storageClass Storage class (leave empty for default)
+    ##
+    storageClass: ""
+    ## @param geoipVolume.pvc.accessModes PVC access modes
+    ##
+    accessModes:
+      - ReadWriteMany
+    ## @param geoipVolume.pvc.size PVC size
+    ##
+    size: 1Gi
+    ## @param geoipVolume.pvc.annotations PVC annotations
+    ##
+    annotations: {}
   ## ConfigMap configuration
   ##
   configMap:
@@ -824,12 +837,13 @@ geoipUpdate:
   restartPolicy: OnFailure
   
   ## MaxMind geoipupdate image
-  ## ref: https://hub.docker.com/r/maxmindinc/geoipupdate
+  ## NOTE: Docker Hub image is deprecated, use GitHub Container Registry
+  ## ref: https://github.com/maxmind/geoipupdate
   ##
   image:
-    registry: docker.io
-    repository: maxmindinc/geoipupdate
-    tag: v7
+    registry: ghcr.io
+    repository: maxmind/geoipupdate
+    tag: v7.1
     pullPolicy: IfNotPresent
   
   ## MaxMind account credentials

@@ -1,0 +1,31 @@
+{{/*
+GeoIP PVC - automatically created when geoipVolume is enabled with PVC type
+*/}}
+{{- if and .Values.geoipVolume.enabled (eq .Values.geoipVolume.type "pvc") }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.geoipVolume.pvc.claimName }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: geoip-data
+  {{- if or .Values.geoipVolume.pvc.annotations .Values.commonAnnotations }}
+  {{- $annotations := include "common.tplvalues.merge" ( dict "values" ( list .Values.geoipVolume.pvc.annotations .Values.commonAnnotations ) "context" . ) }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" $annotations "context" $) | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+  {{- range .Values.geoipVolume.pvc.accessModes }}
+    - {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.geoipVolume.pvc.size | quote }}
+  {{- if .Values.geoipVolume.pvc.storageClass }}
+  {{- if eq .Values.geoipVolume.pvc.storageClass "-" }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: {{ .Values.geoipVolume.pvc.storageClass | quote }}
+  {{- end }}
+  {{- end }}
+{{- end }}

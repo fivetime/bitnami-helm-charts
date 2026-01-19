@@ -1,0 +1,29 @@
+{{/*
+GeoIP Database Init Job
+Runs once on first install to download GeoIP databases before main pods start
+*/}}
+{{- if and .Values.geoipVolume.enabled .Values.geoipUpdate.enabled (or .Values.geoip.enabled (and .Values.config.luaRecords.enabled .Values.config.luaRecords.geoipDatabaseFiles)) }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "common.names.fullname" . }}-geoip-init
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: geoip-init
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": hook-succeeded
+    {{- if .Values.commonAnnotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+spec:
+  ttlSecondsAfterFinished: {{ .Values.geoipUpdate.ttlSecondsAfterFinished | default 300 }}
+  backoffLimit: {{ .Values.geoipUpdate.backoffLimit | default 3 }}
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 8 }}
+        app.kubernetes.io/component: geoip-init
+    spec:
+      {{- include "powerdns-auth.geoipUpdate.podSpec" . | nindent 6 }}
+{{- end }}

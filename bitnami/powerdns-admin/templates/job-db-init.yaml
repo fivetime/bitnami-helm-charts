@@ -55,6 +55,21 @@ spec:
           resources: {{- include "common.resources.preset" (dict "type" .Values.dbInit.resourcesPreset) | nindent 12 }}
           {{- end }}
           env:
+            # Database connection settings
+            - name: DB_HOST
+              value: {{ .Values.externalDatabase.host | quote }}
+            - name: DB_PORT
+              value: {{ .Values.externalDatabase.port | default 5432 | quote }}
+            - name: DB_NAME
+              value: {{ .Values.externalDatabase.database | quote }}
+            - name: DB_USER
+              value: {{ .Values.externalDatabase.username | quote }}
+            # Retry settings
+            - name: MAX_RETRIES
+              value: {{ .Values.dbInit.connection.maxRetries | default 15 | quote }}
+            - name: RETRY_INTERVAL
+              value: {{ .Values.dbInit.connection.retryInterval | default 5 | quote }}
+            # Admin credentials
             {{- if .Values.dbInit.existingSecret.enabled }}
             - name: DB_ADMIN_USER
               valueFrom:
@@ -78,6 +93,7 @@ spec:
                   name: {{ include "powerdns-admin.dbInit.adminSecretName" . }}
                   key: password
             {{- end }}
+            # Application user password
             - name: DB_USER_PASS
               valueFrom:
                 secretKeyRef:

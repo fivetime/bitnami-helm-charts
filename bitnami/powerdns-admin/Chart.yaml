@@ -37,4 +37,4 @@ name: powerdns-admin
 sources:
 - https://github.com/PowerDNS-Admin/PowerDNS-Admin
 - https://github.com/PowerDNS-Admin/PowerDNS-Admin/wiki
-version: 2.0.2
+version: 0.0.2

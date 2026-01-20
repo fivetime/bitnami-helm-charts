@@ -3975,6 +3975,50 @@ entries:
       licenses: MIT
     apiVersion: v2
     appVersion: 0.4.2
+    created: "2026-01-20T06:05:34.282077433Z"
+    dependencies:
+    - name: common
+      repository: file://../common
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: PowerDNS-Admin is a PowerDNS web interface with advanced features
+      including user management, zone templating, LDAP/OAuth/SAML authentication,
+      two-factor authentication, and API access.
+    digest: ea7a7105d9bf70713e3f33497165b1d74822898732a5b5f12c5c510b55701f09
+    home: https://github.com/PowerDNS-Admin/PowerDNS-Admin
+    icon: https://raw.githubusercontent.com/PowerDNS-Admin/PowerDNS-Admin/master/powerdnsadmin/static/img/favicon.png
+    keywords:
+    - dns
+    - powerdns
+    - admin
+    - web-interface
+    - management
+    - ldap
+    - oauth
+    - saml
+    maintainers:
+    - name: Simon Li
+      url: https://github.com/simonli/powerdns-helm
+    name: powerdns-admin
+    sources:
+    - https://github.com/PowerDNS-Admin/PowerDNS-Admin
+    - https://github.com/PowerDNS-Admin/PowerDNS-Admin/wiki
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/powerdns-admin-0.0.4/powerdns-admin-0.0.4.tgz
+    version: 0.0.4
+  - annotations:
+      category: Infrastructure
+      images: |
+        - name: powerdns-admin
+          image: docker.io/powerdnsadmin/pda-legacy:v0.4.2
+        - name: postgresql
+          image: docker.io/bitnami/postgresql:16
+        - name: mariadb
+          image: docker.io/bitnami/mariadb:11.2
+      licenses: MIT
+    apiVersion: v2
+    appVersion: 0.4.2
     created: "2026-01-20T05:54:29.760959684Z"
     dependencies:
     - name: common
@@ -5331,4 +5375,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-01-20T05:55:54.254115185Z"
+generated: "2026-01-20T06:05:34.282110085Z"

@@ -247,7 +247,7 @@ ingress:
   enabled: true
   hostname: pdns-admin.test.example.com
   tls: true
-  ingressClassName: nginx
+  className: nginx
 ```
 
 ```bash
@@ -296,7 +296,7 @@ ingress:
   enabled: true
   hostname: dns-admin.example.com
   tls: true
-  ingressClassName: nginx
+  className: nginx
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"

@@ -971,9 +971,9 @@ ingress:
   ## @param ingress.hostname Default host for the ingress record
   ##
   hostname: powerdns-admin.local
-  ## @param ingress.ingressClassName IngressClass that will be used to implement the Ingress
+  ## @param ingress.className IngressClass that will be used to implement the Ingress
   ##
-  ingressClassName: ""
+  className: ""
   ## @param ingress.path Default path for the ingress record
   ##
   path: /

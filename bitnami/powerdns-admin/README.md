@@ -564,7 +564,7 @@ kubectl delete pvc -l app.kubernetes.io/name=powerdns-admin
 | `ingress.extraRules` | Additional rules to be covered with this ingress record | `[]` |
 | `ingress.extraTls` | TLS configuration for additional hostname(s) | `[]` |
 | `ingress.hostname` | Default host for the ingress record | `"powerdns-admin.local"` |
-| `ingress.ingressClassName` | IngressClass that will be used to implement the Ingress | `""` |
+| `ingress.className` | IngressClass that will be used to implement the Ingress | `""` |
 | `ingress.path` | Default path for the ingress record | `"/"` |
 | `ingress.pathType` | Ingress path type | `"ImplementationSpecific"` |
 | `ingress.secrets` | Custom TLS certificates as secrets | `[]` |
@@ -817,7 +817,7 @@ topologySpreadConstraints:
 ingress:
   enabled: true
   hostname: "dns-admin.example.com"
-  ingressClassName: "nginx"
+  className: "nginx"
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
   tls: true

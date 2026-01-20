@@ -1,9 +1,9 @@
 {{/*
 GeoIP Zones ConfigMap
-Required when GeoIP backend is loaded (for LUA Records GeoDNS functions)
+Only required when GeoIP backend is enabled (geoip.enabled=true)
+NOT needed for LUA Records - they use lua-records-geoip-database-files instead
 */}}
-{{- $needGeoipBackend := or .Values.geoip.enabled (and .Values.config.luaRecords.enabled .Values.config.luaRecords.geoipDatabaseFiles) }}
-{{- if and $needGeoipBackend .Values.geoipZones.enabled }}
+{{- if and .Values.geoip.enabled .Values.geoipZones.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

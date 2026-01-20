@@ -316,8 +316,7 @@ spec:
               mountPath: /tmp
             - name: run
               mountPath: /run
-            {{- $needGeoipBackend := or .Values.geoip.enabled (and .Values.config.luaRecords.enabled .Values.config.luaRecords.geoipDatabaseFiles) }}
-            {{- if and $needGeoipBackend .Values.geoipZones.enabled }}
+            {{- if and .Values.geoip.enabled .Values.geoipZones.enabled }}
             - name: geoip-zones
               mountPath: /etc/pdns/geoip-zones.yaml
               subPath: geoip-zones.yaml
@@ -347,8 +346,7 @@ spec:
           emptyDir: {}
         - name: run
           emptyDir: {}
-        {{- $needGeoipBackend := or .Values.geoip.enabled (and .Values.config.luaRecords.enabled .Values.config.luaRecords.geoipDatabaseFiles) }}
-        {{- if and $needGeoipBackend .Values.geoipZones.enabled }}
+        {{- if and .Values.geoip.enabled .Values.geoipZones.enabled }}
         - name: geoip-zones
           configMap:
             name: {{ include "common.names.fullname" . }}-geoip-zones

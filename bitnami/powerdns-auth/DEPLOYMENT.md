@@ -732,7 +732,7 @@ networkPolicy:
 ```yaml
 ingress:
   enabled: true
-  ingressClassName: nginx
+  className: nginx
   hostname: pdns-api.example.com
   path: /api
   tls: true

@@ -549,7 +549,7 @@ geoipVolume:
 | `ingress.enabled` | 启用 Ingress | `false` |
 | `ingress.pathType` | Ingress 路径类型 | `Prefix` |
 | `ingress.hostname` | Ingress 主机名 | `pdns-api.local` |
-| `ingress.ingressClassName` | Ingress 类名 | `""` |
+| `ingress.className` | Ingress 类名 | `""` |
 | `ingress.path` | Ingress 路径 | `/api` |
 | `ingress.annotations` | Ingress 注解 | `{}` |
 | `ingress.tls` | 启用 TLS | `false` |

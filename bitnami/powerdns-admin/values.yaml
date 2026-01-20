@@ -123,7 +123,7 @@ powerdnsAdmin:
   secretKey: ""
   salt: ""
   bindAddress: "0.0.0.0"
-  port: 9191
+  port: 80
   logLevel: "INFO"
   offlineMode: false
   signupEnabled: true
@@ -697,7 +697,7 @@ terminationGracePeriodSeconds: ""
 ## @param podSecurityContext.fsGroup Set PowerDNS-Admin pod's Security Context fsGroup
 ##
 podSecurityContext:
-  enabled: true
+  enabled: false
   fsGroupChangePolicy: Always
   sysctls: []
   supplementalGroups: []
@@ -717,19 +717,7 @@ podSecurityContext:
 ## @param containerSecurityContext.seccompProfile.type Set container's Security Context seccomp profile
 ##
 containerSecurityContext:
-  enabled: true
-  seLinuxOptions: {}
-  runAsUser: 1001
-  runAsGroup: 1001
-  runAsNonRoot: true
-  privileged: false
-  readOnlyRootFilesystem: false
-  allowPrivilegeEscalation: false
-  capabilities:
-    drop:
-      - ALL
-  seccompProfile:
-    type: RuntimeDefault
+  enabled: false
 
 ## @param command Override default container command (useful when using custom images)
 ##
@@ -835,7 +823,7 @@ resources: {}
 ## @param containerPorts.http HTTP container port
 ##
 containerPorts:
-  http: 9191
+  http: 80
 
 ## @section Liveness probe parameters
 

@@ -4020,6 +4020,48 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 5.0.2
+    created: "2026-01-20T00:48:35.262305162Z"
+    dependencies:
+    - name: common
+      repository: file://../common
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: PowerDNS Authoritative Server is a versatile nameserver which supports
+      a large number of backends. It is designed to be highly performant and can be
+      configured to serve as either a primary or secondary DNS server.
+    digest: ada292cb355bece9fd34312ef6d0962d04dd2c50b665d648bca5bc665999b347
+    home: https://www.powerdns.com/
+    icon: https://www.powerdns.com/images/powerdns-logo.svg
+    keywords:
+    - dns
+    - powerdns
+    - authoritative
+    - nameserver
+    - dnssec
+    - geoip
+    maintainers:
+    - name: Simon Zhou
+      url: https://github.com/fivetime/powerdns-helm
+    name: powerdns-auth
+    sources:
+    - https://github.com/PowerDNS/pdns
+    - https://doc.powerdns.com/authoritative/
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/powerdns-auth-1.0.6/powerdns-auth-1.0.6.tgz
+    version: 1.0.6
+  - annotations:
+      category: Infrastructure
+      images: |
+        - name: powerdns-auth
+          image: docker.io/powerdns/pdns-auth-50:5.0.2
+        - name: postgresql
+          image: docker.io/library/postgres:17-alpine
+        - name: mysql
+          image: docker.io/library/mysql:8.0
+      licenses: Apache-2.0
+    apiVersion: v2
+    appVersion: 5.0.2
     created: "2026-01-19T23:25:43.757923109Z"
     dependencies:
     - name: common
@@ -5245,4 +5287,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-01-19T23:25:43.106405291Z"
+generated: "2026-01-20T00:48:35.262331982Z"

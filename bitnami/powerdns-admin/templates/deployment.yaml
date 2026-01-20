@@ -133,12 +133,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "powerdns-admin.secretName" . }}
-                  key: SECRET_KEY
+                  key: secret-key
             - name: SALT
               valueFrom:
                 secretKeyRef:
                   name: {{ include "powerdns-admin.secretName" . }}
-                  key: SALT
+                  key: salt
             - name: BIND_ADDRESS
               value: {{ .Values.powerdnsAdmin.bindAddress | quote }}
             - name: PORT

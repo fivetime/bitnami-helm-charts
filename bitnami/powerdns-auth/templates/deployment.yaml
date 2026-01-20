@@ -203,7 +203,7 @@ spec:
           {{- else }}
           command:
             - pdns_server
-            - --config-dir=/etc/pdns
+            - --config-dir=/etc/powerdns
             - --guardian=no
             - --daemon=no
             - --disable-syslog
@@ -309,7 +309,7 @@ spec:
           {{- end }}
           volumeMounts:
             - name: config
-              mountPath: /etc/pdns/pdns.conf
+              mountPath: /etc/powerdns/pdns.conf
               subPath: pdns.conf
               readOnly: true
             - name: tmp
@@ -318,7 +318,7 @@ spec:
               mountPath: /run
             {{- if and .Values.geoip.enabled .Values.geoipZones.enabled }}
             - name: geoip-zones
-              mountPath: /etc/pdns/geoip-zones.yaml
+              mountPath: /etc/powerdns/geoip-zones.yaml
               subPath: geoip-zones.yaml
               readOnly: true
             {{- end }}

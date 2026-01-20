@@ -381,7 +381,7 @@ geoip-database-files={{ join " " .Values.geoip.databases }}
 {{- end }}
 {{- /* geoip-zones-file is only needed for static YAML-based GeoDNS, not for LUA Records */}}
 {{- if and .Values.geoip.enabled .Values.geoipZones.enabled }}
-geoip-zones-file=/etc/pdns/geoip-zones.yaml
+geoip-zones-file=/etc/powerdns/geoip-zones.yaml
 {{- else if and .Values.geoip.enabled .Values.geoip.zonesFile }}
 geoip-zones-file={{ .Values.geoip.zonesFile }}
 {{- end }}

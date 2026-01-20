@@ -329,9 +329,6 @@ enable-lua-records=yes
 {{- if .ednsSubnetProcessing }}
 edns-subnet-processing=yes
 {{- end }}
-{{- if .geoipDatabaseFiles }}
-lua-records-geoip-database-files={{ join " " .geoipDatabaseFiles }}
-{{- end }}
 {{- if .execLimit }}
 lua-records-exec-limit={{ .execLimit }}
 {{- end }}
@@ -353,10 +350,10 @@ lua-health-checks-expire-delay={{ .expireDelay }}
 {{- end }}
 
 # Backend configuration
-{{- /* GeoIP backend is only needed when geoip.enabled=true (static YAML-based GeoDNS) */}}
-{{- /* LUA Records with geo functions only need lua-records-geoip-database-files, not the GeoIP backend */}}
+{{- /* GeoIP backend is needed for LUA Records geographical functions (pickclosest, country, continent) */}}
+{{- $needGeoip := or .Values.geoip.enabled (and .Values.config.luaRecords.enabled .Values.config.luaRecords.geoipDatabaseFiles) }}
 {{- if eq .Values.database.type "postgresql" }}
-launch={{ if .Values.geoip.enabled }}geoip,{{ end }}gpgsql
+launch={{ if $needGeoip }}geoip,{{ end }}gpgsql
 gpgsql-host={{ include "powerdns-auth.databaseHost" . }}
 gpgsql-port={{ include "powerdns-auth.databasePort" . }}
 gpgsql-dbname={{ include "powerdns-auth.databaseName" . }}
@@ -365,7 +362,7 @@ gpgsql-password={{ include "powerdns-auth.databasePassword" . }}
 gpgsql-dnssec=yes
 {{- /* NOTE: gpgsql-prepare-statements removed in PowerDNS 5.0 - prepared statements are always enabled */}}
 {{- else }}
-launch={{ if .Values.geoip.enabled }}geoip,{{ end }}gmysql
+launch={{ if $needGeoip }}geoip,{{ end }}gmysql
 gmysql-host={{ include "powerdns-auth.databaseHost" . }}
 gmysql-port={{ include "powerdns-auth.databasePort" . }}
 gmysql-dbname={{ include "powerdns-auth.databaseName" . }}
@@ -375,15 +372,20 @@ gmysql-dnssec=yes
 gmysql-timeout={{ .Values.database.mysql.timeout }}
 {{- end }}
 
-{{- if .Values.geoip.enabled }}
-# GeoIP backend configuration (for static YAML-based GeoDNS)
+{{- if $needGeoip }}
+# GeoIP backend configuration (required for LUA geo functions)
+{{- if and .Values.config.luaRecords.enabled .Values.config.luaRecords.geoipDatabaseFiles }}
+geoip-database-files={{ join " " .Values.config.luaRecords.geoipDatabaseFiles }}
+{{- else if .Values.geoip.enabled }}
 geoip-database-files={{ join " " .Values.geoip.databases }}
-{{- if .Values.geoipZones.enabled }}
+{{- end }}
+{{- /* geoip-zones-file is only needed for static YAML-based GeoDNS, not for LUA Records */}}
+{{- if and .Values.geoip.enabled .Values.geoipZones.enabled }}
 geoip-zones-file=/etc/pdns/geoip-zones.yaml
-{{- else if .Values.geoip.zonesFile }}
+{{- else if and .Values.geoip.enabled .Values.geoip.zonesFile }}
 geoip-zones-file={{ .Values.geoip.zonesFile }}
 {{- end }}
-{{- if .Values.geoip.dnssecKeydir }}
+{{- if and .Values.geoip.enabled .Values.geoip.dnssecKeydir }}
 geoip-dnssec-keydir={{ .Values.geoip.dnssecKeydir }}
 {{- end }}
 {{- end }}

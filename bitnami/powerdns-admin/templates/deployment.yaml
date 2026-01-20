@@ -140,7 +140,9 @@ spec:
                   name: {{ include "powerdns-admin.secretName" . }}
                   key: salt
             - name: BIND_ADDRESS
-              value: "{{ .Values.powerdnsAdmin.bindAddress }}:{{ .Values.powerdnsAdmin.port }}"
+              value: {{ .Values.powerdnsAdmin.bindAddress | quote }}
+            - name: PORT
+              value: {{ .Values.powerdnsAdmin.port | quote }}
             - name: LOG_LEVEL
               value: {{ .Values.powerdnsAdmin.logLevel | quote }}
             {{- if .Values.powerdnsAdmin.offlineMode }}

@@ -106,12 +106,11 @@ image:
   ## Set to true if you would like to see extra information on logs
   ##
   debug: false
-## @param containerRuntime Container runtime type: containerd, crio, or auto
-## auto: mounts both /opt/cni/bin and /usr/libexec/cni, multus will use whichever exists
+## @param containerRuntime Container runtime type: containerd or crio
 ## containerd: /opt/cni/bin
 ## crio: /usr/libexec/cni
 ##
-containerRuntime: auto
+containerRuntime: containerd
 ## @param CNIVersion CNI version
 ##
 CNIVersion: "0.3.0"

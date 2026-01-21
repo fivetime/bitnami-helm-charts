@@ -77,18 +77,9 @@ spec:
           {{- end }}
           terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
-            {{- if eq (include "multus-cni.isAutoDetect" .) "true" }}
-            - name: cni-bin-dir-containerd
-              mountPath: {{ .Values.CNIMountPath }}/opt/cni/bin
-              mountPropagation: Bidirectional
-            - name: cni-bin-dir-crio
-              mountPath: {{ .Values.CNIMountPath }}/usr/libexec/cni
-              mountPropagation: Bidirectional
-            {{- else }}
             - name: cni-bin-dir
               mountPath: {{ .Values.CNIMountPath }}{{ include "multus-cni.cniBinDir" . }}
               mountPropagation: Bidirectional
-            {{- end }}
       containers:
         - name: multus-cni
           image: {{ template "multus-cni.image" . }}
@@ -110,9 +101,7 @@ spec:
             - "--multus-conf-file=auto"
             - "--multus-autoconfig-dir={{ .Values.CNIMountPath }}{{ .Values.hostCNINetDir }}"
             - "--cni-conf-dir={{ .Values.CNIMountPath }}{{ .Values.hostCNINetDir }}"
-            {{- if ne (include "multus-cni.isAutoDetect" .) "true" }}
             - "--cni-bin-dir={{ .Values.CNIMountPath }}{{ include "multus-cni.cniBinDir" . }}"
-            {{- end }}
             - "--multus-kubeconfig-file-host={{ .Values.hostCNINetDir }}/multus.d/multus.kubeconfig"
             {{- if .Values.image.debug }}
             - "--multus-log-level=debug"
@@ -194,15 +183,8 @@ spec:
               subPath: tmp-dir
             - name: cni-net-dir
               mountPath: {{ .Values.CNIMountPath }}{{ .Values.hostCNINetDir }}
-            {{- if eq (include "multus-cni.isAutoDetect" .) "true" }}
-            - name: cni-bin-dir-containerd
-              mountPath: {{ .Values.CNIMountPath }}/opt/cni/bin
-            - name: cni-bin-dir-crio
-              mountPath: {{ .Values.CNIMountPath }}/usr/libexec/cni
-            {{- else }}
             - name: cni-bin-dir
               mountPath: {{ .Values.CNIMountPath }}{{ include "multus-cni.cniBinDir" . }}
-            {{- end }}
             {{- if .Values.extraVolumeMounts }}
             {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
             {{- end }}
@@ -212,18 +194,9 @@ spec:
       volumes:
         - name: empty-dir
           emptyDir: {}
-        {{- if eq (include "multus-cni.isAutoDetect" .) "true" }}
-        - name: cni-bin-dir-containerd
-          hostPath:
-            path: /opt/cni/bin
-        - name: cni-bin-dir-crio
-          hostPath:
-            path: /usr/libexec/cni
-        {{- else }}
         - name: cni-bin-dir
           hostPath:
             path: {{ include "multus-cni.cniBinDir" . }}
-        {{- end }}
         - name: cni-net-dir
           hostPath:
             path: {{ .Values.hostCNINetDir }}

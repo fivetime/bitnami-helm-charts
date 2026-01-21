@@ -36,20 +36,7 @@ Return the CNI binary directory based on container runtime
 {{- .Values.hostCNIBinDir -}}
 {{- else if eq .Values.containerRuntime "crio" -}}
 /usr/libexec/cni
-{{- else if eq .Values.containerRuntime "containerd" -}}
-/opt/cni/bin
 {{- else -}}
 /opt/cni/bin
-{{- end -}}
-{{- end -}}
-
-{{/*
-Check if auto-detect mode is enabled
-*/}}
-{{- define "multus-cni.isAutoDetect" -}}
-{{- if and (eq .Values.containerRuntime "auto") (not .Values.hostCNIBinDir) -}}
-true
-{{- else -}}
-false
 {{- end -}}
 {{- end -}}

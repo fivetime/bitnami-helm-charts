@@ -26,7 +26,6 @@ Watch the Multus CNI Daemonset status using the command:
 
 {{- end }}
 
-IMPORTANT: Please ensure the CNI binary and configuration directories match your container runtime:
-  - containerd: /opt/cni/bin and /etc/cni/net.d
-  - CRI-O: /usr/libexec/cni and /etc/cni/net.d
-  - Current setting: containerRuntime={{ .Values.containerRuntime }}
+IMPORTANT: CNI directories configured:
+  - CNI binary directory: {{ include "multus-cni.cniBinDir" . }}
+  - CNI config directory: {{ .Values.hostCNINetDir }}

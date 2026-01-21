@@ -21,11 +21,6 @@ global:
   imagePullSecrets: []
   defaultStorageClass: ""
   storageClass: ""
-  ## Security parameters
-  ##
-  security:
-    ## @param global.security.allowInsecureImages Allows skipping image verification
-    allowInsecureImages: false
   ## Compatibility adaptations for Kubernetes platforms
   ##
   compatibility:
@@ -106,17 +101,10 @@ image:
   ## Set to true if you would like to see extra information on logs
   ##
   debug: false
-## @param containerRuntime Container runtime type: containerd or crio
-## containerd: /opt/cni/bin
-## crio: /usr/libexec/cni
+## @param hostCNIBinDir CNI binary dir in the host machine
+## Note: Both containerd and CRI-O use /opt/cni/bin as the default CNI plugin directory
 ##
-containerRuntime: containerd
-## @param CNIVersion CNI version
-##
-CNIVersion: "0.3.0"
-## @param hostCNIBinDir CNI binary dir in the host machine (overrides containerRuntime if set)
-##
-hostCNIBinDir: ""
+hostCNIBinDir: /opt/cni/bin
 ## @param hostCNINetDir CNI net.d dir in the host machine to mount
 ##
 hostCNINetDir: /etc/cni/net.d

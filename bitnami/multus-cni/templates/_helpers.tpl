@@ -29,14 +29,9 @@ Return the proper Docker Image Registry Secret Names
 {{- end -}}
 
 {{/*
-Return the CNI binary directory based on container runtime
+Return the CNI binary directory
+Note: Both containerd and CRI-O now use /opt/cni/bin as the default CNI plugin directory
 */}}
 {{- define "multus-cni.cniBinDir" -}}
-{{- if .Values.hostCNIBinDir -}}
-{{- .Values.hostCNIBinDir -}}
-{{- else if eq .Values.containerRuntime "crio" -}}
-/usr/libexec/cni
-{{- else -}}
-/opt/cni/bin
-{{- end -}}
+{{- default "/opt/cni/bin" .Values.hostCNIBinDir -}}
 {{- end -}}

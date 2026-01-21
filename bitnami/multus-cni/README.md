@@ -2,32 +2,24 @@
 
 Multus CNI 是一个 Kubernetes CNI 插件，允许 Pod 附加多个网络接口。
 
-本 Helm Chart 使用 [官方 Multus CNI 镜像](https://github.com/k8snetworkplumbingwg/multus-cni)，支持 containerd 和 CRI-O 容器运行时的自动检测。
+本 Helm Chart 使用 [官方 Multus CNI 镜像](https://github.com/k8snetworkplumbingwg/multus-cni)。
 
 ## 快速开始
 
 ```bash
-# 默认安装（自动检测容器运行时）
+# 默认安装
 helm install multus ./multus-cni -n kube-system
-
-# 或者显式指定容器运行时
-helm install multus ./multus-cni -n kube-system --set containerRuntime=containerd
-helm install multus ./multus-cni -n kube-system --set containerRuntime=crio
 ```
 
 ## 特性
 
 - 使用官方 `ghcr.io/k8snetworkplumbingwg/multus-cni:stable` 镜像
 - 支持 thin plugin 模式（轻量级）
-- 自动检测容器运行时（containerd / CRI-O）
 - 支持所有节点调度（包括 master 节点）
 
-## 容器运行时支持
+## CNI 目录
 
-| 运行时 | CNI Bin 目录 | 配置方式 |
-|--------|--------------|----------|
-| containerd | `/opt/cni/bin` | `containerRuntime=containerd` (默认) |
-| CRI-O | `/usr/libexec/cni` | `containerRuntime=crio` |
+containerd 和 CRI-O 现在都统一使用 `/opt/cni/bin` 作为默认的 CNI 插件目录。
 
 ## 参数配置
 
@@ -41,12 +33,11 @@ helm install multus ./multus-cni -n kube-system --set containerRuntime=crio
 | `image.pullPolicy` | 镜像拉取策略 | `IfNotPresent` |
 | `image.debug` | 开启调试日志 | `false` |
 
-### 运行时配置
+### 路径配置
 
 | 参数 | 描述 | 默认值 |
 |------|------|--------|
-| `containerRuntime` | 容器运行时类型：`containerd`, `crio` | `containerd` |
-| `hostCNIBinDir` | 自定义 CNI bin 目录（覆盖 containerRuntime） | `""` |
+| `hostCNIBinDir` | CNI 插件目录 | `/opt/cni/bin` |
 | `hostCNINetDir` | CNI 配置目录 | `/etc/cni/net.d` |
 | `CNIMountPath` | 容器内挂载路径前缀 | `/host` |
 
@@ -97,12 +88,6 @@ helm install multus ./multus-cni -n kube-system --set containerRuntime=crio
 
 ```bash
 helm install multus ./multus-cni -n kube-system
-```
-
-### CRI-O 运行时
-
-```bash
-helm install multus ./multus-cni -n kube-system --set containerRuntime=crio
 ```
 
 ### 自定义 CNI 目录
@@ -191,8 +176,7 @@ cat /etc/cni/net.d/00-multus.conf
 
 ```bash
 # 在节点上检查
-ls -la /opt/cni/bin/multus      # containerd
-ls -la /usr/libexec/cni/multus  # CRI-O
+ls -la /opt/cni/bin/multus
 ```
 
 ## 参考链接

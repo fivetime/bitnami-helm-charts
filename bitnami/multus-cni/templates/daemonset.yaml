@@ -185,6 +185,8 @@ spec:
               mountPath: {{ .Values.CNIMountPath }}{{ .Values.hostCNINetDir }}
             - name: cni-bin-dir
               mountPath: {{ .Values.CNIMountPath }}{{ include "multus-cni.cniBinDir" . }}
+            - name: cni-multus-dir
+              mountPath: {{ .Values.CNIMountPath }}/etc/cni/multus
             {{- if .Values.extraVolumeMounts }}
             {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
             {{- end }}
@@ -200,6 +202,10 @@ spec:
         - name: cni-net-dir
           hostPath:
             path: {{ .Values.hostCNINetDir }}
+        - name: cni-multus-dir
+          hostPath:
+            path: /etc/cni/multus
+            type: DirectoryOrCreate
         {{- if .Values.extraVolumes }}
         {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumes "context" $) | nindent 8 }}
         {{- end }}

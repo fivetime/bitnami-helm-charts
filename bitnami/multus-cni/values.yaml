@@ -87,9 +87,9 @@ diagnosticMode:
 ## @param image.debug Specify if debug logs should be enabled
 ##
 image:
-  registry: docker.io
-  repository: bitnami/multus-cni
-  tag: 4.2.2-debian-12-r2
+  registry: ghcr.io
+  repository: k8snetworkplumbingwg/multus-cni
+  tag: stable
   digest: ""
   ## Specify a imagePullPolicy
   ## ref: https://kubernetes.io/docs/concepts/containers/images/#pre-pulled-images
@@ -106,21 +106,25 @@ image:
   ## Set to true if you would like to see extra information on logs
   ##
   debug: false
+## @param containerRuntime Container runtime type: containerd, crio, or auto
+## auto: mounts both /opt/cni/bin and /usr/libexec/cni, multus will use whichever exists
+## containerd: /opt/cni/bin
+## crio: /usr/libexec/cni
+##
+containerRuntime: auto
 ## @param CNIVersion CNI version
 ##
 CNIVersion: "0.3.0"
-## @param hostCNIBinDir CNI binary dir in the host machine to mount
-## ref: https://github.com/bitnami/containers/tree/main/bitnami/multus-cni#configuration
+## @param hostCNIBinDir CNI binary dir in the host machine (overrides containerRuntime if set)
 ##
-hostCNIBinDir: /opt/cni/bin
+hostCNIBinDir: ""
 ## @param hostCNINetDir CNI net.d dir in the host machine to mount
-## ref: https://github.com/bitnami/containers/tree/main/bitnami/multus-cni#configuration
 ##
 hostCNINetDir: /etc/cni/net.d
 ## @param CNIMountPath Path inside the container to mount the CNI dirs
-## ref: https://github.com/bitnami/containers/tree/main/bitnami/multus-cni#configuration
+## ref: https://github.com/k8snetworkplumbingwg/multus-cni
 ##
-CNIMountPath: /bitnami/multus-cni/host
+CNIMountPath: /host
 ## @param command Override default container command (useful when using custom images)
 ##
 command: []
@@ -357,7 +361,7 @@ startupProbe:
 ## @param livenessProbe.successThreshold Success threshold for livenessProbe
 ##
 livenessProbe:
-  enabled: true
+  enabled: false
   initialDelaySeconds: 10
   periodSeconds: 10
   timeoutSeconds: 5
@@ -373,7 +377,7 @@ livenessProbe:
 ## @param readinessProbe.successThreshold Success threshold for readinessProbe
 ##
 readinessProbe:
-  enabled: true
+  enabled: false
   initialDelaySeconds: 10
   periodSeconds: 5
   timeoutSeconds: 1

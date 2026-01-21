@@ -64,35 +64,31 @@ spec:
         - name: install-multus-binary
           image: {{ template "multus-cni.image" . }}
           command:
-            - cp 
-            - -r
-            # Using /usr/src to allow compatibility with upstream multus container
-            - "/usr/src/multus-cni/bin/multus"
-            - "{{ .Values.CNIMountPath }}/opt/cni/bin/"
-          {{- if .Values.containerSecurityContext.enabled }}
-          securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.containerSecurityContext "context" $) | nindent 12 }}
-          {{- end }}
-          volumeMounts:
-            - name: cni-bin-dir
-              mountPath: {{ .Values.CNIMountPath }}/opt/cni/bin
-              mountPropagation: Bidirectional
-        - name: generate-kubeconfig
-          image: {{ template "multus-cni.image" . }}
-          command:
-            - install_multus
+            - "/install_multus"
           args:
             - "--type"
             - "thin"
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "15Mi"
           {{- if .Values.containerSecurityContext.enabled }}
           securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.containerSecurityContext "context" $) | nindent 12 }}
           {{- end }}
+          terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
-            - name: cni-bin-dir
+            {{- if eq (include "multus-cni.isAutoDetect" .) "true" }}
+            - name: cni-bin-dir-containerd
               mountPath: {{ .Values.CNIMountPath }}/opt/cni/bin
               mountPropagation: Bidirectional
-            - name: empty-dir
-              mountPath: /tmp
-              subPath: tmp-dir
+            - name: cni-bin-dir-crio
+              mountPath: {{ .Values.CNIMountPath }}/usr/libexec/cni
+              mountPropagation: Bidirectional
+            {{- else }}
+            - name: cni-bin-dir
+              mountPath: {{ .Values.CNIMountPath }}{{ include "multus-cni.cniBinDir" . }}
+              mountPropagation: Bidirectional
+            {{- end }}
       containers:
         - name: multus-cni
           image: {{ template "multus-cni.image" . }}
@@ -112,9 +108,11 @@ spec:
           {{- else }}
           args:
             - "--multus-conf-file=auto"
-            - "--cni-conf-dir={{ .Values.CNIMountPath }}/etc/cni/net.d"
-            - "--multus-cni-conf-dir={{ .Values.CNIMountPath }}/etc/cni/net.d"
-            - "--cni-bin-dir={{ .Values.CNIMountPath }}/opt/cni/bin"
+            - "--multus-autoconfig-dir={{ .Values.CNIMountPath }}{{ .Values.hostCNINetDir }}"
+            - "--cni-conf-dir={{ .Values.CNIMountPath }}{{ .Values.hostCNINetDir }}"
+            {{- if ne (include "multus-cni.isAutoDetect" .) "true" }}
+            - "--cni-bin-dir={{ .Values.CNIMountPath }}{{ include "multus-cni.cniBinDir" . }}"
+            {{- end }}
             - "--multus-kubeconfig-file-host={{ .Values.hostCNINetDir }}/multus.d/multus.kubeconfig"
             {{- if .Values.image.debug }}
             - "--multus-log-level=debug"
@@ -126,8 +124,6 @@ spec:
           securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.containerSecurityContext "context" $) | nindent 12 }}
           {{- end }}
           env:
-            - name: BITNAMI_DEBUG
-              value: {{ ternary "true" "false" .Values.image.debug | quote }}
             {{- if .Values.extraEnvVars }}
             {{- include "common.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
             {{- end }}
@@ -197,9 +193,16 @@ spec:
               mountPath: /tmp
               subPath: tmp-dir
             - name: cni-net-dir
-              mountPath: {{ .Values.CNIMountPath }}/etc/cni/net.d
-            - name: cni-bin-dir
+              mountPath: {{ .Values.CNIMountPath }}{{ .Values.hostCNINetDir }}
+            {{- if eq (include "multus-cni.isAutoDetect" .) "true" }}
+            - name: cni-bin-dir-containerd
               mountPath: {{ .Values.CNIMountPath }}/opt/cni/bin
+            - name: cni-bin-dir-crio
+              mountPath: {{ .Values.CNIMountPath }}/usr/libexec/cni
+            {{- else }}
+            - name: cni-bin-dir
+              mountPath: {{ .Values.CNIMountPath }}{{ include "multus-cni.cniBinDir" . }}
+            {{- end }}
             {{- if .Values.extraVolumeMounts }}
             {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
             {{- end }}
@@ -209,9 +212,18 @@ spec:
       volumes:
         - name: empty-dir
           emptyDir: {}
+        {{- if eq (include "multus-cni.isAutoDetect" .) "true" }}
+        - name: cni-bin-dir-containerd
+          hostPath:
+            path: /opt/cni/bin
+        - name: cni-bin-dir-crio
+          hostPath:
+            path: /usr/libexec/cni
+        {{- else }}
         - name: cni-bin-dir
           hostPath:
-            path: {{ .Values.hostCNIBinDir }}
+            path: {{ include "multus-cni.cniBinDir" . }}
+        {{- end }}
         - name: cni-net-dir
           hostPath:
             path: {{ .Values.hostCNINetDir }}

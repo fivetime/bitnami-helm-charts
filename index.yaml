@@ -386,6 +386,39 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/cassandra-12.3.13/cassandra-12.3.13.tgz
     version: 12.3.13
+  ceph-consumer:
+  - annotations:
+      category: Storage
+      licenses: Apache-2.0
+    apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-01-25T11:42:28.40851746Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 2.x.x
+    description: A Helm chart for connecting Kubernetes clusters to an external Rook-Ceph
+      storage cluster
+    digest: 41d3f348286016f9936101f19832b0ec9448a46f69a5c6f5a5ef385bdf09a570
+    home: https://rook.io
+    icon: https://rook.io/images/rook-logo.svg
+    keywords:
+    - storage
+    - ceph
+    - rook
+    - external-cluster
+    - csi
+    kubeVersion: '>=1.25.0-0'
+    maintainers:
+    - name: Rook Community
+      url: https://github.com/rook/rook
+    name: ceph-consumer
+    sources:
+    - https://github.com/rook/rook
+    type: application
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/ceph-consumer-0.1.0/ceph-consumer-0.1.0.tgz
+    version: 0.1.0
   cert-manager:
   - annotations:
       images: |
@@ -5245,4 +5278,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-01-21T18:06:00.932199387Z"
+generated: "2026-01-25T11:42:28.408544611Z"

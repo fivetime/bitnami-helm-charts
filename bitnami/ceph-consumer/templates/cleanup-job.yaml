@@ -1,0 +1,48 @@
+{{/*
+Copyright The Rook Authors.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- if .Values.controller.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "common.names.fullname" . }}-cleanup
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: cleanup
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+spec:
+  ttlSecondsAfterFinished: 60
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 8 }}
+        app.kubernetes.io/component: cleanup
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "common.names.fullname" . }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+      containers:
+        - name: cleanup
+          image: {{ include "common.images.image" ( dict "imageRoot" .Values.controller.image "global" .Values.global ) }}
+          imagePullPolicy: {{ .Values.controller.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Cleaning up CronJob child Jobs..."
+              kubectl delete jobs -n {{ include "common.names.namespace" . }} -l app.kubernetes.io/name={{ include "common.names.name" . }} --ignore-not-found=true
+              echo "Cleanup completed"
+{{- end }}

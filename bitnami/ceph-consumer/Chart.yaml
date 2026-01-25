@@ -1,0 +1,28 @@
+annotations:
+  category: Storage
+  licenses: Apache-2.0
+apiVersion: v2
+appVersion: 1.0.0
+dependencies:
+- name: common
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 2.x.x
+description: A Helm chart for connecting Kubernetes clusters to an external Rook-Ceph
+  storage cluster
+home: https://rook.io
+icon: https://rook.io/images/rook-logo.svg
+keywords:
+- storage
+- ceph
+- rook
+- external-cluster
+- csi
+kubeVersion: '>=1.25.0-0'
+maintainers:
+- name: Rook Community
+  url: https://github.com/rook/rook
+name: ceph-consumer
+sources:
+- https://github.com/rook/rook
+type: application
+version: 0.1.0

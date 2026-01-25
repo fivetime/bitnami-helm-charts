@@ -1,0 +1,104 @@
+{{/*
+Copyright The Rook Authors.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- $kubeconfigProvided := or .Values.provider.kubeconfig .Values.provider.kubeconfigSecret }}
+{{- if and .Values.controller.enabled $kubeconfigProvided }}
+apiVersion: {{ include "common.capabilities.cronjob.apiVersion" . }}
+kind: CronJob
+metadata:
+  name: {{ include "common.names.fullname" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: controller
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  schedule: {{ .Values.controller.schedule | quote }}
+  concurrencyPolicy: {{ .Values.controller.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ .Values.controller.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.controller.failedJobsHistoryLimit }}
+  {{- if .Values.controller.startingDeadlineSeconds }}
+  startingDeadlineSeconds: {{ .Values.controller.startingDeadlineSeconds }}
+  {{- end }}
+  jobTemplate:
+    spec:
+      {{- if .Values.controller.activeDeadlineSeconds }}
+      activeDeadlineSeconds: {{ .Values.controller.activeDeadlineSeconds }}
+      {{- end }}
+      backoffLimit: {{ .Values.controller.backoffLimit }}
+      {{- if .Values.controller.ttlSecondsAfterFinished }}
+      ttlSecondsAfterFinished: {{ .Values.controller.ttlSecondsAfterFinished }}
+      {{- end }}
+      template:
+        metadata:
+          {{- $podLabels := include "common.tplvalues.merge" ( dict "values" ( list .Values.controller.podLabels .Values.commonLabels ) "context" . ) }}
+          labels: {{- include "common.labels.standard" ( dict "customLabels" $podLabels "context" $ ) | nindent 12 }}
+            app.kubernetes.io/component: controller
+          {{- if .Values.controller.podAnnotations }}
+          annotations: {{- include "common.tplvalues.render" (dict "value" .Values.controller.podAnnotations "context" $) | nindent 12 }}
+          {{- end }}
+        spec:
+          {{- include "ceph-consumer.imagePullSecrets" . | nindent 10 }}
+          serviceAccountName: {{ include "ceph-consumer.serviceAccountName" . }}
+          restartPolicy: OnFailure
+          {{- if .Values.controller.podSecurityContext.enabled }}
+          securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.controller.podSecurityContext "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.controller.affinity }}
+          affinity: {{- include "common.tplvalues.render" (dict "value" .Values.controller.affinity "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.controller.nodeSelector }}
+          nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.controller.nodeSelector "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.controller.tolerations }}
+          tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.controller.tolerations "context" $) | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: sync
+              image: {{ include "ceph-consumer.image" . }}
+              imagePullPolicy: {{ .Values.controller.image.pullPolicy }}
+              {{- if .Values.controller.containerSecurityContext.enabled }}
+              securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.controller.containerSecurityContext "context" $) | nindent 16 }}
+              {{- end }}
+              command:
+                - python3
+                - /app/sync.py
+              args:
+                - --config
+                - /config/config.yaml
+                - --provider-kubeconfig
+                - /provider-kubeconfig/{{ .Values.provider.kubeconfigSecretKey }}
+              env:
+                - name: POD_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: LOG_LEVEL
+                  value: {{ .Values.logging.level | quote }}
+              {{- if .Values.controller.resources }}
+              resources: {{- toYaml .Values.controller.resources | nindent 16 }}
+              {{- else if ne .Values.controller.resourcesPreset "none" }}
+              resources: {{- include "common.resources.preset" (dict "type" .Values.controller.resourcesPreset) | nindent 16 }}
+              {{- end }}
+              volumeMounts:
+                - name: config
+                  mountPath: /config
+                  readOnly: true
+                - name: provider-kubeconfig
+                  mountPath: /provider-kubeconfig
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: config
+              configMap:
+                name: {{ include "ceph-consumer.configConfigMapName" . }}
+            - name: provider-kubeconfig
+              secret:
+                secretName: {{ include "ceph-consumer.kubeconfigSecretName" . }}
+            - name: tmp
+              emptyDir: {}
+{{- end }}

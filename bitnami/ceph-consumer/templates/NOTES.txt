@@ -1,0 +1,76 @@
+CHART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+{{- $kubeconfigProvided := or .Values.provider.kubeconfig .Values.provider.kubeconfigSecret }}
+
+{{- if not $kubeconfigProvided }}
+********************************************************************************
+*** ERROR: Provider kubeconfig is required!                                  ***
+********************************************************************************
+
+You must provide either:
+  - provider.kubeconfig: Kubeconfig content (plain text or base64)
+  - provider.kubeconfigSecret: Name of an existing secret containing kubeconfig
+
+Example:
+
+  helm install ceph-consumer ./ceph-consumer \
+    --set-file provider.kubeconfig=/path/to/provider-kubeconfig.yaml
+
+Or:
+
+  kubectl create secret generic provider-kubeconfig \
+    --from-file=config=/path/to/provider-kubeconfig.yaml
+
+  helm install ceph-consumer ./ceph-consumer \
+    --set provider.kubeconfigSecret=provider-kubeconfig
+
+{{- else }}
+
+** Please be patient while the chart is being deployed **
+
+{{- if .Values.controller.enabled }}
+
+The ceph-consumer sync controller has been deployed as a CronJob.
+
+Schedule: {{ .Values.controller.schedule }}
+
+To check the status of the sync jobs:
+
+  kubectl get cronjobs -n {{ include "common.names.namespace" . }} -l {{ include "common.labels.matchLabels" ( dict "customLabels" .Values.commonLabels "context" $ ) | replace ": " "=" | replace "\n" "," }}
+
+To view the logs of the latest sync job:
+
+  kubectl logs -n {{ include "common.names.namespace" . }} -l job-name=$(kubectl get jobs -n {{ include "common.names.namespace" . }} --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}')
+
+To manually trigger a sync:
+
+  kubectl create job --from=cronjob/{{ include "common.names.fullname" . }} {{ include "common.names.fullname" . }}-manual-$(date +%s) -n {{ include "common.names.namespace" . }}
+
+{{- end }}
+
+To check the created StorageClasses:
+
+  kubectl get storageclasses -l ceph-consumer.rook.io/managed=true
+
+To check the Ceph cluster connection status:
+
+  kubectl get cephcluster -n {{ include "ceph-consumer.consumerNamespace" . }}
+
+{{- if .Values.storageClassSync.enabled }}
+
+StorageClass synchronization is enabled.
+The controller will automatically create StorageClasses for:
+{{- if .Values.storageClassSync.rbd.enabled }}
+  - CephBlockPool (RBD)
+{{- end }}
+{{- if .Values.storageClassSync.cephfs.enabled }}
+  - CephFilesystem (CephFS)
+{{- end }}
+
+{{- end }}
+
+For more information, visit: https://rook.io/docs/rook/latest/CRDs/Cluster/external-cluster/
+
+{{- end }}{{/* if kubeconfigProvided */}}

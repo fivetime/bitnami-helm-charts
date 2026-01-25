@@ -1,0 +1,61 @@
+{{/*
+Copyright The Rook Authors.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ceph-consumer.configConfigMapName" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: controller
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  config.yaml: |
+    ## Provider cluster configuration
+    provider:
+      namespace: {{ .Values.provider.namespace | quote }}
+      monServiceName: {{ .Values.provider.monServiceName | quote }}
+    
+    ## Consumer cluster configuration
+    consumer:
+      namespace: {{ include "ceph-consumer.consumerNamespace" . | quote }}
+      clusterName: {{ .Values.consumer.clusterName | quote }}
+    
+    ## Managed resource labels
+    managedLabels:
+      app.kubernetes.io/managed-by: {{ include "common.names.fullname" . | quote }}
+      ceph-consumer.rook.io/managed: "true"
+    
+    ## StorageClass sync configuration
+    ## StorageClasses are directly copied from provider, only namespace references are replaced
+    storageClassSync:
+      enabled: {{ .Values.storageClassSync.enabled }}
+      defaultStorageClass: {{ .Values.storageClassSync.defaultStorageClass | quote }}
+      rbd:
+        enabled: {{ .Values.storageClassSync.rbd.enabled }}
+      cephfs:
+        enabled: {{ .Values.storageClassSync.cephfs.enabled }}
+      filter:
+        excludePatterns: {{ .Values.storageClassSync.filter.excludePatterns | toJson }}
+        includePatterns: {{ .Values.storageClassSync.filter.includePatterns | toJson }}
+    
+    ## CSI user secret names
+    csiUsers:
+      healthchecker:
+        secretName: {{ .Values.csiUsers.healthchecker.secretName | quote }}
+      rbdNode:
+        secretName: {{ .Values.csiUsers.rbdNode.secretName | quote }}
+      rbdProvisioner:
+        secretName: {{ .Values.csiUsers.rbdProvisioner.secretName | quote }}
+      cephfsNode:
+        secretName: {{ .Values.csiUsers.cephfsNode.secretName | quote }}
+      cephfsProvisioner:
+        secretName: {{ .Values.csiUsers.cephfsProvisioner.secretName | quote }}
+    
+    ## Logging configuration
+    logging:
+      level: {{ .Values.logging.level | quote }}

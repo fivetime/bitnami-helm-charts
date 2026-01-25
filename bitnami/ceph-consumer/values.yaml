@@ -1,0 +1,218 @@
+# Copyright The Rook Authors.
+# SPDX-License-Identifier: Apache-2.0
+
+## @section Global parameters
+## Global Docker image parameters
+## Please, note that this will override the image parameters, including dependencies, configured to use the global value
+
+global:
+  ## @param global.imageRegistry Global Docker Image registry
+  imageRegistry: ""
+  ## @param global.imagePullSecrets Global Docker registry secret names as an array
+  imagePullSecrets: []
+
+## @section Common parameters
+
+## @param kubeVersion Override Kubernetes version reported by .Capabilities
+kubeVersion: ""
+## @param nameOverride String to partially override common.names.name
+nameOverride: ""
+## @param fullnameOverride String to fully override common.names.fullname
+fullnameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+namespaceOverride: ""
+## @param commonLabels Labels to add to all deployed objects
+commonLabels: {}
+## @param commonAnnotations Annotations to add to all deployed objects
+commonAnnotations: {}
+## @param clusterDomain Kubernetes cluster domain name
+clusterDomain: cluster.local
+## @param extraDeploy Array of extra objects to deploy with the release
+extraDeploy: []
+
+## @section Provider Cluster Configuration
+## Configuration for connecting to the provider (source) Ceph cluster
+
+provider:
+  ## @param provider.kubeconfig Kubeconfig content for accessing the provider cluster (base64 encoded or plain text)
+  ## This kubeconfig should have permissions to read Secrets, ConfigMaps, Services, and CRDs in the rook-ceph namespace
+  kubeconfig: ""
+  ## @param provider.kubeconfigSecret Existing secret name containing the kubeconfig
+  ## If set, provider.kubeconfig is ignored
+  kubeconfigSecret: ""
+  ## @param provider.kubeconfigSecretKey Key in the secret containing the kubeconfig
+  kubeconfigSecretKey: "config"
+  ## @param provider.namespace Namespace where Rook-Ceph is deployed in the provider cluster
+  namespace: "rook-ceph"
+  ## @param provider.monServiceName Name of the Mon headless service in the provider cluster
+  monServiceName: "mon"
+
+## @section Consumer Cluster Configuration
+## Configuration for the consumer (destination) cluster
+
+consumer:
+  ## @param consumer.namespace Namespace where to create Ceph resources in the consumer cluster
+  namespace: "rook-ceph"
+  ## @param consumer.clusterName Name for the external CephCluster CR
+  clusterName: "rook-ceph-external"
+
+## @section Sync Controller Configuration
+## Configuration for the sync controller CronJob
+
+controller:
+  ## @param controller.enabled Enable the sync controller
+  enabled: true
+  
+  ## Controller image configuration
+  ## @param controller.image.registry Controller image registry
+  ## @param controller.image.repository Controller image repository
+  ## @param controller.image.tag Controller image tag
+  ## @param controller.image.digest Controller image digest (overrides tag)
+  ## @param controller.image.pullPolicy Controller image pull policy
+  ## @param controller.image.pullSecrets Controller image pull secrets
+  image:
+    registry: ghcr.io
+    repository: rook/ceph-consumer-controller
+    tag: v0.1.0
+    digest: ""
+    pullPolicy: IfNotPresent
+    pullSecrets: []
+
+  ## @param controller.schedule CronJob schedule (default: every minute)
+  schedule: "* * * * *"
+  
+  ## @param controller.successfulJobsHistoryLimit Number of successful jobs to keep
+  successfulJobsHistoryLimit: 3
+  ## @param controller.failedJobsHistoryLimit Number of failed jobs to keep
+  failedJobsHistoryLimit: 3
+  ## @param controller.concurrencyPolicy CronJob concurrency policy
+  concurrencyPolicy: Forbid
+  ## @param controller.startingDeadlineSeconds Deadline for starting the job
+  startingDeadlineSeconds: 60
+  ## @param controller.activeDeadlineSeconds Maximum time for job execution
+  activeDeadlineSeconds: 300
+  ## @param controller.backoffLimit Number of retries before marking job as failed
+  backoffLimit: 3
+  ## @param controller.ttlSecondsAfterFinished TTL for completed jobs
+  ttlSecondsAfterFinished: 600
+
+  ## Resource requests and limits
+  ## @param controller.resourcesPreset Set container resources according to one common preset
+  resourcesPreset: "small"
+  ## @param controller.resources Set container requests and limits for different resources
+  resources: {}
+  #   limits:
+  #     cpu: 200m
+  #     memory: 256Mi
+  #   requests:
+  #     cpu: 100m
+  #     memory: 128Mi
+
+  ## Pod Security Context
+  ## @param controller.podSecurityContext.enabled Enable pod security context
+  ## @param controller.podSecurityContext.fsGroup Group ID for the pod
+  podSecurityContext:
+    enabled: true
+    fsGroup: 65532
+
+  ## Container Security Context
+  ## @param controller.containerSecurityContext.enabled Enable container security context
+  ## @param controller.containerSecurityContext.runAsUser User ID for the container
+  ## @param controller.containerSecurityContext.runAsNonRoot Run container as non-root
+  ## @param controller.containerSecurityContext.readOnlyRootFilesystem Mount root filesystem as read-only
+  ## @param controller.containerSecurityContext.allowPrivilegeEscalation Allow privilege escalation
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 65532
+    runAsNonRoot: true
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+    seccompProfile:
+      type: RuntimeDefault
+
+  ## @param controller.nodeSelector Node labels for pod assignment
+  nodeSelector: {}
+  ## @param controller.tolerations Tolerations for pod assignment
+  tolerations: []
+  ## @param controller.affinity Affinity for pod assignment
+  affinity: {}
+  ## @param controller.podAnnotations Annotations for the pod
+  podAnnotations: {}
+  ## @param controller.podLabels Extra labels for the pod
+  podLabels: {}
+
+## @section StorageClass Sync Configuration
+## Configuration for automatic StorageClass synchronization
+## StorageClasses are directly copied from provider, only namespace references are replaced
+
+storageClassSync:
+  ## @param storageClassSync.enabled Enable automatic StorageClass synchronization
+  enabled: true
+  
+  ## @param storageClassSync.defaultStorageClass Name of the StorageClass to set as default (empty = preserve provider's default)
+  defaultStorageClass: ""
+
+  ## RBD StorageClass configuration
+  rbd:
+    ## @param storageClassSync.rbd.enabled Enable RBD StorageClass sync
+    enabled: true
+
+  ## CephFS StorageClass configuration
+  cephfs:
+    ## @param storageClassSync.cephfs.enabled Enable CephFS StorageClass sync
+    enabled: true
+
+  ## StorageClass filter configuration
+  filter:
+    ## @param storageClassSync.filter.excludePatterns Patterns to exclude StorageClasses (regex on name)
+    excludePatterns: []
+    ## @param storageClassSync.filter.includePatterns Patterns to include StorageClasses (empty = include all non-excluded)
+    includePatterns: []
+
+## @section RBAC Configuration
+## Configuration for RBAC resources
+
+rbac:
+  ## @param rbac.create Specifies whether RBAC resources should be created
+  create: true
+
+## @section ServiceAccount Configuration
+## Configuration for ServiceAccount
+
+serviceAccount:
+  ## @param serviceAccount.create Specifies whether a ServiceAccount should be created
+  create: true
+  ## @param serviceAccount.name The name of the ServiceAccount to use
+  name: ""
+  ## @param serviceAccount.annotations Additional Service Account annotations
+  annotations: {}
+  ## @param serviceAccount.automountServiceAccountToken Automount service account token
+  automountServiceAccountToken: true
+
+## @section CSI Users Configuration
+## Configuration for CSI user secrets
+
+csiUsers:
+  ## @param csiUsers.healthchecker.secretName Secret name for healthchecker user
+  healthchecker:
+    secretName: "rook-ceph-mon"
+  ## @param csiUsers.rbdNode.secretName Secret name for RBD node user
+  rbdNode:
+    secretName: "rook-csi-rbd-node"
+  ## @param csiUsers.rbdProvisioner.secretName Secret name for RBD provisioner user
+  rbdProvisioner:
+    secretName: "rook-csi-rbd-provisioner"
+  ## @param csiUsers.cephfsNode.secretName Secret name for CephFS node user
+  cephfsNode:
+    secretName: "rook-csi-cephfs-node"
+  ## @param csiUsers.cephfsProvisioner.secretName Secret name for CephFS provisioner user
+  cephfsProvisioner:
+    secretName: "rook-csi-cephfs-provisioner"
+
+## @section Logging Configuration
+
+logging:
+  ## @param logging.level Log level (DEBUG, INFO, WARNING, ERROR)
+  level: "INFO"

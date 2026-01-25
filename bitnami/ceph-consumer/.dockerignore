@@ -1,0 +1,34 @@
+# Helm chart files (not needed in image)
+Chart.yaml
+Chart.lock
+values.yaml
+README.md
+templates/
+charts/
+.helmignore
+
+# Development files
+*.md
+*.txt
+.git/
+.gitignore
+.idea/
+.vscode/
+*.swp
+*.bak
+
+# Test files
+test/
+tests/
+*_test.py
+*_test.go
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+Makefile
+
+# Build artifacts
+*.tgz
+dist/
+build/

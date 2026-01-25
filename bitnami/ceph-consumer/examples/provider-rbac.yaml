@@ -1,0 +1,102 @@
+# Copyright The Rook Authors.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Provider Cluster RBAC Configuration
+# 
+# Apply this to the PROVIDER cluster to create a read-only service account
+# that the consumer cluster can use to sync Ceph resources.
+#
+# Usage:
+#   kubectl apply -f provider-rbac.yaml
+#   kubectl create token ceph-consumer-reader -n rook-ceph --duration=8760h > token.txt
+#
+# Then create kubeconfig for consumer cluster using the token.
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ceph-consumer-reader
+  namespace: rook-ceph
+  labels:
+    app.kubernetes.io/name: ceph-consumer-reader
+    app.kubernetes.io/component: external-access
+
+---
+# Role for namespace-scoped resources (Secrets, ConfigMaps)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ceph-consumer-reader
+  namespace: rook-ceph
+  labels:
+    app.kubernetes.io/name: ceph-consumer-reader
+    app.kubernetes.io/component: external-access
+rules:
+  # Read Mon endpoints ConfigMap
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames:
+      - rook-ceph-mon-endpoints
+    verbs: ["get"]
+  
+  # Read FSID and CSI secrets
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames:
+      - rook-ceph-mon
+      - rook-csi-rbd-node
+      - rook-csi-rbd-provisioner
+      - rook-csi-cephfs-node
+      - rook-csi-cephfs-provisioner
+    verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ceph-consumer-reader
+  namespace: rook-ceph
+  labels:
+    app.kubernetes.io/name: ceph-consumer-reader
+    app.kubernetes.io/component: external-access
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ceph-consumer-reader
+subjects:
+  - kind: ServiceAccount
+    name: ceph-consumer-reader
+    namespace: rook-ceph
+
+---
+# ClusterRole for cluster-scoped resources (StorageClasses)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ceph-consumer-reader-storageclasses
+  labels:
+    app.kubernetes.io/name: ceph-consumer-reader
+    app.kubernetes.io/component: external-access
+rules:
+  # Read StorageClasses (cluster-scoped, cannot limit by name)
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ceph-consumer-reader-storageclasses
+  labels:
+    app.kubernetes.io/name: ceph-consumer-reader
+    app.kubernetes.io/component: external-access
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ceph-consumer-reader-storageclasses
+subjects:
+  - kind: ServiceAccount
+    name: ceph-consumer-reader
+    namespace: rook-ceph

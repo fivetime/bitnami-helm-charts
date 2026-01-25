@@ -40,6 +40,7 @@ data:
       cephfs:
         enabled: {{ .Values.storageClassSync.cephfs.enabled }}
       filter:
+        excludeLabel: {{ .Values.storageClassSync.filter.excludeLabel | quote }}
         excludePatterns: {{ .Values.storageClassSync.filter.excludePatterns | toJson }}
         includePatterns: {{ .Values.storageClassSync.filter.includePatterns | toJson }}
     

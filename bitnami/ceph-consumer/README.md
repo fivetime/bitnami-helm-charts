@@ -134,8 +134,35 @@ kubectl -n rook-ceph wait --for=condition=Ready pod -l app=csi-rbdplugin-provisi
 | `storageClassSync.defaultStorageClass` | Override default SC (empty=preserve) | `""` |
 | `storageClassSync.rbd.enabled` | Enable RBD sync | `true` |
 | `storageClassSync.cephfs.enabled` | Enable CephFS sync | `true` |
+| `storageClassSync.filter.excludeLabel` | Label to exclude StorageClasses | `"ceph-consumer.rook.io/exclude"` |
 | `storageClassSync.filter.excludePatterns` | Regex patterns to exclude | `[]` |
 | `storageClassSync.filter.includePatterns` | Regex patterns to include | `[]` |
+
+### Excluding StorageClasses from Sync
+
+You can exclude specific StorageClasses from synchronization by labeling them on the **provider** cluster:
+
+```bash
+# Provider cluster - exclude a StorageClass
+kubectl label sc <storageclass-name> ceph-consumer.rook.io/exclude=true
+
+# Remove the label to re-enable sync
+kubectl label sc <storageclass-name> ceph-consumer.rook.io/exclude-
+```
+
+StorageClasses with this label will:
+- Not be synced to the consumer cluster
+- Be automatically cleaned up from the consumer if previously synced
+
+You can also use regex patterns in `excludePatterns` to exclude by name:
+
+```yaml
+storageClassSync:
+  filter:
+    excludePatterns:
+      - ".*-test-.*"      # Exclude all test StorageClasses
+      - "^temp-.*"        # Exclude StorageClasses starting with "temp-"
+```
 
 ## How It Works
 

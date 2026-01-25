@@ -166,6 +166,9 @@ storageClassSync:
 
   ## StorageClass filter configuration
   filter:
+    ## @param storageClassSync.filter.excludeLabel Label to exclude StorageClasses from sync
+    ## StorageClasses with this label set to "true" will not be synced
+    excludeLabel: "ceph-consumer.rook.io/exclude"
     ## @param storageClassSync.filter.excludePatterns Patterns to exclude StorageClasses (regex on name)
     excludePatterns: []
     ## @param storageClassSync.filter.includePatterns Patterns to include StorageClasses (empty = include all non-excluded)

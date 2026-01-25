@@ -392,6 +392,38 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 1.0.0
+    created: "2026-01-25T14:40:24.606050449Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 2.x.x
+    description: A Helm chart for connecting Kubernetes clusters to an external Rook-Ceph
+      storage cluster
+    digest: 42ba5211cf2c05915155911f7e543789698015f17e485241a60edd5d5062240c
+    home: https://rook.io
+    icon: https://rook.io/images/rook-logo.svg
+    keywords:
+    - storage
+    - ceph
+    - rook
+    - external-cluster
+    - csi
+    kubeVersion: '>=1.25.0-0'
+    maintainers:
+    - name: Rook Community
+      url: https://github.com/rook/rook
+    name: ceph-consumer
+    sources:
+    - https://github.com/rook/rook
+    type: application
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/ceph-consumer-0.1.4/ceph-consumer-0.1.4.tgz
+    version: 0.1.4
+  - annotations:
+      category: Storage
+      licenses: Apache-2.0
+    apiVersion: v2
+    appVersion: 1.0.0
     created: "2026-01-25T14:24:57.458794961Z"
     dependencies:
     - name: common
@@ -5374,4 +5406,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-01-25T14:24:57.458833011Z"
+generated: "2026-01-25T14:40:24.606091485Z"

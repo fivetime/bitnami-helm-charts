@@ -72,23 +72,31 @@ The script reads the token from the Secret created by provider-rbac.yaml.
 On the **consumer** cluster:
 
 ```bash
-# Create namespace
-kubectl create namespace rook-ceph
+# 1. Install Rook CRDs (required for CephCluster CR)
+kubectl apply -f https://raw.githubusercontent.com/rook/rook/master/deploy/examples/crds.yaml
 
-# Install with kubeconfig from file
+# 2. Install common resources (namespace, RBAC)
+kubectl apply -f https://raw.githubusercontent.com/rook/rook/master/deploy/examples/common.yaml
+
+# 3. Install CSI Operator (or Rook Operator)
+kubectl apply -f https://raw.githubusercontent.com/rook/rook/master/deploy/examples/csi-operator.yaml
+
+# 4. Install ceph-consumer (syncs Mon endpoints, Secrets, StorageClasses)
 helm install ceph-consumer ./ceph-consumer \
   --namespace rook-ceph \
   --set-file provider.kubeconfig=provider-kubeconfig.yaml
 
-# Or using an existing secret
-kubectl create secret generic provider-kubeconfig \
-  --from-file=config=provider-kubeconfig.yaml \
-  -n rook-ceph
+# 5. Wait for sync to complete (check CronJob logs)
+kubectl logs -n rook-ceph -l job-name --tail=50
 
-helm install ceph-consumer ./ceph-consumer \
-  --namespace rook-ceph \
-  --set provider.kubeconfigSecret=provider-kubeconfig
+# 6. Create External CephCluster CR
+kubectl apply -f https://raw.githubusercontent.com/rook/rook/master/deploy/examples/external/cluster-external.yaml
+
+# 7. Wait for CSI to be ready
+kubectl -n rook-ceph wait --for=condition=Ready pod -l app=csi-rbdplugin-provisioner --timeout=300s
 ```
+
+**Important**: The CRDs and Operator must be installed BEFORE ceph-consumer, as the chart depends on the rook-ceph namespace existing.
 
 ## Configuration
 

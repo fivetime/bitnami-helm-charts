@@ -45,70 +45,27 @@ Provider Cluster                    Consumer Cluster
 On the **provider** cluster, apply the RBAC configuration:
 
 ```bash
+# Edit namespace in provider-rbac.yaml if needed (default: rook-ceph)
 kubectl apply -f examples/provider-rbac.yaml
 ```
 
 This creates:
-- `ServiceAccount`: `ceph-consumer-reader` in `rook-ceph` namespace
-- `Role`: Read-only access to specific Secrets and ConfigMaps
-- `ClusterRole`: Read-only access to StorageClasses
+- `ServiceAccount`: `ceph-consumer-reader`
+- `Secret`: `ceph-consumer-reader-token` (permanent token, never expires)
+- `Role/RoleBinding`: Read-only access to specific Secrets and ConfigMaps
+- `ClusterRole/ClusterRoleBinding`: Read-only access to StorageClasses
 
-<details>
-<summary>View provider-rbac.yaml content</summary>
-
-```yaml
-# ServiceAccount
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: ceph-consumer-reader
-  namespace: rook-ceph
----
-# Role for namespace-scoped resources (read-only)
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: ceph-consumer-reader
-  namespace: rook-ceph
-rules:
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    resourceNames: ["rook-ceph-mon-endpoints"]
-    verbs: ["get"]
-  - apiGroups: [""]
-    resources: ["secrets"]
-    resourceNames:
-      - rook-ceph-mon
-      - rook-csi-rbd-node
-      - rook-csi-rbd-provisioner
-      - rook-csi-cephfs-node
-      - rook-csi-cephfs-provisioner
-    verbs: ["get"]
----
-# ClusterRole for StorageClasses (read-only)
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: ceph-consumer-reader-storageclasses
-rules:
-  - apiGroups: ["storage.k8s.io"]
-    resources: ["storageclasses"]
-    verbs: ["get", "list"]
-```
-
-</details>
+To revoke access: `kubectl delete secret ceph-consumer-reader-token -n rook-ceph`
 
 ### Step 2: Generate Provider Kubeconfig
 
 On the **provider** cluster:
 
 ```bash
-# Generate kubeconfig with 1-year token
 ./examples/generate-provider-kubeconfig.sh provider-kubeconfig.yaml
-
-# Or manually:
-kubectl create token ceph-consumer-reader -n rook-ceph --duration=8760h
 ```
+
+The script reads the token from the Secret created by provider-rbac.yaml.
 
 ### Step 3: Install the Chart
 

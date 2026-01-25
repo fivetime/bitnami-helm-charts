@@ -6,47 +6,88 @@
 #
 # Prerequisites:
 #   1. kubectl configured to access the PROVIDER cluster
-#   2. provider-rbac.yaml already applied
+#   2. provider-rbac.yaml already applied:
+#      kubectl apply -f provider-rbac.yaml
 #
 # Usage:
-#   ./generate-provider-kubeconfig.sh [output-file] [token-duration]
+#   ./generate-provider-kubeconfig.sh [output-file]
+#
+# Arguments:
+#   output-file  Output file path, use "-" for stdout (default: provider-kubeconfig.yaml)
 #
 # Examples:
-#   ./generate-provider-kubeconfig.sh                           # Output to stdout, 1 year token
-#   ./generate-provider-kubeconfig.sh provider-kubeconfig.yaml  # Output to file
-#   ./generate-provider-kubeconfig.sh - 8760h                   # 1 year token to stdout
+#   ./generate-provider-kubeconfig.sh                           # To default file
+#   ./generate-provider-kubeconfig.sh -                         # To stdout
+#   ./generate-provider-kubeconfig.sh /path/to/kubeconfig.yaml  # Custom path
+#
+# Environment variables:
+#   CEPH_NAMESPACE      Rook-Ceph namespace (default: rook-ceph)
+#   CEPH_SECRET_NAME    Token secret name (default: ceph-consumer-reader-token)
 
 set -euo pipefail
 
-OUTPUT_FILE="${1:--}"
-TOKEN_DURATION="${2:-8760h}"  # Default: 1 year
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
 
-NAMESPACE="rook-ceph"
-SERVICE_ACCOUNT="ceph-consumer-reader"
+log_info()  { echo -e "${GREEN}[INFO]${NC} $*" >&2; }
+log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
+
+# Configuration
+NAMESPACE="${CEPH_NAMESPACE:-rook-ceph}"
+SECRET_NAME="${CEPH_SECRET_NAME:-ceph-consumer-reader-token}"
+OUTPUT_FILE="${1:-provider-kubeconfig.yaml}"
+
+# Check kubectl
+if ! command -v kubectl &> /dev/null; then
+    log_error "kubectl is required but not installed"
+    exit 1
+fi
+
+if ! kubectl cluster-info &> /dev/null; then
+    log_error "Cannot connect to Kubernetes cluster"
+    exit 1
+fi
+
+log_info "Cluster: $(kubectl config current-context)"
+
+# Check secret exists
+if ! kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" &> /dev/null; then
+    log_error "Secret ${SECRET_NAME} not found in namespace ${NAMESPACE}"
+    log_error "Please apply provider-rbac.yaml first:"
+    log_error "  kubectl apply -f provider-rbac.yaml"
+    exit 1
+fi
 
 # Get cluster info
 CLUSTER_NAME=$(kubectl config view --minify -o jsonpath='{.clusters[0].name}')
 CLUSTER_SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
 CLUSTER_CA=$(kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
 
-# If CA is not embedded, read from file
 if [ -z "$CLUSTER_CA" ]; then
     CA_FILE=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.certificate-authority}')
     if [ -n "$CA_FILE" ] && [ -f "$CA_FILE" ]; then
-        CLUSTER_CA=$(base64 -w0 < "$CA_FILE")
+        CLUSTER_CA=$(base64 -w0 < "$CA_FILE" 2>/dev/null || base64 < "$CA_FILE" | tr -d '\n')
     else
-        echo "Error: Cannot find cluster CA certificate" >&2
+        log_error "Cannot find cluster CA certificate"
         exit 1
     fi
 fi
 
-# Generate token
-echo "Generating token for ServiceAccount ${SERVICE_ACCOUNT} (duration: ${TOKEN_DURATION})..." >&2
-TOKEN=$(kubectl create token "$SERVICE_ACCOUNT" -n "$NAMESPACE" --duration="$TOKEN_DURATION")
+# Get token
+log_info "Reading token from secret ${SECRET_NAME}..."
+TOKEN=$(kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o jsonpath='{.data.token}' | base64 -d)
+
+if [ -z "$TOKEN" ]; then
+    log_error "Token not found in secret (controller may still be populating it)"
+    log_error "Wait a moment and try again"
+    exit 1
+fi
 
 # Generate kubeconfig
-KUBECONFIG_CONTENT=$(cat <<EOF
-apiVersion: v1
+KUBECONFIG_CONTENT="apiVersion: v1
 kind: Config
 clusters:
   - name: ${CLUSTER_NAME}
@@ -54,24 +95,28 @@ clusters:
       server: ${CLUSTER_SERVER}
       certificate-authority-data: ${CLUSTER_CA}
 contexts:
-  - name: ceph-consumer-reader@${CLUSTER_NAME}
+  - name: ceph-consumer@${CLUSTER_NAME}
     context:
       cluster: ${CLUSTER_NAME}
-      user: ceph-consumer-reader
+      user: ceph-consumer
       namespace: ${NAMESPACE}
-current-context: ceph-consumer-reader@${CLUSTER_NAME}
+current-context: ceph-consumer@${CLUSTER_NAME}
 users:
-  - name: ceph-consumer-reader
+  - name: ceph-consumer
     user:
-      token: ${TOKEN}
-EOF
-)
+      token: ${TOKEN}"
 
 # Output
 if [ "$OUTPUT_FILE" = "-" ]; then
     echo "$KUBECONFIG_CONTENT"
 else
     echo "$KUBECONFIG_CONTENT" > "$OUTPUT_FILE"
-    echo "Kubeconfig written to: $OUTPUT_FILE" >&2
-    echo "Token expires in: $TOKEN_DURATION" >&2
+    chmod 600 "$OUTPUT_FILE"
+    log_info "Written to: ${OUTPUT_FILE}"
+    log_info "Token is permanent (never expires)"
+    echo ""
+    log_info "Next steps on consumer cluster:"
+    echo "  helm install ceph-consumer ./ceph-consumer \\"
+    echo "    --namespace rook-ceph \\"
+    echo "    --set-file provider.kubeconfig=${OUTPUT_FILE}"
 fi

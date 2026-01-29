@@ -69,7 +69,7 @@ diagnosticMode:
 ##
 
 ## Bitnami RabbitMQ Image
-## ref: https://hub.docker.com/r/bitnami/rabbitmq/tags/
+## ref: https://hub.docker.com/_/rabbitmq/tags
 ## @param rabbitmqImage.registry [default: REGISTRY_NAME] RabbitMQ Image registry
 ## @param rabbitmqImage.repository [default: REPOSITORY_NAME/rabbitmq] RabbitMQ Image repository
 ## @skip rabbitmqImage.tag RabbitMQ Image tag (immutable tags are recommended)
@@ -78,8 +78,8 @@ diagnosticMode:
 ##
 rabbitmqImage:
   registry: docker.io
-  repository: bitnami/rabbitmq
-  tag: 4.1.3-debian-12-r1
+  repository: rabbitmq
+  tag: 4.1.3-management
   digest: ""
   ## Optionally specify an array of imagePullSecrets.
   ## Secrets must be manually created in the namespace.
@@ -90,7 +90,7 @@ rabbitmqImage:
   ##
   pullSecrets: []
 ## Bitnami RabbitMQ Default User Credential Updater Image
-## ref: https://hub.docker.com/r/bitnami/rmq-default-credential-updater/tags/
+## ref: https://hub.docker.com/r/rabbitmqoperator/default-user-credential-updater/tags
 ## @param credentialUpdaterImage.registry [default: REGISTRY_NAME] RabbitMQ Default User Credential Updater image registry
 ## @param credentialUpdaterImage.repository [default: REPOSITORY_NAME/rmq-default-credential-updater] RabbitMQ Default User Credential Updater image repository
 ## @skip credentialUpdaterImage.tag RabbitMQ Default User Credential Updater image tag (immutable tags are recommended)
@@ -99,8 +99,8 @@ rabbitmqImage:
 ##
 credentialUpdaterImage:
   registry: docker.io
-  repository: bitnami/rmq-default-credential-updater
-  tag: 1.0.8-debian-12-r0
+  repository: rabbitmqoperator/default-user-credential-updater
+  tag: 1.0.10
   digest: ""
   ## Optionally specify an array of imagePullSecrets.
   ## Secrets must be manually created in the namespace.
@@ -112,7 +112,7 @@ credentialUpdaterImage:
   pullSecrets: []
 clusterOperator:
   ## Bitnami RabbitMQ Cluster Operator image
-  ## ref: https://hub.docker.com/r/bitnami/rabbitmq-cluster-operator/tags/
+  ## ref: https://hub.docker.com/r/rabbitmqoperator/cluster-operator/tags
   ## @param clusterOperator.image.registry [default: REGISTRY_NAME] RabbitMQ Cluster Operator image registry
   ## @param clusterOperator.image.repository [default: REPOSITORY_NAME/rabbitmq-cluster-operator] RabbitMQ Cluster Operator image repository
   ## @skip clusterOperator.image.tag RabbitMQ Cluster Operator image tag (immutable tags are recommended)
@@ -122,8 +122,8 @@ clusterOperator:
   ##
   image:
     registry: docker.io
-    repository: bitnami/rabbitmq-cluster-operator
-    tag: 2.16.1-debian-12-r0
+    repository: rabbitmqoperator/cluster-operator
+    tag: 2.19.0
     digest: ""
     ## Specify a imagePullPolicy
     ## ref: https://kubernetes.io/docs/concepts/containers/images/#pre-pulled-images
@@ -654,7 +654,7 @@ msgTopologyOperator:
   ##
   enabled: true
   ## Bitnami RabbitMQ Messaging Topology Operator image
-  ## ref: https://hub.docker.com/r/bitnami/rmq-messaging-topology-operator/tags/
+  ## ref: https://hub.docker.com/r/rabbitmqoperator/messaging-topology-operator/tags
   ## @param msgTopologyOperator.image.registry [default: REGISTRY_NAME] RabbitMQ Messaging Topology Operator image registry
   ## @param msgTopologyOperator.image.repository [default: REPOSITORY_NAME/rmq-messaging-topology-operator] RabbitMQ Messaging Topology Operator image repository
   ## @skip msgTopologyOperator.image.tag RabbitMQ Messaging Topology Operator image tag (immutable tags are recommended)
@@ -664,8 +664,8 @@ msgTopologyOperator:
   ##
   image:
     registry: docker.io
-    repository: bitnami/rmq-messaging-topology-operator
-    tag: 1.17.4-debian-12-r0
+    repository: rabbitmqoperator/messaging-topology-operator
+    tag: 1.18.2
     digest: ""
     ## Specify a imagePullPolicy
     ## ref: https://kubernetes.io/docs/concepts/containers/images/#pre-pulled-images

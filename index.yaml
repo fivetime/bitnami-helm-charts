@@ -4243,6 +4243,33 @@ entries:
   rabbitmq-operator:
   - apiVersion: v2
     appVersion: 2.19.0
+    created: "2026-01-29T23:30:46.447267398Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: 'RabbitMQ Cluster Operator 和 Messaging Topology Operator。 基于 Bitnami
+      Chart 结构，使用 RabbitMQ 官方镜像。 '
+    digest: 0ba58a93c98743ff8e3814860b579c29e0ccdf87729f5b6eaf70fe85c2d4e1e8
+    home: https://github.com/rabbitmq/cluster-operator
+    keywords:
+    - rabbitmq
+    - operator
+    - message queue
+    - AMQP
+    kubeVersion: '>= 1.19.0-0'
+    name: rabbitmq-operator
+    sources:
+    - https://github.com/rabbitmq/cluster-operator
+    - https://github.com/rabbitmq/messaging-topology-operator
+    type: application
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/rabbitmq-operator-1.0.1/rabbitmq-operator-1.0.1.tgz
+    version: 1.0.1
+  - apiVersion: v2
+    appVersion: 2.19.0
     created: "2026-01-29T23:11:19.006323638Z"
     dependencies:
     - name: common
@@ -5263,4 +5290,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-01-29T23:11:18.337873405Z"
+generated: "2026-01-29T23:30:46.447302053Z"

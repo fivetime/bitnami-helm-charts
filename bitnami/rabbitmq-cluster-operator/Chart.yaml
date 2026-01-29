@@ -6,7 +6,7 @@ description: |
   RabbitMQ Cluster Operator 和 Messaging Topology Operator。
   基于 Bitnami Chart 结构，使用 RabbitMQ 官方镜像。
 type: application
-version: 1.0.0
+version: 1.0.1
 appVersion: "2.19.0"
 kubeVersion: ">= 1.19.0-0"
 keywords:

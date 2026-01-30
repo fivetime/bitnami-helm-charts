@@ -60,7 +60,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
-        ## Copy conf directory to PVC for writable cluster.conf
+        ## Copy conf directory to PVC and apply custom configuration
         - name: init-conf
           image: {{ include "nacos.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -68,16 +68,35 @@ spec:
             - /bin/sh
             - -c
             - |
-              if [ ! -f /home/nacos/conf-data/application.properties ]; then
+              CONF_DIR="/home/nacos/conf-data"
+              MARKER_FILE="${CONF_DIR}/.custom-config-applied"
+              
+              if [ ! -f "${CONF_DIR}/application.properties" ]; then
                 echo "Initializing conf directory..."
-                cp -r /home/nacos/conf/* /home/nacos/conf-data/
+                cp -r /home/nacos/conf/* ${CONF_DIR}/
               else
                 echo "Conf directory already initialized."
               fi
+              
+              {{- if or (include "nacos.database.external" .) .Values.extraConfig }}
+              # Apply custom configuration (only once per PVC)
+              if [ ! -f "${MARKER_FILE}" ]; then
+                echo "Applying custom configuration..."
+                cat /home/nacos/init.d/custom.properties >> ${CONF_DIR}/application.properties
+                touch "${MARKER_FILE}"
+              else
+                echo "Custom configuration already applied."
+              fi
+              {{- end }}
           volumeMounts:
             - name: data
               mountPath: /home/nacos/conf-data
               subPath: conf
+            {{- if or (include "nacos.database.external" .) .Values.extraConfig }}
+            - name: application-config
+              mountPath: /home/nacos/init.d/custom.properties
+              subPath: custom.properties
+            {{- end }}
         {{- if and (eq .Values.mode "cluster") .Values.plugin.enabled }}
         - name: peer-finder-plugin
           image: {{ include "nacos.plugin.image" . }}
@@ -371,11 +390,6 @@ spec:
             - name: data
               mountPath: /home/nacos/conf
               subPath: conf
-            {{- if or (include "nacos.database.external" .) .Values.extraConfig }}
-            - name: application-config
-              mountPath: /home/nacos/init.d/custom.properties
-              subPath: custom.properties
-            {{- end }}
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

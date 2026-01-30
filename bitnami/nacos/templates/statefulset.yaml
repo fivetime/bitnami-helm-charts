@@ -60,6 +60,24 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
+        ## Copy conf directory to PVC for writable cluster.conf
+        - name: init-conf
+          image: {{ include "nacos.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              if [ ! -f /home/nacos/conf-data/application.properties ]; then
+                echo "Initializing conf directory..."
+                cp -r /home/nacos/conf/* /home/nacos/conf-data/
+              else
+                echo "Conf directory already initialized."
+              fi
+          volumeMounts:
+            - name: data
+              mountPath: /home/nacos/conf-data
+              subPath: conf
         {{- if and (eq .Values.mode "cluster") .Values.plugin.enabled }}
         - name: peer-finder-plugin
           image: {{ include "nacos.plugin.image" . }}
@@ -350,10 +368,13 @@ spec:
             - name: data
               mountPath: /home/nacos/logs
               subPath: logs
-            {{- if include "nacos.database.external" . }}
+            - name: data
+              mountPath: /home/nacos/conf
+              subPath: conf
+            {{- if or (include "nacos.database.external" .) .Values.extraConfig }}
             - name: application-config
-              mountPath: /home/nacos/conf/application.properties
-              subPath: application.properties
+              mountPath: /home/nacos/init.d/custom.properties
+              subPath: custom.properties
             {{- end }}
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
@@ -367,7 +388,7 @@ spec:
           configMap:
             name: {{ include "nacos.fullname" . }}-init
         {{- end }}
-        {{- if include "nacos.database.external" . }}
+        {{- if or (include "nacos.database.external" .) .Values.extraConfig }}
         - name: application-config
           configMap:
             name: {{ include "nacos.fullname" . }}-application

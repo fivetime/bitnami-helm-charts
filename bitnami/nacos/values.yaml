@@ -33,7 +33,7 @@ image:
   ## @param image.repository Nacos image repository
   repository: nacos/nacos-server
   ## @param image.tag Nacos image tag (immutable tags are recommended)
-  tag: v3.0.2
+  tag: v3.1.1
   ## @param image.pullPolicy Nacos image pull policy
   pullPolicy: IfNotPresent
   ## @param image.pullSecrets Nacos image pull secrets
@@ -93,6 +93,12 @@ database:
   ## @param database.postgresql.param PostgreSQL JDBC connection parameters
   postgresql:
     param: "tcpKeepAlive=true&reWriteBatchedInserts=true&ApplicationName=nacos_java&sslmode=disable&prepareThreshold=0"
+    ## @param database.postgresql.pool PostgreSQL connection pool settings
+    pool:
+      connectionTimeout: 30000
+      validationTimeout: 10000
+      maximumPoolSize: 20
+      minimumIdle: 2
 
   ## Database initialization settings
   init:
@@ -123,6 +129,18 @@ database:
       requests:
         cpu: 100m
         memory: 128Mi
+
+## @section Extra Configuration
+## Additional Nacos configuration properties
+## These will be added to /home/nacos/init.d/custom.properties
+
+## @param extraConfig Additional configuration properties (key=value format)
+## Example:
+##   extraConfig: |
+##     nacos.naming.empty-service.auto-clean=true
+##     server.tomcat.accesslog.enabled=false
+##     nacos.core.auth.caching.enabled=true
+extraConfig: ""
 
 ## @section JVM parameters
 ## Nacos JVM configuration

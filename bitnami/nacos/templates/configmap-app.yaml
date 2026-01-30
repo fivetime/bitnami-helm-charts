@@ -1,4 +1,4 @@
-{{- if include "nacos.database.external" . }}
+{{- if or (include "nacos.database.external" .) .Values.extraConfig }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -7,55 +7,7 @@ metadata:
   labels:
     {{- include "nacos.labels" . | nindent 4 }}
 data:
-  application.properties: |
-    #*************** Spring Boot Related Configurations ***************#
-    server.servlet.contextPath=/nacos
-    server.port=8080
-    
-    #*************** Network Related Configurations ***************#
-    nacos.server.ip=${NACOS_SERVER_IP:}
-    
-    #*************** Config Module Related Configurations ***************#
-    nacos.config.push.maxRetryTime=50
-    
-    #*************** Naming Module Related Configurations ***************#
-    nacos.naming.empty-service.auto-clean=true
-    nacos.naming.empty-service.clean.initial-delay-ms=50000
-    nacos.naming.empty-service.clean.period-time-ms=30000
-    
-    #*************** CMDB Module Related Configurations ***************#
-    nacos.cmdb.dumpTaskInterval=3600
-    nacos.cmdb.eventTaskInterval=10
-    nacos.cmdb.labelTaskInterval=300
-    nacos.cmdb.loadDataAtStart=false
-    
-    #*************** Metrics Related Configurations ***************#
-    management.metrics.export.elastic.enabled=false
-    management.metrics.export.influx.enabled=false
-    nacos.metrics.register.enabled=true
-    management.endpoints.web.exposure.include=*
-    
-    #*************** Access Log Related Configurations ***************#
-    server.tomcat.accesslog.enabled=true
-    server.tomcat.accesslog.pattern=%h %l %u %t "%r" %s %b %D %{User-Agent}i %{Request-Source}i
-    server.tomcat.basedir=file:/home/nacos/logs
-    
-    #*************** Access Control Related Configurations ***************#
-    nacos.core.auth.system.type=nacos
-    nacos.core.auth.enabled=${NACOS_AUTH_ENABLE:false}
-    nacos.core.auth.plugin.nacos.token.secret.key=${NACOS_AUTH_TOKEN:}
-    nacos.core.auth.server.identity.key=${NACOS_AUTH_IDENTITY_KEY:}
-    nacos.core.auth.server.identity.value=${NACOS_AUTH_IDENTITY_VALUE:}
-    
-    #*************** Istio Related Configurations ***************#
-    nacos.istio.mcp.server.enabled=false
-    
-    #*************** Core Related Configurations ***************#
-    nacos.core.snowflake.worker-id=${NACOS_CORE_SNOWFLAKE_WORKER_ID:}
-    
-    #*************** Cluster Related Configurations ***************#
-    nacos.core.member.lookup.type=file
-    
+  custom.properties: |
     {{- if eq .Values.database.type "mysql" }}
     #*************** MySQL Database Configuration ***************#
     spring.datasource.platform=mysql
@@ -72,9 +24,14 @@ data:
     db.url.0=jdbc:postgresql://${POSTGRESQL_SERVICE_HOST}:${POSTGRESQL_SERVICE_PORT}/${POSTGRESQL_SERVICE_DB_NAME}?${POSTGRESQL_SERVICE_DB_PARAM}
     db.user.0=${POSTGRESQL_SERVICE_USER}
     db.password.0=${POSTGRESQL_SERVICE_PASSWORD}
-    db.pool.config.connectionTimeout=30000
-    db.pool.config.validationTimeout=10000
-    db.pool.config.maximumPoolSize=20
-    db.pool.config.minimumIdle=2
+    db.pool.config.connectionTimeout={{ .Values.database.postgresql.pool.connectionTimeout }}
+    db.pool.config.validationTimeout={{ .Values.database.postgresql.pool.validationTimeout }}
+    db.pool.config.maximumPoolSize={{ .Values.database.postgresql.pool.maximumPoolSize }}
+    db.pool.config.minimumIdle={{ .Values.database.postgresql.pool.minimumIdle }}
+    {{- end }}
+    {{- if .Values.extraConfig }}
+
+    #*************** Extra Configuration ***************#
+    {{ .Values.extraConfig | nindent 4 }}
     {{- end }}
 {{- end }}

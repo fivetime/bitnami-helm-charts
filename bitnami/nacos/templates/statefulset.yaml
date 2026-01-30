@@ -344,8 +344,8 @@ spec:
           {{- if .Values.startupProbe.enabled }}
           startupProbe:
             httpGet:
-              path: /nacos/v1/ns/operator/metrics
-              port: client
+              path: /v3/console/health/readiness
+              port: http
               scheme: HTTP
             initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.startupProbe.periodSeconds }}
@@ -356,8 +356,8 @@ spec:
           {{- if .Values.livenessProbe.enabled }}
           livenessProbe:
             httpGet:
-              path: /nacos/v1/ns/operator/metrics
-              port: client
+              path: /v3/console/health/liveness
+              port: http
               scheme: HTTP
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
@@ -368,8 +368,8 @@ spec:
           {{- if .Values.readinessProbe.enabled }}
           readinessProbe:
             httpGet:
-              path: /nacos/v1/ns/operator/metrics
-              port: client
+              path: /v3/console/health/readiness
+              port: http
               scheme: HTTP
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}

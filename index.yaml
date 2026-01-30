@@ -3426,6 +3426,42 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/mysql-14.0.5/mysql-14.0.5.tgz
     version: 14.0.5
+  nacos:
+  - apiVersion: v2
+    appVersion: 3.0.2
+    created: "2026-01-30T09:11:54.687342442Z"
+    dependencies:
+    - name: common
+      repository: https://charts.bitnami.com/bitnami
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    - condition: mysql.enabled
+      name: mysql
+      repository: https://charts.bitnami.com/bitnami
+      version: 9.x.x
+    description: Chart for nacos, an easy-to-use dynamic service discovery, configuration
+      and service management platform for building cloud native applications.
+    digest: 5e9eb6e53f54f6d98f0b2180587c7da1be5ebb5e0e971cfda73d1ac0525bbcca
+    home: https://nacos.io
+    icon: https://nacos.io/img/nacos_colorful.png
+    keywords:
+    - nacos
+    - dynamic service discovery
+    - configuration and service management platform
+    - alibaba
+    - microservices
+    maintainers:
+    - email: ygqygq2@qq.com
+      name: ygqygq2
+    - name: fivetime
+    name: nacos
+    sources:
+    - https://github.com/alibaba/nacos
+    - https://github.com/ygqygq2/nacos-helm
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/nacos-2.1.11/nacos-2.1.11.tgz
+    version: 2.1.11
   nats:
   - annotations:
       images: |
@@ -5263,4 +5299,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-01-29T23:32:29.487559288Z"
+generated: "2026-01-30T09:11:54.827634351Z"

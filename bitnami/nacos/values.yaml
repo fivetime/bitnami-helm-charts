@@ -33,7 +33,7 @@ image:
   ## @param image.repository Nacos image repository
   repository: nacos/nacos-server
   ## @param image.tag Nacos image tag (immutable tags are recommended)
-  tag: v3.0.2
+  tag: v3.1.1
   ## @param image.pullPolicy Nacos image pull policy
   pullPolicy: IfNotPresent
   ## @param image.pullSecrets Nacos image pull secrets
@@ -160,8 +160,8 @@ service:
   loadBalancerIP: ""
   ## @param service.loadBalancerSourceRanges Nacos service Load Balancer sources
   loadBalancerSourceRanges: []
-  ## @param service.externalTrafficPolicy Nacos service external traffic policy
-  externalTrafficPolicy: Cluster
+  ## @param service.externalTrafficPolicy Nacos service external traffic policy (only for LoadBalancer/NodePort)
+  externalTrafficPolicy: ""
   ## @param service.annotations Additional custom annotations for Nacos service
   annotations: {}
   ## @param service.sessionAffinity Session Affinity for Kubernetes service

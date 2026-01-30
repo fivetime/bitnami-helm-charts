@@ -24,6 +24,7 @@ data:
     db.url.0=jdbc:postgresql://${POSTGRESQL_SERVICE_HOST}:${POSTGRESQL_SERVICE_PORT}/${POSTGRESQL_SERVICE_DB_NAME}?${POSTGRESQL_SERVICE_DB_PARAM}
     db.user.0=${POSTGRESQL_SERVICE_USER}
     db.password.0=${POSTGRESQL_SERVICE_PASSWORD}
+    db.pool.config.driverClassName=org.postgresql.Driver
     db.pool.config.connectionTimeout={{ .Values.database.postgresql.pool.connectionTimeout }}
     db.pool.config.validationTimeout={{ .Values.database.postgresql.pool.validationTimeout }}
     db.pool.config.maximumPoolSize={{ .Values.database.postgresql.pool.maximumPoolSize }}

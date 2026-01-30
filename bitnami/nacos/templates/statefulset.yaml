@@ -70,14 +70,14 @@ spec:
             - |
               CONF_DIR="/home/nacos/conf-data"
               MARKER_FILE="${CONF_DIR}/.custom-config-applied"
-              
+
               if [ ! -f "${CONF_DIR}/application.properties" ]; then
                 echo "Initializing conf directory..."
                 cp -r /home/nacos/conf/* ${CONF_DIR}/
               else
                 echo "Conf directory already initialized."
               fi
-              
+
               {{- if or (include "nacos.database.external" .) .Values.extraConfig }}
               # Apply custom configuration (only once per PVC)
               if [ ! -f "${MARKER_FILE}" ]; then
@@ -344,8 +344,8 @@ spec:
           {{- if .Values.startupProbe.enabled }}
           startupProbe:
             httpGet:
-              path: /nacos/v3/console/health/readiness
-              port: http
+              path: /nacos/v1/ns/operator/metrics
+              port: client
               scheme: HTTP
             initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.startupProbe.periodSeconds }}
@@ -356,8 +356,8 @@ spec:
           {{- if .Values.livenessProbe.enabled }}
           livenessProbe:
             httpGet:
-              path: /nacos/v3/console/health/liveness
-              port: http
+              path: /nacos/v1/ns/operator/metrics
+              port: client
               scheme: HTTP
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
@@ -368,8 +368,8 @@ spec:
           {{- if .Values.readinessProbe.enabled }}
           readinessProbe:
             httpGet:
-              path: /nacos/v3/console/health/readiness
-              port: http
+              path: /nacos/v1/ns/operator/metrics
+              port: client
               scheme: HTTP
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}

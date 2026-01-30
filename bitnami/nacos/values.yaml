@@ -33,7 +33,7 @@ image:
   ## @param image.repository Nacos image repository
   repository: nacos/nacos-server
   ## @param image.tag Nacos image tag (immutable tags are recommended)
-  tag: v3.1.1
+  tag: v3.0.2
   ## @param image.pullPolicy Nacos image pull policy
   pullPolicy: IfNotPresent
   ## @param image.pullSecrets Nacos image pull secrets
@@ -74,8 +74,8 @@ database:
   
   ## @param database.host Database host
   host: ""
-  ## @param database.port Database port
-  port: 3306
+  ## @param database.port Database port (default: 3306 for mysql, 5432 for postgresql)
+  port: ""
   ## @param database.name Database name
   name: nacos
   ## @param database.username Database username
@@ -85,8 +85,14 @@ database:
   ## @param database.existingSecret Name of existing secret containing database password
   ## Secret must contain key: database-password
   existingSecret: ""
-  ## @param database.param Additional JDBC connection parameters
-  param: "characterEncoding=utf8&connectTimeout=10000&socketTimeout=30000&autoReconnect=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai"
+  
+  ## @param database.mysql.param MySQL JDBC connection parameters
+  mysql:
+    param: "characterEncoding=utf8&connectTimeout=10000&socketTimeout=30000&autoReconnect=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai"
+  
+  ## @param database.postgresql.param PostgreSQL JDBC connection parameters
+  postgresql:
+    param: "tcpKeepAlive=true&reWriteBatchedInserts=true&ApplicationName=nacos_java&sslmode=disable&prepareThreshold=0"
 
   ## Database initialization settings
   init:
@@ -117,6 +123,26 @@ database:
       requests:
         cpu: 100m
         memory: 128Mi
+
+## @section JVM parameters
+## Nacos JVM configuration
+## ref: https://github.com/nacos-group/nacos-docker
+
+jvm:
+  ## @param jvm.xms JVM initial heap size
+  xms: "1g"
+  ## @param jvm.xmx JVM maximum heap size
+  xmx: "1g"
+  ## @param jvm.xmn JVM young generation size
+  xmn: "512m"
+  ## @param jvm.metaspaceSize JVM Metaspace initial size
+  metaspaceSize: "128m"
+  ## @param jvm.maxMetaspaceSize JVM Metaspace maximum size
+  maxMetaspaceSize: "320m"
+  ## @param jvm.maxDirectMemorySize JVM max direct memory size (optional)
+  maxDirectMemorySize: ""
+  ## @param jvm.extraOpts Additional JVM options
+  extraOpts: ""
 
 ## @section Nacos Peer Finder Plugin (for cluster mode)
 

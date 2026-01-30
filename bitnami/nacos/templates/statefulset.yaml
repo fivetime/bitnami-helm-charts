@@ -161,6 +161,26 @@ spec:
               containerPort: {{ .Values.service.ports.mcp }}
               protocol: TCP
           env:
+            ## JVM settings
+            - name: JVM_XMS
+              value: {{ .Values.jvm.xms | quote }}
+            - name: JVM_XMX
+              value: {{ .Values.jvm.xmx | quote }}
+            - name: JVM_XMN
+              value: {{ .Values.jvm.xmn | quote }}
+            - name: JVM_MS
+              value: {{ .Values.jvm.metaspaceSize | quote }}
+            - name: JVM_MMS
+              value: {{ .Values.jvm.maxMetaspaceSize | quote }}
+            {{- if .Values.jvm.maxDirectMemorySize }}
+            - name: JVM_XMX_DIRECT
+              value: {{ .Values.jvm.maxDirectMemorySize | quote }}
+            {{- end }}
+            {{- if .Values.jvm.extraOpts }}
+            - name: NACOS_JVM_EXT_OPTS
+              value: {{ .Values.jvm.extraOpts | quote }}
+            {{- end }}
+            ## Nacos settings
             - name: NACOS_SERVER_PORT
               value: {{ .Values.service.ports.client | quote }}
             - name: NACOS_APPLICATION_PORT
@@ -208,7 +228,7 @@ spec:
             - name: MYSQL_SERVICE_HOST
               value: {{ .Values.database.host | quote }}
             - name: MYSQL_SERVICE_PORT
-              value: {{ .Values.database.port | quote }}
+              value: {{ .Values.database.port | default 3306 | quote }}
             - name: MYSQL_SERVICE_DB_NAME
               value: {{ .Values.database.name | quote }}
             - name: MYSQL_SERVICE_USER
@@ -219,14 +239,14 @@ spec:
                   name: {{ include "nacos.database.secretName" . }}
                   key: database-password
             - name: MYSQL_SERVICE_DB_PARAM
-              value: {{ .Values.database.param | quote }}
+              value: {{ .Values.database.mysql.param | quote }}
             {{- else if eq .Values.database.type "postgresql" }}
             - name: SPRING_DATASOURCE_PLATFORM
               value: "postgresql"
             - name: POSTGRESQL_SERVICE_HOST
               value: {{ .Values.database.host | quote }}
             - name: POSTGRESQL_SERVICE_PORT
-              value: {{ .Values.database.port | quote }}
+              value: {{ .Values.database.port | default 5432 | quote }}
             - name: POSTGRESQL_SERVICE_DB_NAME
               value: {{ .Values.database.name | quote }}
             - name: POSTGRESQL_SERVICE_USER
@@ -236,6 +256,8 @@ spec:
                 secretKeyRef:
                   name: {{ include "nacos.database.secretName" . }}
                   key: database-password
+            - name: POSTGRESQL_SERVICE_DB_PARAM
+              value: {{ .Values.database.postgresql.param | quote }}
             {{- else }}
             - name: EMBEDDED_STORAGE
               value: "embedded"
@@ -328,6 +350,11 @@ spec:
             - name: data
               mountPath: /home/nacos/logs
               subPath: logs
+            {{- if include "nacos.database.external" . }}
+            - name: application-config
+              mountPath: /home/nacos/conf/application.properties
+              subPath: application.properties
+            {{- end }}
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -339,6 +366,11 @@ spec:
         - name: init-scripts
           configMap:
             name: {{ include "nacos.fullname" . }}-init
+        {{- end }}
+        {{- if include "nacos.database.external" . }}
+        - name: application-config
+          configMap:
+            name: {{ include "nacos.fullname" . }}-application
         {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}

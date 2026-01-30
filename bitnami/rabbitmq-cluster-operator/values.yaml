@@ -79,7 +79,7 @@ diagnosticMode:
 rabbitmqImage:
   registry: docker.io
   repository: rabbitmq
-  tag: 4.1.3-management
+  tag: 4.2.3-management
   digest: ""
   ## Optionally specify an array of imagePullSecrets.
   ## Secrets must be manually created in the namespace.

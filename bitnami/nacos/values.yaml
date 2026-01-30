@@ -192,16 +192,22 @@ ingress:
   extraTls: []
 
 ## @section Persistence parameters
+## IMPORTANT: Persistence is RECOMMENDED for all deployment modes.
+## Even with external database, Nacos generates significant local data:
+## - /home/nacos/logs: access_log (can grow several GB per day), application logs
+## - /home/nacos/data/protocol/raft/*/log: Raft logs (RocksDB, can grow very large)
+## Without PVC, these will consume node disk space and may crash the host.
 
 persistence:
   ## @param persistence.enabled Enable persistence using Persistent Volume Claims
+  ## Strongly recommended for production to avoid filling up node disk
   enabled: true
   ## @param persistence.storageClass Storage class of backing PVC
   storageClass: ""
   ## @param persistence.accessModes Persistent Volume access modes
   accessModes:
     - ReadWriteOnce
-  ## @param persistence.size Size of data volume
+  ## @param persistence.size Size of data volume (10Gi minimum recommended for production)
   size: 10Gi
   ## @param persistence.annotations Additional custom annotations for the PVC
   annotations: {}
@@ -301,6 +307,40 @@ podDisruptionBudget:
   minAvailable: ""
   ## @param podDisruptionBudget.maxUnavailable Maximum number of pods that can be unavailable
   maxUnavailable: 1
+
+## @section Autoscaling parameters
+## HPA is supported when using:
+##   - External database (MySQL/PostgreSQL)
+##   - Ephemeral instances (default, spring.cloud.nacos.discovery.ephemeral=true)
+## In this mode, Nacos is essentially stateless - data is in DB, services use Distro protocol
+## Do NOT use HPA with embedded database or persistent instances (they use Raft)
+
+autoscaling:
+  ## @param autoscaling.enabled Enable Horizontal Pod Autoscaler
+  enabled: false
+  ## @param autoscaling.minReplicas Minimum number of replicas
+  minReplicas: 3
+  ## @param autoscaling.maxReplicas Maximum number of replicas
+  maxReplicas: 7
+  ## @param autoscaling.targetCPUUtilizationPercentage Target CPU utilization percentage
+  targetCPUUtilizationPercentage: 70
+  ## @param autoscaling.targetMemoryUtilizationPercentage Target Memory utilization percentage
+  targetMemoryUtilizationPercentage: ""
+  ## @param autoscaling.behavior HPA behavior configuration for scale up/down
+  behavior:
+    scaleDown:
+      ## Slow scale down to avoid disruption
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
 
 ## @section Scheduling parameters
 

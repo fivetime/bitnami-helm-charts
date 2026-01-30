@@ -182,6 +182,8 @@ plugin:
 service:
   ## @param service.type Kubernetes Service type
   type: ClusterIP
+  ## @param service.labels Additional labels for Nacos service
+  labels: {}
   ## @param service.ports.http Nacos console HTTP port
   ## @param service.ports.client Nacos client port (main API port)
   ## @param service.ports.clientRpc Nacos client gRPC port

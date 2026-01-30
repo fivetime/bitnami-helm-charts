@@ -1,0 +1,369 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "nacos.fullname" . }}
+  namespace: {{ include "nacos.namespace" . }}
+  labels:
+    {{- include "nacos.labels" . | nindent 4 }}
+  {{- with .Values.commonAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ include "nacos.replicaCount" . }}
+  serviceName: {{ include "nacos.headless.serviceName" . }}
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      {{- include "nacos.selectorLabels" . | nindent 6 }}
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        {{- include "nacos.selectorLabels" . | nindent 8 }}
+        {{- with .Values.commonLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.commonAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "nacos.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "nacos.serviceAccountName" . }}
+      {{- if .Values.podSecurityContext.enabled }}
+      securityContext:
+        fsGroup: {{ .Values.podSecurityContext.fsGroup }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
+      {{- if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
+      {{- else if .Values.podAntiAffinityPreset }}
+      affinity:
+        {{- include "nacos.podAntiAffinity" . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        {{- if and (eq .Values.mode "cluster") .Values.plugin.enabled }}
+        - name: peer-finder-plugin
+          image: {{ include "nacos.plugin.image" . }}
+          imagePullPolicy: {{ .Values.plugin.image.pullPolicy }}
+          volumeMounts:
+            - name: data
+              mountPath: /home/nacos/plugins/peer-finder
+              subPath: peer-finder
+        {{- end }}
+        {{- if and (include "nacos.database.external" .) .Values.database.init.enabled }}
+        - name: init-database
+          image: {{ include "nacos.init.image" . }}
+          imagePullPolicy: {{ .Values.database.init.image.pullPolicy }}
+          {{- with .Values.database.init.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+            - name: DB_TYPE
+              value: {{ .Values.database.type | quote }}
+            - name: DB_HOST
+              value: {{ .Values.database.host | quote }}
+            - name: DB_PORT
+              value: {{ .Values.database.port | quote }}
+            - name: DB_NAME
+              value: {{ .Values.database.name | quote }}
+            - name: DB_USER
+              value: {{ .Values.database.username | quote }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "nacos.database.secretName" . }}
+                  key: database-password
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "Waiting for database to be ready..."
+              {{- if eq .Values.database.type "mysql" }}
+              until mysql -h"${DB_HOST}" -P"${DB_PORT}" -u"${DB_USER}" -p"${DB_PASSWORD}" -e "SELECT 1" &>/dev/null; do
+                echo "Waiting for MySQL..."
+                sleep 3
+              done
+              echo "MySQL is ready. Initializing database..."
+              mysql -h"${DB_HOST}" -P"${DB_PORT}" -u"${DB_USER}" -p"${DB_PASSWORD}" -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME} DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+              mysql -h"${DB_HOST}" -P"${DB_PORT}" -u"${DB_USER}" -p"${DB_PASSWORD}" "${DB_NAME}" < /scripts/schema.sql
+              {{- else if eq .Values.database.type "postgresql" }}
+              until PGPASSWORD="${DB_PASSWORD}" psql -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -d postgres -c "SELECT 1" &>/dev/null; do
+                echo "Waiting for PostgreSQL..."
+                sleep 3
+              done
+              echo "PostgreSQL is ready. Initializing database..."
+              PGPASSWORD="${DB_PASSWORD}" psql -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = '${DB_NAME}'" | grep -q 1 || \
+                PGPASSWORD="${DB_PASSWORD}" psql -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -d postgres -c "CREATE DATABASE ${DB_NAME}"
+              PGPASSWORD="${DB_PASSWORD}" psql -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -d "${DB_NAME}" -f /scripts/schema.sql
+              {{- end }}
+              echo "Database initialization completed."
+          volumeMounts:
+            - name: init-scripts
+              mountPath: /scripts
+              readOnly: true
+        {{- end }}
+        {{- with .Values.initContainers }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      containers:
+        - name: nacos
+          image: {{ include "nacos.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext:
+            runAsUser: {{ .Values.containerSecurityContext.runAsUser }}
+            runAsNonRoot: {{ .Values.containerSecurityContext.runAsNonRoot }}
+            allowPrivilegeEscalation: {{ .Values.containerSecurityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.containerSecurityContext.readOnlyRootFilesystem }}
+            {{- with .Values.containerSecurityContext.capabilities }}
+            capabilities:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.ports.http }}
+              protocol: TCP
+            - name: client
+              containerPort: {{ .Values.service.ports.client }}
+              protocol: TCP
+            - name: client-rpc
+              containerPort: {{ .Values.service.ports.clientRpc }}
+              protocol: TCP
+            - name: raft-rpc
+              containerPort: {{ .Values.service.ports.raftRpc }}
+              protocol: TCP
+            - name: old-raft
+              containerPort: 7848
+              protocol: TCP
+            - name: mcp
+              containerPort: {{ .Values.service.ports.mcp }}
+              protocol: TCP
+          env:
+            - name: NACOS_SERVER_PORT
+              value: {{ .Values.service.ports.client | quote }}
+            - name: NACOS_APPLICATION_PORT
+              value: {{ .Values.service.ports.client | quote }}
+            - name: PREFER_HOST_MODE
+              value: "hostname"
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            {{- if eq .Values.mode "standalone" }}
+            - name: MODE
+              value: "standalone"
+            {{- else }}
+            - name: SERVICE_NAME
+              value: {{ include "nacos.headless.serviceName" . }}
+            - name: DOMAIN_NAME
+              value: {{ .Values.clusterDomain | quote }}
+            - name: NACOS_SERVERS
+              value: {{ include "nacos.clusterMembers" . | quote }}
+            {{- end }}
+            {{- if .Values.auth.enabled }}
+            - name: NACOS_AUTH_ENABLE
+              value: "true"
+            - name: NACOS_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "nacos.auth.secretName" . }}
+                  key: NACOS_AUTH_TOKEN
+            - name: NACOS_AUTH_IDENTITY_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "nacos.auth.secretName" . }}
+                  key: NACOS_AUTH_IDENTITY_KEY
+            - name: NACOS_AUTH_IDENTITY_VALUE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "nacos.auth.secretName" . }}
+                  key: NACOS_AUTH_IDENTITY_VALUE
+            {{- end }}
+            {{- if eq .Values.database.type "mysql" }}
+            - name: SPRING_DATASOURCE_PLATFORM
+              value: "mysql"
+            - name: MYSQL_SERVICE_HOST
+              value: {{ .Values.database.host | quote }}
+            - name: MYSQL_SERVICE_PORT
+              value: {{ .Values.database.port | quote }}
+            - name: MYSQL_SERVICE_DB_NAME
+              value: {{ .Values.database.name | quote }}
+            - name: MYSQL_SERVICE_USER
+              value: {{ .Values.database.username | quote }}
+            - name: MYSQL_SERVICE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "nacos.database.secretName" . }}
+                  key: database-password
+            - name: MYSQL_SERVICE_DB_PARAM
+              value: {{ .Values.database.param | quote }}
+            {{- else if eq .Values.database.type "postgresql" }}
+            - name: SPRING_DATASOURCE_PLATFORM
+              value: "postgresql"
+            - name: POSTGRESQL_SERVICE_HOST
+              value: {{ .Values.database.host | quote }}
+            - name: POSTGRESQL_SERVICE_PORT
+              value: {{ .Values.database.port | quote }}
+            - name: POSTGRESQL_SERVICE_DB_NAME
+              value: {{ .Values.database.name | quote }}
+            - name: POSTGRESQL_SERVICE_USER
+              value: {{ .Values.database.username | quote }}
+            - name: POSTGRESQL_SERVICE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "nacos.database.secretName" . }}
+                  key: database-password
+            {{- else }}
+            - name: EMBEDDED_STORAGE
+              value: "embedded"
+            {{- end }}
+            {{- if .Values.metrics.enabled }}
+            ## Metrics: expose prometheus endpoint
+            ## ref: https://nacos.io/docs/latest/guide/admin/monitor-guide/
+            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+              value: "prometheus"
+            {{- if .Values.metrics.elasticsearch.enabled }}
+            - name: MANAGEMENT_METRICS_EXPORT_ELASTIC_ENABLED
+              value: "true"
+            - name: MANAGEMENT_METRICS_EXPORT_ELASTIC_HOST
+              value: {{ .Values.metrics.elasticsearch.host | quote }}
+            {{- end }}
+            {{- if .Values.metrics.influxdb.enabled }}
+            - name: MANAGEMENT_METRICS_EXPORT_INFLUX_ENABLED
+              value: "true"
+            - name: MANAGEMENT_METRICS_EXPORT_INFLUX_URI
+              value: {{ .Values.metrics.influxdb.uri | quote }}
+            - name: MANAGEMENT_METRICS_EXPORT_INFLUX_DB
+              value: {{ .Values.metrics.influxdb.db | quote }}
+            - name: MANAGEMENT_METRICS_EXPORT_INFLUX_AUTO_CREATE_DB
+              value: {{ .Values.metrics.influxdb.autoCreateDb | quote }}
+            - name: MANAGEMENT_METRICS_EXPORT_INFLUX_CONSISTENCY
+              value: {{ .Values.metrics.influxdb.consistency | quote }}
+            - name: MANAGEMENT_METRICS_EXPORT_INFLUX_COMPRESSED
+              value: {{ .Values.metrics.influxdb.compressed | quote }}
+            {{- end }}
+            {{- end }}
+            {{- with .Values.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if .Values.extraEnvVarsCM }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Values.extraEnvVarsCM }}
+          {{- end }}
+          {{- if .Values.extraEnvVarsSecret }}
+            - secretRef:
+                name: {{ .Values.extraEnvVarsSecret }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.startupProbe.enabled }}
+          startupProbe:
+            httpGet:
+              path: /nacos/v3/console/health/readiness
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+            successThreshold: {{ .Values.startupProbe.successThreshold }}
+          {{- end }}
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /nacos/v3/console/health/liveness
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+            successThreshold: {{ .Values.livenessProbe.successThreshold }}
+          {{- end }}
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /nacos/v3/console/health/readiness
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+            successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /home/nacos/plugins/peer-finder
+              subPath: peer-finder
+            - name: data
+              mountPath: /home/nacos/data
+              subPath: data
+            - name: data
+              mountPath: /home/nacos/logs
+              subPath: logs
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+        {{- with .Values.sidecars }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      volumes:
+        {{- if and (ne .Values.database.type "embedded") .Values.database.init.enabled }}
+        - name: init-scripts
+          configMap:
+            name: {{ include "nacos.fullname" . }}-init
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if not .Values.persistence.enabled }}
+        - name: data
+          emptyDir: {}
+        {{- end }}
+  {{- if .Values.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        {{- with .Values.persistence.annotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- toYaml .Values.persistence.accessModes | nindent 10 }}
+        {{- include "nacos.storageClass" . | nindent 8 }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size | quote }}
+        {{- with .Values.persistence.selector }}
+        selector:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+  {{- end }}

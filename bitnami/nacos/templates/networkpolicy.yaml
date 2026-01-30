@@ -1,42 +1,86 @@
 {{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
-apiVersion: {{ include "common.capabilities.networkPolicy.apiVersion" . }}
 metadata:
-  name: {{ include "common.names.fullname" . }}
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "nacos.fullname" . }}
+  namespace: {{ include "nacos.namespace" . }}
   labels:
-  {{- include "common.labels.standard" . | nindent 4 }}
-  {{- if .Values.commonLabels }}
-  {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-  {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
+    {{- include "nacos.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-    {{- include "common.labels.matchLabels" . | nindent 6 }}
+      {{- include "nacos.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
   ingress:
-    # Allow inbound connections
+    # Allow inbound traffic from pods in the same namespace
+    - from:
+        - podSelector: {}
+      ports:
+        - port: {{ .Values.service.ports.http }}
+          protocol: TCP
+        - port: {{ .Values.service.ports.client }}
+          protocol: TCP
+        - port: {{ .Values.service.ports.clientRpc }}
+          protocol: TCP
+        - port: {{ .Values.service.ports.raftRpc }}
+          protocol: TCP
+        - port: {{ .Values.service.ports.mcp }}
+          protocol: TCP
+        - port: 7848
+          protocol: TCP
+    {{- if .Values.networkPolicy.allowExternal }}
+    # Allow external inbound traffic
     - ports:
-        - port: {{ template "nacos.service.ingressPort" . }}
-      {{- if not .Values.networkPolicy.allowExternal }}
-      from:
+        - port: {{ .Values.service.ports.http }}
+          protocol: TCP
+        - port: {{ .Values.service.ports.client }}
+          protocol: TCP
+        - port: {{ .Values.service.ports.clientRpc }}
+          protocol: TCP
+        - port: {{ .Values.service.ports.mcp }}
+          protocol: TCP
+    {{- end }}
+    {{- with .Values.networkPolicy.extraIngress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  egress:
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # Allow cluster internal communication
+    - to:
         - podSelector:
             matchLabels:
-              {{ template "common.names.fullname" . }}-client: "true"
-          {{- if .Values.networkPolicy.explicitNamespacesSelector }}
-          namespaceSelector:
-            {{- toYaml .Values.networkPolicy.explicitNamespacesSelector | nindent 12 }}
-          {{- end }}
-        - podSelector:
-            matchLabels:
-            {{- include "common.labels.matchLabels" . | nindent 14 }}
-              role: read
-      {{- end }}
-    {{- if .Values.metrics.enabled }}
-    # Allow prometheus scrapes
-    - ports:
-        - port: 9187
+              {{- include "nacos.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: {{ .Values.service.ports.client }}
+          protocol: TCP
+        - port: {{ .Values.service.ports.clientRpc }}
+          protocol: TCP
+        - port: {{ .Values.service.ports.raftRpc }}
+          protocol: TCP
+        - port: 7848
+          protocol: TCP
+    # Allow database connection
+    {{- if include "nacos.database.external" . }}
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - port: {{ .Values.database.port }}
+          protocol: TCP
+    {{- end }}
+    {{- with .Values.networkPolicy.extraEgress }}
+    {{- toYaml . | nindent 4 }}
     {{- end }}
 {{- end }}

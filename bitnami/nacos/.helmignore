@@ -14,8 +14,21 @@
 *.swp
 *.bak
 *.tmp
+*.orig
 *~
 # Various IDEs
 .project
 .idea/
 *.tmproj
+.vscode/
+# Test files
+tests/
+test/
+# CI files
+.github/
+.gitlab-ci.yml
+.travis.yml
+# Documentation
+README.md
+CHANGELOG.md
+LICENSE

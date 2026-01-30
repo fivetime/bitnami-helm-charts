@@ -1,17 +1,16 @@
+{{- if and (ne .Values.database.type "embedded") .Values.database.init.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ template "common.names.fullname" . }}
-  namespace: {{ .Release.Namespace }}
-  labels: {{- include "common.labels.standard" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
+  name: {{ include "nacos.fullname" . }}-init
+  namespace: {{ include "nacos.namespace" . }}
+  labels:
+    {{- include "nacos.labels" . | nindent 4 }}
 data:
-  sql_files: "https://raw.githubusercontent.com/alibaba/nacos/{{ .Chart.AppVersion }}/distribution/conf/mysql-schema.sql"
-{{- if .Values.config.enabled -}}
-  {{- toYaml .Values.config.data | nindent 2 }}
-{{- end -}}
+  schema.sql: |
+{{- if eq .Values.database.type "mysql" }}
+{{ .Files.Get "resources/schema/mysql.sql" | nindent 4 }}
+{{- else if eq .Values.database.type "postgresql" }}
+{{ .Files.Get "resources/schema/pgsql.sql" | nindent 4 }}
+{{- end }}
+{{- end }}

@@ -1,31 +1,26 @@
 apiVersion: v2
-appVersion: 3.0.2
-dependencies:
-- name: common
-  repository: https://charts.bitnami.com/bitnami
-  tags:
-  - bitnami-common
-  version: 2.x.x
-- name: mysql
-  version: 9.x.x
-  repository: https://charts.bitnami.com/bitnami
-  condition: mysql.enabled
-description: Chart for nacos, an easy-to-use dynamic service discovery, configuration and service management platform for building cloud native applications.
-engine: gotpl
 name: nacos
-version: 2.1.11
+description: |
+  Nacos Helm Chart - An easy-to-use dynamic service discovery, configuration 
+  and service management platform for building cloud native applications.
+type: application
+version: 3.0.0
+appVersion: "3.0.2"
 home: https://nacos.io
 icon: https://nacos.io/img/nacos_colorful.png
 keywords:
-- nacos
-- dynamic service discovery
-- configuration and service management platform
-- alibaba
-- microservices
-maintainers:
-- email: ygqygq2@qq.com
-  name: ygqygq2
-- name: fivetime
+  - nacos
+  - service-discovery
+  - configuration-management
+  - microservices
+  - alibaba
+  - cloud-native
 sources:
-- https://github.com/alibaba/nacos
-- https://github.com/ygqygq2/nacos-helm
+  - https://github.com/alibaba/nacos
+  - https://github.com/nacos-group/nacos-k8s
+maintainers:
+  - name: fivetime
+    url: https://github.com/fivetime
+annotations:
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/category: integration-delivery

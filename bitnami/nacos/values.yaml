@@ -1,829 +1,419 @@
 ## @section Global parameters
 ## Global Docker image parameters
 ## Please, note that this will override the image parameters, including dependencies, configured to use the global value
-## Current available global Docker image parameters: imageRegistry, imagePullSecrets and storageClass
 
-## @param global.imageRegistry Global Docker image registry
-## @param global.imagePullSecrets Global Docker registry secret names as an array
-## @param global.storageClass Global StorageClass for Persistent Volume(s)
-##
 global:
+  ## @param global.imageRegistry Global Docker image registry
   imageRegistry: ""
-  ## E.g.
-  ## imagePullSecrets:
-  ##   - myRegistryKeySecretName
-  ##
+  ## @param global.imagePullSecrets Global Docker registry secret names as an array
   imagePullSecrets: []
+  ## @param global.storageClass Global StorageClass for Persistent Volume(s)
   storageClass: ""
 
 ## @section Common parameters
 
-## @param nameOverride String to partially override nginx.fullname template (will maintain the release name)
-##
+## @param nameOverride String to partially override nacos.fullname
 nameOverride: ""
-## @param fullnameOverride String to fully override nginx.fullname template
-##
+## @param fullnameOverride String to fully override nacos.fullname
 fullnameOverride: ""
-## @param kubeVersion Force target Kubernetes version (using Helm capabilities if not set)
-##
-kubeVersion: ""
-## @param clusterDomain Kubernetes Cluster Domain
-##
-clusterDomain: cluster.local
-## @param extraDeploy Extra objects to deploy (value evaluated as a template)
-##
-extraDeploy: []
-## @param commonLabels Add labels to all the deployed resources
-##
+## @param namespaceOverride String to fully override common.names.namespace
+namespaceOverride: ""
+## @param commonLabels Labels to add to all deployed objects
 commonLabels: {}
-## @param commonAnnotations Add annotations to all the deployed resources
-##
+## @param commonAnnotations Annotations to add to all deployed objects
 commonAnnotations: {}
+## @param clusterDomain Kubernetes cluster domain name
+clusterDomain: cluster.local
 
-## Deployment or Statefulset
-statefulset:
-  enabled: true
+## @section Nacos Image parameters
 
-## @param replicaCount Number of replicas to deploy
-##
-replicaCount: 3
-
-## @section Tomcat parameters
-##
-
-## Nacos image version
-## ref: https://hub.docker.com/r/bitnami/tomcat/tags/
-## @param image.registry Tomcat image registry
-## @param image.repository Tomcat image repository
-## @param image.tag Tomcat image tag (immutable tags are recommended)
-## @param image.pullPolicy Tomcat image pull policy
-## @param image.pullSecrets Specify docker-registry secret names as an array
-## @param image.debug Specify if debug logs should be enabled
-##
 image:
+  ## @param image.registry Nacos image registry
   registry: docker.io
+  ## @param image.repository Nacos image repository
   repository: nacos/nacos-server
+  ## @param image.tag Nacos image tag (immutable tags are recommended)
   tag: v3.0.2
-  ## Specify a imagePullPolicy
-  ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
-  ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
-  ##
+  ## @param image.pullPolicy Nacos image pull policy
   pullPolicy: IfNotPresent
-  ## Optionally specify an array of imagePullSecrets.
-  ## Secrets must be manually created in the namespace.
-  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
-  ## Example:
-  ## pullSecrets:
-  ##   - myRegistryKeySecretName
-  ##
+  ## @param image.pullSecrets Nacos image pull secrets
   pullSecrets: []
 
+## @section Nacos Configuration parameters
+
+## @param mode Nacos server mode: standalone or cluster
+mode: cluster
+
+## @param replicaCount Number of Nacos replicas (should be odd number for cluster mode: 3, 5, 7)
+replicaCount: 3
+
+## @section Nacos Authentication parameters
+## ref: https://nacos.io/docs/latest/guide/user/auth/
+
+auth:
+  ## @param auth.enabled Enable Nacos authentication
+  enabled: true
+  ## @param auth.token JWT token for authentication (base64, min 32 bytes). Auto-generated if empty
+  token: ""
+  ## @param auth.identity.key Identity key for node-to-node authentication
+  ## @param auth.identity.value Identity value for node-to-node authentication
+  identity:
+    key: ""
+    value: ""
+  ## @param auth.existingSecret Name of existing secret containing auth credentials
+  ## Secret must contain keys: NACOS_AUTH_TOKEN, NACOS_AUTH_IDENTITY_KEY, NACOS_AUTH_IDENTITY_VALUE
+  existingSecret: ""
+
+## @section Database Configuration
+## Nacos supports MySQL, PostgreSQL, and embedded Derby (standalone only)
+
+database:
+  ## @param database.type Database type: mysql, postgresql, or embedded
+  ## embedded is only supported in standalone mode
+  type: mysql
+  
+  ## @param database.host Database host
+  host: ""
+  ## @param database.port Database port
+  port: 3306
+  ## @param database.name Database name
+  name: nacos
+  ## @param database.username Database username
+  username: nacos
+  ## @param database.password Database password (ignored if existingSecret is set)
+  password: ""
+  ## @param database.existingSecret Name of existing secret containing database password
+  ## Secret must contain key: database-password
+  existingSecret: ""
+  ## @param database.param Additional JDBC connection parameters
+  param: "characterEncoding=utf8&connectTimeout=10000&socketTimeout=30000&autoReconnect=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai"
+
+  ## Database initialization settings
+  init:
+    ## @param database.init.enabled Enable database schema initialization
+    enabled: true
+    ## @param database.init.image.mysql.registry MySQL init container image registry
+    ## @param database.init.image.mysql.repository MySQL init container image repository
+    ## @param database.init.image.mysql.tag MySQL init container image tag
+    ## @param database.init.image.postgresql.registry PostgreSQL init container image registry
+    ## @param database.init.image.postgresql.repository PostgreSQL init container image repository
+    ## @param database.init.image.postgresql.tag PostgreSQL init container image tag
+    ## @param database.init.image.pullPolicy Init container image pull policy
+    image:
+      mysql:
+        registry: docker.io
+        repository: mysql
+        tag: "8.0"
+      postgresql:
+        registry: docker.io
+        repository: postgres
+        tag: "16-alpine"
+      pullPolicy: IfNotPresent
+    ## @param database.init.resources Init container resource requests and limits
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+## @section Nacos Peer Finder Plugin (for cluster mode)
+
 plugin:
+  ## @param plugin.enabled Enable peer finder plugin (required for cluster mode)
+  enabled: true
+  ## @param plugin.image.registry Plugin image registry
+  ## @param plugin.image.repository Plugin image repository
+  ## @param plugin.image.tag Plugin image tag
+  ## @param plugin.image.pullPolicy Plugin image pull policy
   image:
     registry: docker.io
     repository: nacos/nacos-peer-finder-plugin
-    tag: latest
+    tag: "1.1"
     pullPolicy: IfNotPresent
 
-## Kubernetes svc configuration
-##
+## @section Service parameters
+
 service:
-  ## 支持ClusterIP修改为LoadBalancer，反之不允许。可手动修改svc,并将nodePort去掉
-  type: ClusterIP  # 一般不用修改, 支持ClusterIP/LoadBalancer/NodePort
-  loadBalancerIP: ""
-  ## Enable client source IP preservation
-  ## @param service.externalTrafficPolicy External traffic policy, configure to Local to preserve client source IP when using an external loadBalancer
-  ## ref http://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip
-  ##
-  externalTrafficPolicy: Cluster  # 支持Cluster/Local
+  ## @param service.type Kubernetes Service type
+  type: ClusterIP
+  ## @param service.ports.http Nacos console HTTP port
+  ## @param service.ports.client Nacos client port (main API port)
+  ## @param service.ports.clientRpc Nacos client gRPC port
+  ## @param service.ports.raftRpc Nacos raft gRPC port
+  ## @param service.ports.mcp Nacos MCP (Microservice Config Protocol) port
   ports:
-    ## 多端口暴露时，复制一段
-    http:
-      port: 8080  # Service port number for client-a port.
-      protocol: TCP  # Service port protocol for client-a port.
-      ## Use nodePorts to requets some specific ports when usin NodePort
-      # nodePort: 30020  # <to set explicitly, choose port between 30000-32767> 默认会自动生成
-    server:
-      port: 8848
-      protocol: TCP
-  ## @param service.loadBalancerSourceRanges Addresses that are allowed when service is LoadBalancer
-  ## https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/#restrict-access-for-loadbalancer-service
-  ## e.g:
-  ## loadBalancerSourceRanges:
-  ## - 10.10.10.0/24
-  ##
-  loadBalancerSourceRanges: []
-  ## @param service.clusterIP Static clusterIP or None for headless services
-  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#choosing-your-own-ip-address
-  ## e.g:
-  ## clusterIP: None
-  ##
+    http: 8080
+    client: 8848
+    clientRpc: 9848
+    raftRpc: 9849
+    mcp: 9080
+  ## @param service.nodePorts.http Node port for HTTP (when service.type is NodePort)
+  ## @param service.nodePorts.client Node port for client (when service.type is NodePort)
+  nodePorts:
+    http: ""
+    client: ""
+  ## @param service.clusterIP Nacos service Cluster IP
   clusterIP: ""
-  ## @param service.annotations Annotations for Logstash service
-  ##
+  ## @param service.loadBalancerIP Nacos service Load Balancer IP
+  loadBalancerIP: ""
+  ## @param service.loadBalancerSourceRanges Nacos service Load Balancer sources
+  loadBalancerSourceRanges: []
+  ## @param service.externalTrafficPolicy Nacos service external traffic policy
+  externalTrafficPolicy: Cluster
+  ## @param service.annotations Additional custom annotations for Nacos service
   annotations: {}
+  ## @param service.sessionAffinity Session Affinity for Kubernetes service
+  sessionAffinity: None
 
-## @param mode Nacos mode, standalone or cluster
-## standalone mode also need set `mysql.enabled` to `false`
-mode: "cluster"
+## @section Ingress parameters
 
-## @param extraEnvVars Extra environment variables to be set on MinIO&reg; container
-## e.g:
-## extraEnvVars:
-##   - name: FOO
-##     value: "bar"
-##
-## ref: https://github.com/nacos-group/nacos-docker/blob/master/README_ZH.md
-extraEnvVars:
-  - name: PREFER_HOST_MODE
-    value: "hostname"
-  - name: TZ
-    value: "Asia/Shanghai"
-  - name: SPRING_DATASOURCE_PLATFORM
-    value: "mysql"
-  - name: NACOS_AUTH_USER_AGENT_AUTH_WHITE_ENABLE
-    value: "false"
-  - name: NACOS_AUTH_ENABLE
-    value: "true"
-  - name: NACOS_AUTH_TOKEN
-    value: "SecretKey012345678901234567890123456789012345678901234567890123456789"
-  - name: NACOS_AUTH_IDENTITY_KEY
-    value: "example"
-  - name: NACOS_AUTH_IDENTITY_VALUE
-    value: "example"
-
-## @param extraEnvVarsCM ConfigMap with extra environment variables
-##
-extraEnvVarsCM: ""
-## @param extraEnvVarsSecret Secret with extra environment variables
-##
-extraEnvVarsSecret: ""
-## @param command Default container command (useful when using custom images). Use array form
-##
-command: []
-## @param args Default container args (useful when using custom images). Use array form
-##
-args: []
-
-## @param querier.podManagementPolicy podManagementPolicy to manage scaling operation
-## ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#pod-management-policies
-##
-podManagementPolicy: ""
-
-## Enable configmap and add data in configmap
-config:
-  enabled: false
-  mountPath: /conf
-  subPath: ""
-  readOnly: true
-  data: {}
-
-## 使用已存在的configmap映射到相应目录或文件路径
-existConfig:
-  enabled: false
-  name: ""
-  mountPath: /exist/conf
-  subPath: ""
-  readOnly: true
-
-## To use an additional secret, set enable to true and add data
-secret:
-  enabled: false
-  mountPath: /etc/secret-volume
-  subPath: ""
-  readOnly: true
-  data: {}
-
-## 使用已存在的secret映射到相应目录或文件路径
-existSecret:
-  enabled: false
-  name: ""
-  mountPath: /exist/secret-volume
-  subPath: ""
-  readOnly: true
-
-## @param customLivenessProbe Override default liveness probe
-##
-customLivenessProbe: {}
-## @param customReadinessProbe Override default readiness probe
-##
-customReadinessProbe: {}
-
-## liveness and readiness
-## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/
-healthCheck:
-  type: http  # http/tcp
-  port: http  # 上面的端口名或端口
-  livenessProbe:
-    enabled: true
-    httpPath: '/'  # http时必须设置
-    initialDelaySeconds: 60   # 初始延迟秒数, k8s默认值为0，最小为0
-    periodSeconds: 30  # 检测周期，k8s默认值10，最小为1
-    #  timeoutSeconds: 3  # 检测超时，k8s默认值1，最小为1
-    #  successThreshold: 1  # 失败后成功次数，k8s默认值1，最小为1，只能设置为1
-    #  failureThreshold: 5  # 失败后重试次数，k8s默认值3，最小为1
-  readinessProbe:
-    enabled: true
-    httpPath: '/'  # http时必须设置
-    initialDelaySeconds: 60   # 初始延迟秒数, k8s默认值为0，最小为0
-    periodSeconds: 30  # 检测周期，k8s默认值10，最小为1
-    #  timeoutSeconds: 3  # 检测超时，k8s默认值1，最小为1
-    #  successThreshold: 1  # 失败后成功次数，k8s默认值1，最小为1，只能设置为1
-    #  failureThreshold: 5  # 失败后重试次数，k8s默认值3，最小为1
-
-## nacos containers' resource requests and limits
-## ref: https://kubernetes.io/docs/user-guide/compute-resources/
-## We usually recommend not to specify default resources and to leave this as a conscious
-## choice for the user. This also increases chances charts run on environments with little
-## resources, such as Minikube. If you do want to specify resources, uncomment the following
-## lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-## @param resources.limits The resources limits for the nacos container
-## @param resources.requests The requested resources for the nacos container
-resources: {}
-#  limits:
-#    cpu: 100m
-#    memory: 128Mi
-#  requests:
-#    cpu: 100m
-#    memory: 128Mi
-
-## @param updateStrategy.type nacos deployment strategy type
-## @param updateStrategy.rollingUpdate nacos deployment rolling update configuration parameters
-## ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
-##
-updateStrategy: {}
-#  type: RollingUpdate
-#  rollingUpdate: {}
-## @param podLabels Additional labels for nacos pods
-## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
-##
-podLabels: {}
-## @param podAnnotations Annotations for nacos pods
-## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
-##
-podAnnotations:
-  pod.alpha.kubernetes.io/initialized: "true"
-## @param podAffinityPreset Pod affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
-## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
-##
-podAffinityPreset: ""
-## @param podAntiAffinityPreset Pod anti-affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
-## Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
-##
-podAntiAffinityPreset: soft
-## Node affinity preset
-## Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity
-##
-nodeAffinityPreset:
-  ## @param nodeAffinityPreset.type Node affinity preset type. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
-  ##
-  type: ""
-  ## @param nodeAffinityPreset.key Node label key to match Ignored if `affinity` is set.
-  ## E.g.
-  ## key: "kubernetes.io/e2e-az-name"
-  ##
-  key: ""
-  ## @param nodeAffinityPreset.values Node label values to match. Ignored if `affinity` is set.
-  ## E.g.
-  ## values:
-  ##   - e2e-az1
-  ##   - e2e-az2
-  ##
-  values: []
-## @param affinity Affinity for pod assignment
-## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
-## Note: podAffinityPreset, podAntiAffinityPreset, and  nodeAffinityPreset will be ignored when it's set
-##
-affinity: {}
-## @param hostNetwork Specify if host network should be enabled for nacos pod
-##
-hostNetwork: false
-## @param hostIPC Specify if host IPC should be enabled for nacos pod
-##
-hostIPC: false
-## @param nodeSelector Node labels for pod assignment. Evaluated as a template.
-## Ref: https://kubernetes.io/docs/user-guide/node-selection/
-##
-nodeSelector: {}
-## @param tolerations Tolerations for pod assignment. Evaluated as a template.
-## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
-##
-tolerations: {}
-## @param priorityClassName Priority class name
-## ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#priorityclass
-##
-priorityClassName: ""
-## nacos pods' Security Context.
-## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
-## @param podSecurityContext.enabled Enabled nacos pods' Security Context
-## @param podSecurityContext.fsGroup Set nacos pod's Security Context fsGroup
-## @param podSecurityContext.sysctls sysctl settings of the nacos pods
-##
-podSecurityContext:
-  enabled: false
-  fsGroup: 1001
-  ## sysctl settings
-  ## Example:
-  ## sysctls:
-  ## - name: net.core.somaxconn
-  ##   value: "10000"
-  ##
-  sysctls: []
-## nacos containers' Security Context.
-## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
-## @param containerSecurityContext.enabled Enabled nacos containers' Security Context
-## @param containerSecurityContext.runAsUser Set nacos container's Security Context runAsUser
-## @param containerSecurityContext.runAsNonRoot Set nacos container's Security Context runAsNonRoot
-##
-containerSecurityContext:
-  enabled: false
-  runAsUser: 1001
-  runAsNonRoot: true
-
-## @param Pod's DNS Policy
-## https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
-dnsPolicy: ""  # ClusterFirst/ClusterFirstWithHostNet ...
-
-## @param hostAliases Deployment pod host aliases
-## https://kubernetes.io/docs/concepts/services-networking/add-entries-to-pod-etc-hosts-with-host-aliases/
-##
-hostAliases: []
-# - ip: "192.168.1.100"
-#   hostnames:
-#   - "example.local"
-
-## Autoscaling parameters
-## @param autoscaling.enabled Enable autoscaling for nacos deployment
-## @param autoscaling.minReplicas Minimum number of replicas to scale back
-## @param autoscaling.maxReplicas Maximum number of replicas to scale out
-## @param autoscaling.targetCPU Target CPU utilization percentage
-## @param autoscaling.targetMemory Target Memory utilization percentage
-##
-autoscaling:
-  enabled: false
-  minReplicas: ""
-  maxReplicas: ""
-  targetCPU: ""
-  targetMemory: ""
-
-## Enable persistence using Persistent Volume Claims
-## ref: http://kubernetes.io/docs/user-guide/persistent-volumes/
-##
-persistence:
-  enabled: false
-  ## If defined, storageClassName: <storageClass>
-  ## If set to "-", storageClassName: "", which disables dynamic provisioning
-  ## If undefined (the default) or set to null, no storageClassName spec is
-  ##   set, choosing the default provisioner.  (gp2 on AWS, azure-disk on
-  ##   Azure, standard on GKE, AWS & OpenStack)
-  ##
-  storageClass: ""
-  accessMode: ReadWriteOnce
-  annotations: {}
-  #   helm.sh/resource-policy: keep
-  size: 5Gi  # 大小
-  existingClaim: {}  # 使用已存在的pvc
-  mountPaths:
-    - mountPath: /home/nacos/plugins
-      name: data-storage
-      subPath: plugins
-    - mountPath: /home/nacos/data
-      name: data-storage
-      subPath: data
-    - mountPath: /home/nacos/logs
-      name: data-storage
-      subPath: logs
-  ## @param persistence.selector [object] Selector to match an existing Persistent Volume
-  ## selector:
-  ##   matchLabels:
-  ##     app: my-app
-  ##
-  selector: {}
-
-## @param extraVolumeMounts Array to add extra mount
-##
-extraVolumeMounts: []
-# - mountPath: /logs
-#   name: logs
-## @param extraVolumes Array to add extra volumes
-##
-extraVolumes: []
-# - hostPath:
-#     path: /home/logs
-#   name: logs
-
-## Configure the ingress resource that allows you to access the
-## ref: https://kubernetes.io/docs/user-guide/ingress/
-##
 ingress:
-  ## @param ingress.enabled Enable ingress controller resource
-  ##
+  ## @param ingress.enabled Enable ingress record generation for Nacos
   enabled: false
-  ## @param ingress.apiVersion Force Ingress API version (automatically detected if not set)
-  ##
-  apiVersion: ""
-  ## @param ingress.ingressClassName IngressClass that will be be used to implement the Ingress (Kubernetes 1.18+)
-  ## This is supported in Kubernetes 1.18+ and required if you have more than one IngressClass marked as the default for your cluster.
-  ## ref: https://kubernetes.io/blog/2020/04/02/improvements-to-the-ingress-api-in-kubernetes-1.18/
-  ##
+  ## @param ingress.ingressClassName IngressClass that will be used
   ingressClassName: ""
-  ## @param ingress.hostname Default host for the ingress resource
-  ##
-  hostname: chart-example.local
-  ## @param ingress.path The Path to nacos&reg;. You may need to set this to '/*' in order to use this with ALB ingress controllers.
-  ##
+  ## @param ingress.hostname Default host for the ingress record
+  hostname: nacos.local
+  ## @param ingress.path Default path for the ingress record
   path: /
   ## @param ingress.pathType Ingress path type
-  ##
-  pathType: ImplementationSpecific
-  ## @param ingress.servicePort Service port to be used
-  ## Default is http. Alternative is https.
-  ##
-  servicePort: http
-  ## @param ingress.annotations Additional annotations for the Ingress resource. To enable certificate autogeneration, place here your cert-manager annotations.
-  ## For a full list of possible ingress annotations, please see
-  ## ref: https://github.com/kubernetes/ingress-nginx/blob/master/docs/user-guide/nginx-configuration/annotations.md
-  ## Use this parameter to set the required annotations for cert-manager, see
-  ## ref: https://cert-manager.io/docs/usage/ingress/#supported-annotations
-  ##
-  ## e.g:
-  ## annotations:
-  ##   kubernetes.io/ingress.class: nginx
-  ##   cert-manager.io/cluster-issuer: cluster-issuer-name
-  ##
+  pathType: Prefix
+  ## @param ingress.annotations Additional annotations for the Ingress resource
   annotations: {}
-  ## @param ingress.tls Enable TLS configuration for the hostname defined at `ingress.hostname` parameter
-  ## TLS certificates will be retrieved from a TLS secret with name: `{{- printf "%s-tls" .Values.ingress.hostname }}`
-  ## You can:
-  ##   - Use the `ingress.secrets` parameter to create this TLS secret
-  ##   - Rely on cert-manager to create it by setting the corresponding annotations
-  ##   - Rely on Helm to create self-signed certificates by setting `ingress.selfSigned=true`
-  ##
+  ## @param ingress.tls Enable TLS configuration for the host defined at ingress.hostname
   tls: false
-  ## @param ingress.selfSigned Create a TLS secret for this ingress record using self-signed certificates generated by Helm
-  ##
-  selfSigned: false
-  ## @param ingress.extraHosts The list of additional hostnames to be covered with this ingress record.
-  ## Most likely the hostname above will be enough, but in the event more hosts are needed, this is an array
-  ## e.g:
-  ## extraHosts:
-  ##   - name: chart-example.local
-  ##     path: /
-  ##
+  ## @param ingress.tlsSecretName TLS secret name (auto-generated if not specified)
+  tlsSecretName: ""
+  ## @param ingress.extraHosts An array with additional hostname(s) to be covered with the ingress record
   extraHosts: []
-  ## @param ingress.extraPaths Any additional paths that may need to be added to the ingress under the main host
-  ## For example: The ALB ingress controller requires a special rule for handling SSL redirection.
-  ## extraPaths:
-  ## - path: /*
-  ##   backend:
-  ##     serviceName: ssl-redirect
-  ##     servicePort: use-annotation
-  ##
-  extraPaths: []
-  ## @param ingress.extraTls The tls configuration for additional hostnames to be covered with this ingress record.
-  ## see: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
-  ## e.g:
-  ## extraTls:
-  ## - hosts:
-  ##     - chart-example.local
-  ##   secretName: chart-example.local-tls
-  ##
+  ## @param ingress.extraTls TLS configuration for additional hostname(s)
   extraTls: []
-  ## @param ingress.secrets If you're providing your own certificates, please use this to add the certificates as secrets
-  ## key and certificate are expected in PEM format
-  ## name should line up with a secretName set further up
-  ##
-  ## If it is not set and you're using cert-manager, this is unneeded, as it will create a secret for you with valid certificates
-  ## If it is not set and you're NOT using cert-manager either, self-signed certificates will be created valid for 365 days
-  ## It is also possible to create and manage the certificates outside of this helm chart
-  ## Please see README.md for more information
-  ##
-  ## Example
-  ## secrets:
-  ##   - name: chart-example.local-tls
-  ##     key: ""
-  ##     certificate: ""
-  ##
-  secrets: []
 
-## @section Other Parameters
-##
+## @section Persistence parameters
 
-## Network Policy configuration
-## ref: https://kubernetes.io/docs/concepts/services-networking/network-policies/
-##
-networkPolicy:
-  ## @param networkPolicy.enabled Enable creation of NetworkPolicy resources
-  ##
-  enabled: false
-  ## @param networkPolicy.allowExternal Don't require client label for connections
-  ## When set to false, only pods with the correct client label will have network access to the ports
-  ## Redis&trade; is listening on. When true, Redis&trade; will accept connections from any source
-  ## (with the correct destination port).
-  ##
-  allowExternal: true
-  ## @param networkPolicy.extraIngress Add extra ingress rules to the NetworkPolicy
-  ## e.g:
-  ##       - port: 1234
-  ##     from:
-  ##       - podSelector:
-  ##           - matchLabels:
-  ##               - role: frontend
-  ##       - podSelector:
-  ##           - matchExpressions:
-  ##               - key: role
-  ##                 operator: In
-  ##                 values:
-  ##                   - frontend
-  ##
-  extraIngress: []
-  ## @param networkPolicy.extraEgress Add extra ingress rules to the NetworkPolicy
-  ## e.g:
-  ## extraEgress:
-  ##   - ports:
-  ##       - port: 1234
-  ##     to:
-  ##       - podSelector:
-  ##           - matchLabels:
-  ##               - role: frontend
-  ##       - podSelector:
-  ##           - matchExpressions:
-  ##               - key: role
-  ##                 operator: In
-  ##                 values:
-  ##                   - frontend
-  ##
-  extraEgress: []
-  ## @param networkPolicy.ingressNSMatchLabels Labels to match to allow traffic from other namespaces
-  ## @param networkPolicy.ingressNSPodMatchLabels Pod labels to match to allow traffic from other namespaces
-  ##
-  ingressNSMatchLabels: {}
-  ingressNSPodMatchLabels: {}
-
-## Pods Service Account
-## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
-##
-serviceAccount:
-  ## @param serviceAccount.create Enable creation of ServiceAccount for nginx pod
-  ##
-  create: false
-  ## @param serviceAccount.name The name of the ServiceAccount to use.
-  ## If not set and create is true, a name is generated using the `common.names.fullname` template
-  name: ""
-  ## @param serviceAccount.annotations Annotations for service account. Evaluated as a template.
-  ## Only used if `create` is `true`.
-  ##
+persistence:
+  ## @param persistence.enabled Enable persistence using Persistent Volume Claims
+  enabled: true
+  ## @param persistence.storageClass Storage class of backing PVC
+  storageClass: ""
+  ## @param persistence.accessModes Persistent Volume access modes
+  accessModes:
+    - ReadWriteOnce
+  ## @param persistence.size Size of data volume
+  size: 10Gi
+  ## @param persistence.annotations Additional custom annotations for the PVC
   annotations: {}
-  ## @param serviceAccount.autoMount Auto-mount the service account token in the pod
-  ##
-  autoMount: false
+  ## @param persistence.selector Selector to match an existing Persistent Volume
+  selector: {}
+  ## @param persistence.existingClaim Name of an existing PVC to use
+  existingClaim: ""
 
-## Pod Disruption Budget configuration
-## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
-##
-pdb:
-  ## @param pdb.create Created a PodDisruptionBudget
-  ##
+## @section Pod Security Context
+
+podSecurityContext:
+  ## @param podSecurityContext.enabled Enable security context for Nacos pods
+  enabled: true
+  ## @param podSecurityContext.fsGroup Set Nacos pod's Security Context fsGroup
+  fsGroup: 1000
+
+## @section Container Security Context
+
+containerSecurityContext:
+  ## @param containerSecurityContext.enabled Enable container security context
+  enabled: true
+  ## @param containerSecurityContext.runAsUser Set container's Security Context runAsUser
+  runAsUser: 1000
+  ## @param containerSecurityContext.runAsNonRoot Set container's Security Context runAsNonRoot
+  runAsNonRoot: true
+  ## @param containerSecurityContext.allowPrivilegeEscalation Set container's Security Context allowPrivilegeEscalation
+  allowPrivilegeEscalation: false
+  ## @param containerSecurityContext.readOnlyRootFilesystem Set container's Security Context readOnlyRootFilesystem
+  readOnlyRootFilesystem: false
+  ## @param containerSecurityContext.capabilities.drop Set container's Security Context capabilities to drop
+  capabilities:
+    drop:
+      - ALL
+
+## @section Resource parameters
+
+resources:
+  ## @param resources.limits The resources limits for the Nacos containers
+  ## @param resources.requests The requested resources for the Nacos containers
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+## @section Probe parameters
+
+startupProbe:
+  ## @param startupProbe.enabled Enable startup probe
+  enabled: true
+  ## @param startupProbe.initialDelaySeconds Initial delay seconds for startup probe
+  initialDelaySeconds: 30
+  ## @param startupProbe.periodSeconds Period seconds for startup probe
+  periodSeconds: 10
+  ## @param startupProbe.timeoutSeconds Timeout seconds for startup probe
+  timeoutSeconds: 5
+  ## @param startupProbe.failureThreshold Failure threshold for startup probe
+  failureThreshold: 30
+  ## @param startupProbe.successThreshold Success threshold for startup probe
+  successThreshold: 1
+
+livenessProbe:
+  ## @param livenessProbe.enabled Enable liveness probe
+  enabled: true
+  ## @param livenessProbe.initialDelaySeconds Initial delay seconds for liveness probe
+  initialDelaySeconds: 10
+  ## @param livenessProbe.periodSeconds Period seconds for liveness probe
+  periodSeconds: 10
+  ## @param livenessProbe.timeoutSeconds Timeout seconds for liveness probe
+  timeoutSeconds: 5
+  ## @param livenessProbe.failureThreshold Failure threshold for liveness probe
+  failureThreshold: 3
+  ## @param livenessProbe.successThreshold Success threshold for liveness probe
+  successThreshold: 1
+
+readinessProbe:
+  ## @param readinessProbe.enabled Enable readiness probe
+  enabled: true
+  ## @param readinessProbe.initialDelaySeconds Initial delay seconds for readiness probe
+  initialDelaySeconds: 10
+  ## @param readinessProbe.periodSeconds Period seconds for readiness probe
+  periodSeconds: 10
+  ## @param readinessProbe.timeoutSeconds Timeout seconds for readiness probe
+  timeoutSeconds: 5
+  ## @param readinessProbe.failureThreshold Failure threshold for readiness probe
+  failureThreshold: 3
+  ## @param readinessProbe.successThreshold Success threshold for readiness probe
+  successThreshold: 1
+
+## @section Pod Disruption Budget parameters
+
+podDisruptionBudget:
+  ## @param podDisruptionBudget.enabled Enable PodDisruptionBudget
+  enabled: true
+  ## @param podDisruptionBudget.minAvailable Minimum number of pods that must be available
+  minAvailable: ""
+  ## @param podDisruptionBudget.maxUnavailable Maximum number of pods that can be unavailable
+  maxUnavailable: 1
+
+## @section Scheduling parameters
+
+## @param nodeSelector Node labels for pod assignment
+nodeSelector: {}
+
+## @param tolerations Tolerations for pod assignment
+tolerations: []
+
+## @param affinity Affinity for pod assignment
+affinity: {}
+
+## @param podAntiAffinityPreset Pod anti-affinity preset: soft or hard
+podAntiAffinityPreset: hard
+
+## @param topologySpreadConstraints Topology Spread Constraints for pod assignment
+topologySpreadConstraints: []
+
+## @param priorityClassName Priority class name for Nacos pods
+priorityClassName: ""
+
+## @section ServiceAccount parameters
+
+serviceAccount:
+  ## @param serviceAccount.create Enable creation of ServiceAccount
+  create: true
+  ## @param serviceAccount.name Name of the service account to use
+  name: ""
+  ## @param serviceAccount.annotations Annotations for service account
+  annotations: {}
+  ## @param serviceAccount.automountServiceAccountToken Automount service account token
+  automountServiceAccountToken: false
+
+## @section RBAC parameters
+
+rbac:
+  ## @param rbac.create Create RBAC resources
   create: false
-  ## @param pdb.minAvailable Min number of pods that must still be available after the eviction
-  ##
-  minAvailable: 1
-  ## @param pdb.maxUnavailable Max number of pods that can be unavailable after the eviction
-  ##
-  maxUnavailable: 0
 
-## Uncomment and modify this to run a command after starting the core container.
-## ref: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/
-lifecycle: {}
-#  preStop:
-#    exec:
-#      command: ["/bin/bash","/pre-stop.sh"]
-#  postStart:
-#    exec:
-#      command: ["/bin/bash","/post-start.sh"]
+## @section Extra configuration
 
-## init containers
-## ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
-## Add init containers. e.g. to be used to give specific permissions for data
-## Add your own init container or uncomment and modify the given example.
+## @param extraEnvVars Array of extra environment variables
+extraEnvVars: []
+## @param extraEnvVarsCM Name of ConfigMap containing extra environment variables
+extraEnvVarsCM: ""
+## @param extraEnvVarsSecret Name of Secret containing extra environment variables
+extraEnvVarsSecret: ""
+
+## @param extraVolumes Array of extra volumes
+extraVolumes: []
+## @param extraVolumeMounts Array of extra volume mounts
+extraVolumeMounts: []
+
+## @param initContainers Add additional init containers
 initContainers: []
-#  - name: fmp-volume-permission
-#    image: busybox
-#    imagePullPolicy: IfNotPresent
-#    command: ['chown','-R', '200', '/extra-data']
-#    volumeMounts:
-#      - name: extra-data
-#        mountPath: /extra-data
-
-## @param sidecars Sidecar parameters
-## e.g:
-## sidecars:
-##   - name: your-image-name
-##     image: your-image
-##     imagePullPolicy: Always
-##     ports:
-##       - name: portname
-##         containerPort: 1234
-##
+## @param sidecars Add additional sidecar containers
 sidecars: []
 
-## @param sidecarSingleProcessNamespace Enable sharing the process namespace with sidecars
-## This will switch pod.spec.shareProcessNamespace parameter
-##
-sidecarSingleProcessNamespace: false
+## @section Metrics parameters
+## Nacos supports metrics export to Prometheus, Elasticsearch and InfluxDB
+## ref: https://nacos.io/docs/latest/guide/admin/monitor-guide/
 
-mysql:
-  # if enabled set "false", fill the connection informations in "external" section
-  # init containers will import the flow sql file into mysql db.
-  # https://raw.githubusercontent.com/alibaba/nacos/${version}/distribution/conf/schema.sql
-  # https://raw.githubusercontent.com/alibaba/nacos/${version}/distribution/conf/nacos-mysql.sql
-  enabled: true
-  external:
-    mysqlMasterHost: "mysql_master_host"
-    mysqlDatabase: "nacos"
-    mysqlMasterPort: "3306"
-    mysqlMasterUser: "nacos"
-    mysqlMasterPassword: "nacos"
-    mysqlSlaveHost: "mysql_slave_host"
-    mysqlSlavePort: "3306"
-
-  architecture: replication
-  auth:
-    rootPassword: "nacos"
-    database: "nacos"
-    username: "nacos"
-    password: "nacos"
-    replicationUser: "replicator"
-    replicationPassword: "replicator"
-
-  primary:
-    persistence:
-      enabled: false
-      storageClass: "-"
-      mountPath: /bitnami/mysql
-      annotations: {}
-      accessModes:
-        - ReadWriteOnce
-      size: 8Gi
-
-    # extraEnvVars:
-    #   - name: TZ
-    #     value: "Asia/Shanghai"
-
-    containerSecurityContext:
-      enabled: true
-      runAsUser: 1001
-      allowPrivilegeEscalation: false
-
-    configuration: |-
-      [mysqld]
-      skip_ssl
-      default_authentication_plugin=mysql_native_password
-      skip-name-resolve
-      explicit_defaults_for_timestamp
-      basedir=/opt/bitnami/mysql
-      plugin_dir=/opt/bitnami/mysql/lib/plugin
-      port=3306
-      socket=/opt/bitnami/mysql/tmp/mysql.sock
-      datadir=/bitnami/mysql/data
-      tmpdir=/opt/bitnami/mysql/tmp
-      max_allowed_packet=16M
-      bind-address=0.0.0.0
-      pid-file=/opt/bitnami/mysql/tmp/mysqld.pid
-      log-error=/opt/bitnami/mysql/logs/mysqld.log
-      default-time_zone = '+8:00'
-      character-set-server=utf8mb4
-      collation-server = utf8mb4_unicode_ci
-
-      [client]
-      port=3306
-      socket=/opt/bitnami/mysql/tmp/mysql.sock
-      plugin_dir=/opt/bitnami/mysql/lib/plugin
-      default-character-set=utf8mb4
-
-      [manager]
-      port=3306
-      socket=/opt/bitnami/mysql/tmp/mysql.sock
-      pid-file=/opt/bitnami/mysql/tmp/mysqld.pid
-
-  secondary:
-    replicaCount: 1
-    persistence:
-      enabled: false
-      storageClass: "-"
-      mountPath: /bitnami/mysql
-      annotations: {}
-      accessModes:
-        - ReadWriteOnce
-      size: 8Gi
-
-    extraEnvVars:
-      - name: TZ
-        value: "Asia/Shanghai"
-
-    containerSecurityContext:
-      enabled: true
-      runAsUser: 1001
-      allowPrivilegeEscalation: false
-
-    configuration: |-
-      [mysqld]
-      skip_ssl
-      default_authentication_plugin=mysql_native_password
-      skip-name-resolve
-      explicit_defaults_for_timestamp
-      basedir=/opt/bitnami/mysql
-      plugin_dir=/opt/bitnami/mysql/lib/plugin
-      port=3306
-      socket=/opt/bitnami/mysql/tmp/mysql.sock
-      datadir=/bitnami/mysql/data
-      tmpdir=/opt/bitnami/mysql/tmp
-      max_allowed_packet=16M
-      bind-address=0.0.0.0
-      pid-file=/opt/bitnami/mysql/tmp/mysqld.pid
-      log-error=/opt/bitnami/mysql/logs/mysqld.log
-      default-time_zone = '+8:00'
-      character-set-server=utf8mb4
-      collation-server = utf8mb4_unicode_ci
-
-      [client]
-      port=3306
-      socket=/opt/bitnami/mysql/tmp/mysql.sock
-      plugin_dir=/opt/bitnami/mysql/lib/plugin
-      default-character-set=UTF8
-
-      [manager]
-      port=3306
-      socket=/opt/bitnami/mysql/tmp/mysql.sock
-      pid-file=/opt/bitnami/mysql/tmp/mysqld.pid
-
-initDB:
-  enabled: true
-  image:
-    registry: docker.io
-    repository: ygqygq2/mysql-exec-sql
-    tag: latest
-    pullPolicy: IfNotPresent
-
-## nacos 自带 metrics
 metrics:
-  ## Prometheus Operator ServiceMonitor configuration
-  ##
+  ## @param metrics.enabled Enable metrics endpoint exposure (/nacos/actuator/prometheus)
+  enabled: false
+  
+  ## Elasticsearch metrics export (Spring Boot Actuator)
+  elasticsearch:
+    ## @param metrics.elasticsearch.enabled Enable Elasticsearch metrics export
+    enabled: false
+    ## @param metrics.elasticsearch.host Elasticsearch host URL
+    host: "http://localhost:9200"
+  
+  ## InfluxDB metrics export (Spring Boot Actuator)
+  influxdb:
+    ## @param metrics.influxdb.enabled Enable InfluxDB metrics export
+    enabled: false
+    ## @param metrics.influxdb.uri InfluxDB URI
+    uri: "http://localhost:8086"
+    ## @param metrics.influxdb.db InfluxDB database name
+    db: "nacos"
+    ## @param metrics.influxdb.autoCreateDb Auto create database
+    autoCreateDb: true
+    ## @param metrics.influxdb.consistency Write consistency (one, quorum, all, any)
+    consistency: "one"
+    ## @param metrics.influxdb.compressed Enable compression
+    compressed: true
+  
+  ## Prometheus Operator ServiceMonitor
   serviceMonitor:
-    ## @param metrics.serviceMonitor.enabled Creates a Prometheus Operator ServiceMonitor (also requires `metrics.enabled` to be `true`)
-    ##
+    ## @param metrics.serviceMonitor.enabled Create ServiceMonitor resource (requires Prometheus Operator)
     enabled: false
-    ## @param metrics.serviceMonitor.namespace Namespace in which Prometheus is running
-    ##
+    ## @param metrics.serviceMonitor.namespace Namespace for the ServiceMonitor
     namespace: ""
-    ## @param metrics.serviceMonitor.interval Interval at which metrics should be scraped.
-    ## ref: https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#endpoint
-    ## e.g:
-    ## interval: 10s
-    ##
-    interval: ""
-    ## @param metrics.serviceMonitor.scrapeTimeout Timeout after which the scrape is ended
-    ## ref: https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#endpoint
-    ## e.g:
-    ## scrapeTimeout: 10s
-    ##
-    scrapeTimeout: ""
-    ## @param metrics.serviceMonitor.selector Prometheus instance selector labels
-    ## ref: https://github.com/bitnami/charts/tree/master/bitnami/prometheus-operator#prometheus-configuration
-    ##
-    ## selector:
-    ##   prometheus: my-prometheus
-    ##
-    selector: {}
-    ## @param metrics.serviceMonitor.additionalLabels Additional labels that can be used so PodMonitor will be discovered by Prometheus
-    ##
-    additionalLabels: {}
-    ## @param metrics.serviceMonitor.relabelings RelabelConfigs to apply to samples before scraping
-    ##
-    relabelings: []
-    ## @param metrics.serviceMonitor.metricRelabelings MetricRelabelConfigs to apply to samples before ingestion
-    ##
-    metricRelabelings: []
-  ## Prometheus Operator PrometheusRule configuration
-  ##
-  prometheusRule:
-    ## @param metrics.prometheusRule.enabled if `true`, creates a Prometheus Operator PrometheusRule (also requires `metrics.enabled` to be `true` and `metrics.prometheusRule.rules`)
-    ##
-    enabled: false
-    ## @param metrics.prometheusRule.namespace Namespace for the PrometheusRule Resource (defaults to the Release Namespace)
-    ##
-    namespace: ""
-    ## @param metrics.prometheusRule.additionalLabels Additional labels that can be used so PrometheusRule will be discovered by Prometheus
-    ##
-    additionalLabels: {}
-    ## @param metrics.prometheusRule.rules Prometheus Rule definitions
-    ##   - alert: LowInstance
-    ##     expr: up{service="{{ template "common.names.fullname" . }}"} < 1
-    ##     for: 1m
-    ##     labels:
-    ##       severity: critical
-    ##     annotations:
-    ##       description: Service {{ template "common.names.fullname" . }} Tomcat is down since 1m.
-    ##       summary: Tomcat instance is down.
-    ##
-    rules: []
+    ## @param metrics.serviceMonitor.interval Scrape interval
+    interval: 30s
+    ## @param metrics.serviceMonitor.scrapeTimeout Scrape timeout
+    scrapeTimeout: 10s
+    ## @param metrics.serviceMonitor.path Metrics path
+    path: /nacos/actuator/prometheus
+    ## @param metrics.serviceMonitor.labels Additional labels for ServiceMonitor
+    labels: {}
+    ## @param metrics.serviceMonitor.annotations Additional annotations for ServiceMonitor
+    annotations: {}
+
+## @section Network Policy parameters
+
+networkPolicy:
+  ## @param networkPolicy.enabled Enable NetworkPolicy
+  enabled: false
+  ## @param networkPolicy.allowExternal Allow external connections
+  allowExternal: true
+  ## @param networkPolicy.extraIngress Additional ingress rules
+  extraIngress: []
+  ## @param networkPolicy.extraEgress Additional egress rules
+  extraEgress: []

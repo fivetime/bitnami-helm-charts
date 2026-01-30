@@ -78,7 +78,7 @@ spec:
                 echo "Conf directory already initialized."
               fi
 
-              {{- if or (include "nacos.database.external" .) .Values.extraConfig }}
+              {{- if or (include "nacos.database.external" .) .Values.extraConfig .Values.prometheus.sd.enabled .Values.istio.enabled .Values.k8sSync.enabled }}
               # Apply custom configuration (only once per PVC)
               if [ ! -f "${MARKER_FILE}" ]; then
                 echo "Applying custom configuration..."
@@ -92,7 +92,7 @@ spec:
             - name: data
               mountPath: /home/nacos/conf-data
               subPath: conf
-            {{- if or (include "nacos.database.external" .) .Values.extraConfig }}
+            {{- if or (include "nacos.database.external" .) .Values.extraConfig .Values.prometheus.sd.enabled .Values.istio.enabled .Values.k8sSync.enabled }}
             - name: application-config
               mountPath: /home/nacos/init.d/custom.properties
               subPath: custom.properties
@@ -197,6 +197,11 @@ spec:
             - name: mcp
               containerPort: {{ .Values.service.ports.mcp }}
               protocol: TCP
+            {{- if .Values.istio.enabled }}
+            - name: xds
+              containerPort: 18848
+              protocol: TCP
+            {{- end }}
           env:
             ## JVM settings
             - name: JVM_XMS
@@ -402,7 +407,7 @@ spec:
           configMap:
             name: {{ include "nacos.fullname" . }}-init
         {{- end }}
-        {{- if or (include "nacos.database.external" .) .Values.extraConfig }}
+        {{- if or (include "nacos.database.external" .) .Values.extraConfig .Values.prometheus.sd.enabled .Values.istio.enabled .Values.k8sSync.enabled }}
         - name: application-config
           configMap:
             name: {{ include "nacos.fullname" . }}-application

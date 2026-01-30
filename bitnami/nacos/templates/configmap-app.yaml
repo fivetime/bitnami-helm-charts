@@ -1,4 +1,4 @@
-{{- if or (include "nacos.database.external" .) .Values.extraConfig }}
+{{- if or (include "nacos.database.external" .) .Values.extraConfig .Values.prometheus.sd.enabled .Values.istio.enabled .Values.k8sSync.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -29,6 +29,29 @@ data:
     db.pool.config.validationTimeout={{ .Values.database.postgresql.pool.validationTimeout }}
     db.pool.config.maximumPoolSize={{ .Values.database.postgresql.pool.maximumPoolSize }}
     db.pool.config.minimumIdle={{ .Values.database.postgresql.pool.minimumIdle }}
+    {{- end }}
+    {{- if .Values.prometheus.sd.enabled }}
+
+    #*************** Prometheus Service Discovery Configuration ***************#
+    nacos.prometheus.metrics.enabled=true
+    {{- end }}
+    {{- if .Values.istio.enabled }}
+
+    #*************** Istio xDS Configuration ***************#
+    nacos.istio.mcp.server.enabled={{ .Values.istio.mcp.enabled }}
+    nacos.extension.naming.istio.enabled=true
+    {{- if not .Values.istio.mcp.full }}
+    nacos.istio.server.full=false
+    {{- end }}
+    {{- end }}
+    {{- if .Values.k8sSync.enabled }}
+
+    #*************** Kubernetes Service Sync Configuration ***************#
+    nacos.k8s.sync.enabled=true
+    {{- if .Values.k8sSync.outsideCluster }}
+    nacos.k8s.sync.outsideCluster=true
+    nacos.k8s.sync.kubeConfig={{ .Values.k8sSync.kubeConfig }}
+    {{- end }}
     {{- end }}
     {{- if .Values.extraConfig }}
 

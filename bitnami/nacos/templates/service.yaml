@@ -57,6 +57,12 @@ spec:
       port: {{ .Values.service.ports.mcp }}
       targetPort: mcp
       protocol: TCP
+    {{- if .Values.istio.enabled }}
+    - name: xds
+      port: 18848
+      targetPort: xds
+      protocol: TCP
+    {{- end }}
   selector:
     {{- include "nacos.selectorLabels" . | nindent 4 }}
 ---
@@ -96,5 +102,11 @@ spec:
       port: {{ .Values.service.ports.mcp }}
       targetPort: mcp
       protocol: TCP
+    {{- if .Values.istio.enabled }}
+    - name: xds
+      port: 18848
+      targetPort: xds
+      protocol: TCP
+    {{- end }}
   selector:
     {{- include "nacos.selectorLabels" . | nindent 4 }}

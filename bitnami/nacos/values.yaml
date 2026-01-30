@@ -503,3 +503,47 @@ networkPolicy:
   extraIngress: []
   ## @param networkPolicy.extraEgress Additional egress rules
   extraEgress: []
+
+## @section Prometheus Service Discovery parameters
+## Allow Prometheus to automatically discover services registered in Nacos
+## ref: https://nacos.io/docs/latest/guide/admin/monitor-guide/
+
+prometheus:
+  ## Prometheus Service Discovery (SD) configuration
+  ## This enables the /nacos/prometheus endpoint for Prometheus http_sd_configs
+  sd:
+    ## @param prometheus.sd.enabled Enable Prometheus service discovery endpoint
+    enabled: false
+
+## @section Istio Integration parameters
+## Nacos as xDS server for Istio/Envoy service mesh
+## ref: https://nacos.io/docs/latest/ecology/use-nacos-with-istio/
+
+istio:
+  ## @param istio.enabled Enable Istio xDS protocol support
+  enabled: false
+  ## MCP (Mesh Configuration Protocol) server settings
+  mcp:
+    ## @param istio.mcp.enabled Enable MCP server
+    enabled: true
+    ## @param istio.mcp.full Use full push mode (true) or incremental push mode (false)
+    ## Incremental push is more efficient for large clusters
+    full: true
+
+## @section Kubernetes Service Sync parameters
+## Sync Kubernetes services to Nacos service discovery
+## ref: https://nacos.io/docs/latest/ecology/use-nacos-sync-k8s/
+
+k8sSync:
+  ## @param k8sSync.enabled Enable Kubernetes service sync to Nacos
+  ## When enabled, Nacos will watch K8s services and sync them to Nacos registry
+  enabled: false
+  ## @param k8sSync.outsideCluster Set to true if Nacos runs outside the K8s cluster
+  outsideCluster: false
+  ## @param k8sSync.kubeConfig Path to kubeconfig file (only used when outsideCluster is true)
+  kubeConfig: ""
+  ## RBAC configuration for K8s API access
+  rbac:
+    ## @param k8sSync.rbac.create Create RBAC resources for K8s service sync
+    ## Required for Nacos to access K8s API (ServiceAccount token + ClusterRole)
+    create: true

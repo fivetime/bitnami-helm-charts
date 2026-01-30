@@ -59,4 +59,39 @@ Cluster Information:
 
 {{- end }}
 
+{{- if .Values.prometheus.sd.enabled }}
+
+Prometheus Service Discovery:
+  - Enabled: true
+  - Endpoint: http://<nacos-host>:{{ .Values.service.ports.client }}/nacos/prometheus
+  
+  Add to Prometheus config:
+    scrape_configs:
+      - job_name: 'nacos-sd'
+        http_sd_configs:
+          - url: 'http://{{ include "nacos.fullname" . }}.{{ include "nacos.namespace" . }}.svc:{{ .Values.service.ports.client }}/nacos/prometheus'
+
+{{- end }}
+
+{{- if .Values.istio.enabled }}
+
+Istio xDS Integration:
+  - Enabled: true
+  - xDS Port: 18848
+  - MCP Server: {{ .Values.istio.mcp.enabled }}
+  - Push Mode: {{ if .Values.istio.mcp.full }}Full{{ else }}Incremental{{ end }}
+
+{{- end }}
+
+{{- if .Values.k8sSync.enabled }}
+
+Kubernetes Service Sync:
+  - Enabled: true
+  - Services in Kubernetes will be automatically synced to Nacos registry
+  {{- if and .Values.k8sSync.rbac.create }}
+  - RBAC: ClusterRole and ClusterRoleBinding created
+  {{- end }}
+
+{{- end }}
+
 For more information, visit: https://nacos.io/docs/latest/

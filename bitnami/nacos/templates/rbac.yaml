@@ -1,0 +1,31 @@
+{{- if and .Values.k8sSync.enabled .Values.k8sSync.rbac.create }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "nacos.fullname" . }}-k8s-sync
+  labels:
+    {{- include "nacos.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["services", "endpoints", "pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "nacos.fullname" . }}-k8s-sync
+  labels:
+    {{- include "nacos.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "nacos.serviceAccountName" . }}
+    namespace: {{ include "nacos.namespace" . }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "nacos.fullname" . }}-k8s-sync
+{{- end }}

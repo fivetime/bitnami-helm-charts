@@ -1,3 +1,0 @@
-[submodule "bitnami/nacos"]
-	path = bitnami/nacos
-	url = https://github.com/ygqygq2/nacos-helm.git

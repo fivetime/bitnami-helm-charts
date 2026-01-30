@@ -20,9 +20,13 @@ spec:
   {{- if .Values.statefulset.enabled }}
   serviceName: {{ include "common.names.fullname" . }}-headless
   podManagementPolicy: {{ .Values.podManagementPolicy }}
+  {{- if .Values.updateStrategy }}
+  updateStrategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
   {{- end }}
+  {{- else }}
   {{- if .Values.updateStrategy }}
   strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
   {{- end }}
   template:
     metadata:

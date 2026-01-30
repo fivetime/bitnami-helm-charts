@@ -49,7 +49,6 @@ Create the name of the service account to use
 {{- define "nacos.checkRollingTags" -}}
 {{- include "common.warnings.rollingTag" .Values.image }}
 {{- include "common.warnings.rollingTag" .Values.initDB.image }}
-{{- include "common.warnings.rollingTag" .Values.volumePermissions.image }}
 {{- end -}}
 
 {{/*
@@ -109,4 +108,11 @@ Return the mysql secondary Hostname
 {{- else -}}
     {{- printf "%s" .Values.mysql.external.mysqlSlaveHost -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Return the nacos service ingress port for NetworkPolicy
+*/}}
+{{- define "nacos.service.ingressPort" -}}
+{{- .Values.service.ports.server.port -}}
 {{- end -}}

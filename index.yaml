@@ -3393,6 +3393,35 @@ entries:
       artifacthub.io/license: Apache-2.0
     apiVersion: v2
     appVersion: 3.1.1
+    created: "2026-01-30T16:24:50.27755889Z"
+    description: 'Nacos Helm Chart - An easy-to-use dynamic service discovery, configuration  and
+      service management platform for building cloud native applications. '
+    digest: 153582d37f5edcaf8f3520dbac06c6b6581d800736886cdc9baf9261fb92adea
+    home: https://nacos.io
+    icon: https://nacos.io/img/nacos_colorful.png
+    keywords:
+    - nacos
+    - service-discovery
+    - configuration-management
+    - microservices
+    - alibaba
+    - cloud-native
+    maintainers:
+    - name: fivetime
+      url: https://github.com/fivetime
+    name: nacos
+    sources:
+    - https://github.com/alibaba/nacos
+    - https://github.com/nacos-group/nacos-k8s
+    type: application
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/nacos-0.0.9/nacos-0.0.9.tgz
+    version: 0.0.9
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 3.1.1
     created: "2026-01-30T16:22:14.232999013Z"
     description: 'Nacos Helm Chart - An easy-to-use dynamic service discovery, configuration  and
       service management platform for building cloud native applications. '
@@ -5312,4 +5341,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-01-30T16:22:14.233033948Z"
+generated: "2026-01-30T16:24:50.277597292Z"

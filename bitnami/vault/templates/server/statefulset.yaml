@@ -289,29 +289,6 @@ spec:
               value: {{ printf "https://$(HOSTNAME).%s-headless:%v" ( include "vault.server.fullname" . ) .Values.server.containerPorts.internal | quote }}
             - name: HOME
               value: "/vault/home"
-            {{- if and .Values.seal.enabled (eq .Values.seal.type "gcpckms") .Values.seal.gcpckms.credentialsSecretName }}
-            - name: GOOGLE_APPLICATION_CREDENTIALS
-              value: "/vault/seal/{{ .Values.seal.gcpckms.credentialsSecretKey | default "credentials.json" }}"
-            {{- end }}
-            {{- if and .Values.seal.enabled (eq .Values.seal.type "awskms") .Values.seal.awskms.credentialsSecretName }}
-            - name: AWS_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.seal.awskms.credentialsSecretName }}
-                  key: AWS_ACCESS_KEY_ID
-            - name: AWS_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.seal.awskms.credentialsSecretName }}
-                  key: AWS_SECRET_ACCESS_KEY
-            {{- end }}
-            {{- if and .Values.seal.enabled (eq .Values.seal.type "azurekeyvault") .Values.seal.azurekeyvault.credentialsSecretName }}
-            - name: AZURE_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.seal.azurekeyvault.credentialsSecretName }}
-                  key: AZURE_CLIENT_SECRET
-            {{- end }}
             {{- if .Values.server.extraEnvVars }}
             {{- include "common.tplvalues.render" (dict "value" .Values.server.extraEnvVars "context" $) | nindent 12 }}
             {{- end }}
@@ -398,16 +375,6 @@ spec:
             - name: restore
               mountPath: /vault/restore
             {{- end }}
-            {{- if and .Values.seal.enabled (eq .Values.seal.type "gcpckms") .Values.seal.gcpckms.credentialsSecretName }}
-            - name: gcp-credentials
-              mountPath: /vault/seal
-              readOnly: true
-            {{- end }}
-            {{- if and .Values.seal.enabled (eq .Values.seal.type "transit") .Values.seal.transit.tokenSecretName }}
-            - name: transit-token
-              mountPath: /vault/seal
-              readOnly: true
-            {{- end }}
           {{- if .Values.server.extraVolumeMounts }}
           {{- include "common.tplvalues.render" (dict "value" .Values.server.extraVolumeMounts "context" $) | nindent 12 }}
           {{- end }}
@@ -426,16 +393,6 @@ spec:
         - name: rclone-config
           configMap:
             name: {{ include "common.names.fullname" . }}-rclone-config
-        {{- end }}
-        {{- if and .Values.seal.enabled (eq .Values.seal.type "gcpckms") .Values.seal.gcpckms.credentialsSecretName }}
-        - name: gcp-credentials
-          secret:
-            secretName: {{ .Values.seal.gcpckms.credentialsSecretName }}
-        {{- end }}
-        {{- if and .Values.seal.enabled (eq .Values.seal.type "transit") .Values.seal.transit.tokenSecretName }}
-        - name: transit-token
-          secret:
-            secretName: {{ .Values.seal.transit.tokenSecretName }}
         {{- end }}
         {{- if and .Values.server.persistence.enabled .Values.server.persistence.existingClaim }}
         - name: data

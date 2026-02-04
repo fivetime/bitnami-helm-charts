@@ -1,5 +1,5 @@
 # Based on Bitnami Vault Chart, modified for HashiCorp official images
-# with S3 backup/restore and auto-unseal support
+# with S3 backup/restore support
 
 annotations:
   images: |
@@ -22,7 +22,7 @@ dependencies:
   - bitnami-common
   version: 2.x.x
 description: |
-  HashiCorp Vault with S3 backup/restore and auto-unseal support.
+  HashiCorp Vault with S3 backup/restore support.
   Based on Bitnami chart with official HashiCorp images.
 home: https://www.vaultproject.io
 icon: https://www.vaultproject.io/img/logo-hashicorp.svg
@@ -40,4 +40,4 @@ name: vault
 sources:
 - https://github.com/hashicorp/vault
 - https://github.com/bitnami/charts/tree/main/bitnami/vault
-version: 0.0.1
+version: 0.0.2

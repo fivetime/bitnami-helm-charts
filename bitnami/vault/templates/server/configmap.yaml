@@ -18,5 +18,4 @@ metadata:
 data:
   config.hcl: |
     {{- include "common.tplvalues.render" (dict "value" .Values.server.config "context" $) | nindent 4 }}
-    {{- include "vault.seal.config" . | nindent 4 }}
 {{- end }}

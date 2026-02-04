@@ -157,3 +157,49 @@ Function to validate the controller deployment
 vault: Missing controllers. At least one controller should be enabled.
 {{- end -}}
 {{- end -}}
+
+{{/*
+Backup S3 remote path (with cluster isolation)
+Format: s3:bucket/path/clusterName
+*/}}
+{{- define "vault.backup.remotePath" -}}
+{{- $bucket := .Values.backup.rclone.bucket -}}
+{{- $path := .Values.backup.rclone.path -}}
+{{- $clusterName := .Values.backup.clusterName | default (include "common.names.fullname" .) -}}
+s3:{{ $bucket }}/{{ $path }}/{{ $clusterName }}
+{{- end -}}
+
+{{/*
+Generate Vault seal configuration
+*/}}
+{{- define "vault.seal.config" -}}
+{{- if .Values.seal.enabled -}}
+{{- if eq .Values.seal.type "gcpckms" }}
+seal "gcpckms" {
+  project     = "{{ .Values.seal.gcpckms.project }}"
+  region      = "{{ .Values.seal.gcpckms.region }}"
+  key_ring    = "{{ .Values.seal.gcpckms.key_ring }}"
+  crypto_key  = "{{ .Values.seal.gcpckms.crypto_key }}"
+  credentials = "/vault/seal/credentials.json"
+}
+{{- else if eq .Values.seal.type "awskms" }}
+seal "awskms" {
+  region     = "{{ .Values.seal.awskms.region }}"
+  kms_key_id = "{{ .Values.seal.awskms.kms_key_id }}"
+}
+{{- else if eq .Values.seal.type "azurekeyvault" }}
+seal "azurekeyvault" {
+  tenant_id  = "{{ .Values.seal.azurekeyvault.tenant_id }}"
+  client_id  = "{{ .Values.seal.azurekeyvault.client_id }}"
+  vault_name = "{{ .Values.seal.azurekeyvault.vault_name }}"
+  key_name   = "{{ .Values.seal.azurekeyvault.key_name }}"
+}
+{{- else if eq .Values.seal.type "transit" }}
+seal "transit" {
+  address    = "{{ .Values.seal.transit.address }}"
+  mount_path = "{{ .Values.seal.transit.mount_path }}"
+  key_name   = "{{ .Values.seal.transit.key_name }}"
+}
+{{- end }}
+{{- end }}
+{{- end -}}

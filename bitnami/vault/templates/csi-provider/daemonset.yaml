@@ -173,7 +173,7 @@ spec:
           {{- else }}
           args:
             - agent
-            - -config=/bitnami/vault/conf/config.hcl
+            - -config=/vault/config/config.hcl
             {{- if .Values.csiProvider.image.debug }}
             - -log-level=debug
             {{- end }}
@@ -227,7 +227,7 @@ spec:
           {{- end }}
           volumeMounts:
             - name: config
-              mountPath: /bitnami/vault/config
+              mountPath: /vault/config
             - name: agent-unix-socket
               mountPath: /var/run/vault
           {{- if .Values.csiProvider.agent.extraVolumeMounts }}

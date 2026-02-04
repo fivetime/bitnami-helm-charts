@@ -99,6 +99,102 @@ spec:
         {{- if .Values.server.initContainers }}
           {{- include "common.tplvalues.render" (dict "value" .Values.server.initContainers "context" $) | nindent 8 }}
         {{- end }}
+        {{- if and .Values.restore.enabled .Values.backup.enabled }}
+        ## Auto Restore Init Container
+        ## Downloads latest snapshot from S3 if data directory is empty
+        - name: auto-restore
+          image: {{ .Values.backup.rclone.image.repository }}:{{ .Values.backup.rclone.image.tag }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              echo "=== Vault Auto Restore Init Container ==="
+              echo "Restore mode: {{ .Values.restore.mode | default "auto" }}"
+              echo "Cluster name: {{ .Values.backup.clusterName | default (include "common.names.fullname" .) }}"
+              
+              RESTORE_MODE="{{ .Values.restore.mode | default "auto" }}"
+              
+              # Check restore mode
+              if [ "$RESTORE_MODE" = "never" ]; then
+                echo "Restore mode is 'never', skipping restore"
+                exit 0
+              fi
+              
+              # Check if data directory has data
+              DATA_EXISTS="false"
+              if [ -d "{{ .Values.server.persistence.mountPath }}/raft" ] && [ "$(ls -A {{ .Values.server.persistence.mountPath }}/raft 2>/dev/null)" ]; then
+                DATA_EXISTS="true"
+                echo "Raft data directory exists and is not empty"
+              else
+                echo "Raft data directory is empty"
+              fi
+              
+              # Decide whether to restore based on mode
+              if [ "$DATA_EXISTS" = "true" ] && [ "$RESTORE_MODE" != "force" ]; then
+                echo "Data exists and mode is not 'force', skipping restore"
+                exit 0
+              fi
+              
+              if [ "$DATA_EXISTS" = "true" ] && [ "$RESTORE_MODE" = "force" ]; then
+                echo "WARNING: Force mode enabled, will overwrite existing data!"
+              fi
+              
+              echo "Checking S3 for snapshots..."
+              
+              # Use cluster-isolated path
+              REMOTE_PATH="{{ include "vault.backup.remotePath" . }}"
+              REMOTE_FILE="${REMOTE_PATH}/latest.snap"
+              
+              echo "Remote path: $REMOTE_FILE"
+              
+              # Check if file exists using rclone ls
+              if rclone ls "$REMOTE_FILE" --config /config/rclone.conf 2>/dev/null | grep -q "latest.snap"; then
+                echo "Found latest snapshot in S3, downloading..."
+                rclone copyto "$REMOTE_FILE" /vault/restore/restore.snap \
+                  --config /config/rclone.conf \
+                  --progress \
+                  --retries 5 \
+                  --retries-sleep 10s \
+                  --low-level-retries 10 \
+                  -v
+                
+                if [ -f /vault/restore/restore.snap ]; then
+                  echo "Snapshot downloaded successfully"
+                  ls -lh /vault/restore/restore.snap
+                else
+                  echo "WARNING: Failed to download snapshot"
+                fi
+              else
+                echo "No snapshot found in S3 at: $REMOTE_FILE"
+                echo "Starting fresh (this is expected for new deployments)"
+              fi
+          env:
+            {{- if .Values.backup.rclone.credentialsSecretName }}
+            - name: RCLONE_CONFIG_S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backup.rclone.credentialsSecretName }}
+                  key: {{ .Values.backup.rclone.accessKeySecretKey | default "AWS_ACCESS_KEY_ID" }}
+            - name: RCLONE_CONFIG_S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backup.rclone.credentialsSecretName }}
+                  key: {{ .Values.backup.rclone.secretKeySecretKey | default "AWS_SECRET_ACCESS_KEY" }}
+            {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.server.persistence.mountPath }}
+            - name: restore
+              mountPath: /vault/restore
+            - name: rclone-config
+              mountPath: /config
+              readOnly: true
+          {{- with .Values.backup.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
       containers:
         - name: server
           image: {{ template "vault.server.image" . }}
@@ -110,15 +206,56 @@ spec:
           command: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 12 }}
           {{- else if .Values.server.command }}
           command: {{- include "common.tplvalues.render" (dict "value" .Values.server.command "context" $) | nindent 12 }}
+          {{- else if and .Values.restore.enabled .Values.backup.enabled }}
+          ## Custom startup script with restore support
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              # Check if snapshot exists for restore
+              if [ -f /vault/restore/restore.snap ]; then
+                echo "=== Restoring from snapshot ==="
+                # Start Vault in background
+                vault server -config=/vault/config/config.hcl &
+                VAULT_PID=$!
+                
+                # Wait for Vault to start
+                sleep 5
+                for i in $(seq 1 30); do
+                  if vault status 2>&1 | grep -q "Seal Type"; then
+                    echo "Vault is up"
+                    break
+                  fi
+                  echo "Waiting for Vault to start... ($i/30)"
+                  sleep 2
+                done
+                
+                # Restore snapshot (works on uninitialized Vault)
+                if vault operator raft snapshot restore -force /vault/restore/restore.snap 2>&1; then
+                  echo "Snapshot restored successfully!"
+                  rm -f /vault/restore/restore.snap
+                else
+                  echo "Snapshot restore failed, starting fresh"
+                  rm -f /vault/restore/restore.snap
+                fi
+                
+                # Stop background Vault
+                kill $VAULT_PID 2>/dev/null || true
+                wait $VAULT_PID 2>/dev/null || true
+                sleep 2
+              fi
+              
+              # Start Vault normally
+              exec vault server -config=/vault/config/config.hcl {{- if .Values.server.image.debug }} -log-level=debug{{- end }}
           {{- end }}
           {{- if .Values.diagnosticMode.enabled }}
           args: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 12 }}
           {{- else if .Values.server.args }}
           args: {{- include "common.tplvalues.render" (dict "value" .Values.server.args "context" $) | nindent 12 }}
-          {{- else }}
+          {{- else if not (and .Values.restore.enabled .Values.backup.enabled) }}
           args:
             - server
-            - -config=/bitnami/vault/config/config.hcl
+            - -config=/vault/config/config.hcl
             {{- if .Values.server.image.debug }}
             - -log-level=debug
             {{- end }}
@@ -151,7 +288,30 @@ spec:
             - name: VAULT_CLUSTER_ADDR
               value: {{ printf "https://$(HOSTNAME).%s-headless:%v" ( include "vault.server.fullname" . ) .Values.server.containerPorts.internal | quote }}
             - name: HOME
-              value: "/bitnami/vault/home"
+              value: "/vault/home"
+            {{- if and .Values.seal.enabled (eq .Values.seal.type "gcpckms") .Values.seal.gcpckms.credentialsSecretName }}
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: "/vault/seal/{{ .Values.seal.gcpckms.credentialsSecretKey | default "credentials.json" }}"
+            {{- end }}
+            {{- if and .Values.seal.enabled (eq .Values.seal.type "awskms") .Values.seal.awskms.credentialsSecretName }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.seal.awskms.credentialsSecretName }}
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.seal.awskms.credentialsSecretName }}
+                  key: AWS_SECRET_ACCESS_KEY
+            {{- end }}
+            {{- if and .Values.seal.enabled (eq .Values.seal.type "azurekeyvault") .Values.seal.azurekeyvault.credentialsSecretName }}
+            - name: AZURE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.seal.azurekeyvault.credentialsSecretName }}
+                  key: AZURE_CLIENT_SECRET
+            {{- end }}
             {{- if .Values.server.extraEnvVars }}
             {{- include "common.tplvalues.render" (dict "value" .Values.server.extraEnvVars "context" $) | nindent 12 }}
             {{- end }}
@@ -231,9 +391,23 @@ spec:
               mountPath: {{ .Values.server.persistence.mountPath }}
             {{- end }}
             - name: config
-              mountPath: /bitnami/vault/config
+              mountPath: /vault/config
             - name: home
-              mountPath: /bitnami/vault/home
+              mountPath: /vault/home
+            {{- if and .Values.restore.enabled .Values.backup.enabled }}
+            - name: restore
+              mountPath: /vault/restore
+            {{- end }}
+            {{- if and .Values.seal.enabled (eq .Values.seal.type "gcpckms") .Values.seal.gcpckms.credentialsSecretName }}
+            - name: gcp-credentials
+              mountPath: /vault/seal
+              readOnly: true
+            {{- end }}
+            {{- if and .Values.seal.enabled (eq .Values.seal.type "transit") .Values.seal.transit.tokenSecretName }}
+            - name: transit-token
+              mountPath: /vault/seal
+              readOnly: true
+            {{- end }}
           {{- if .Values.server.extraVolumeMounts }}
           {{- include "common.tplvalues.render" (dict "value" .Values.server.extraVolumeMounts "context" $) | nindent 12 }}
           {{- end }}
@@ -246,6 +420,23 @@ spec:
             name: {{ include "vault.server.configmapName" . }}
         - name: home
           emptyDir: {}
+        {{- if and .Values.restore.enabled .Values.backup.enabled }}
+        - name: restore
+          emptyDir: {}
+        - name: rclone-config
+          configMap:
+            name: {{ include "common.names.fullname" . }}-rclone-config
+        {{- end }}
+        {{- if and .Values.seal.enabled (eq .Values.seal.type "gcpckms") .Values.seal.gcpckms.credentialsSecretName }}
+        - name: gcp-credentials
+          secret:
+            secretName: {{ .Values.seal.gcpckms.credentialsSecretName }}
+        {{- end }}
+        {{- if and .Values.seal.enabled (eq .Values.seal.type "transit") .Values.seal.transit.tokenSecretName }}
+        - name: transit-token
+          secret:
+            secretName: {{ .Values.seal.transit.tokenSecretName }}
+        {{- end }}
         {{- if and .Values.server.persistence.enabled .Values.server.persistence.existingClaim }}
         - name: data
           persistentVolumeClaim:

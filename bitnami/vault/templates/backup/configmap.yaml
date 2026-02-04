@@ -1,0 +1,28 @@
+{{- if and .Values.server.enabled .Values.backup.enabled }}
+## Rclone configuration ConfigMap
+## Used for backup and restore
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "common.names.fullname" . }}-rclone-config
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: backup
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  rclone.conf: |
+    [s3]
+    type = s3
+    provider = {{ .Values.backup.rclone.provider | default "AWS" }}
+    env_auth = true
+    region = {{ .Values.backup.rclone.region }}
+    {{- if .Values.backup.rclone.endpoint }}
+    endpoint = {{ .Values.backup.rclone.endpoint }}
+    {{- end }}
+    {{- if .Values.backup.rclone.forcePathStyle }}
+    force_path_style = true
+    {{- end }}
+    acl = private
+{{- end }}

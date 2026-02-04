@@ -5154,6 +5154,49 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/vault-1.9.1/vault-1.9.1.tgz
     version: 1.9.1
+  - annotations:
+      images: |
+        - name: os-shell
+          image: docker.io/bitnami/os-shell:12-debian-12-r50
+        - name: vault
+          image: docker.io/hashicorp/vault:1.19.0
+        - name: vault-csi-provider
+          image: docker.io/hashicorp/vault-csi-provider:1.4.1
+        - name: vault-k8s
+          image: docker.io/hashicorp/vault-k8s:1.4.1
+        - name: rclone
+          image: docker.io/rclone/rclone:latest
+    apiVersion: v2
+    appVersion: 1.19.0
+    created: "2026-02-04T07:58:57.240464432Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: 'HashiCorp Vault with S3 backup/restore and auto-unseal support.
+      Based on Bitnami chart with official HashiCorp images. '
+    digest: 5dfcdc191ec24741f68f0a47411658067495bd53149f22a01fcad14af956a196
+    home: https://www.vaultproject.io
+    icon: https://www.vaultproject.io/img/logo-hashicorp.svg
+    keywords:
+    - security
+    - secrets
+    - injection
+    - vault
+    - backup
+    - disaster-recovery
+    maintainers:
+    - name: Custom Fork (based on Bitnami)
+      url: https://github.com/bitnami/charts
+    name: vault
+    sources:
+    - https://github.com/hashicorp/vault
+    - https://github.com/bitnami/charts/tree/main/bitnami/vault
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/vault-0.0.1/vault-0.0.1.tgz
+    version: 0.0.1
   victoriametrics:
   - annotations:
       images: |
@@ -5399,4 +5442,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-01-30T17:33:29.586824606Z"
+generated: "2026-02-04T07:58:57.240489405Z"

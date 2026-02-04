@@ -253,12 +253,14 @@ spec:
           {{- else if .Values.server.args }}
           args: {{- include "common.tplvalues.render" (dict "value" .Values.server.args "context" $) | nindent 12 }}
           {{- else if not (and .Values.restore.enabled .Values.backup.enabled) }}
+          ## Directly run vault server, bypassing docker-entrypoint.sh which
+          ## scans /vault/config directory and loads seal config twice
+          command:
+            - /bin/sh
+            - -ec
           args:
-            - server
-            - -config=/vault/config/config.hcl
-            {{- if .Values.server.image.debug }}
-            - -log-level=debug
-            {{- end }}
+            - |
+              exec vault server -config=/vault/config/config.hcl {{- if .Values.server.image.debug }} -log-level=debug{{- end }}
           {{- end }}
           env:
             - name: HOST_IP

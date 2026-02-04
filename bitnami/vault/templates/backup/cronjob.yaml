@@ -50,7 +50,7 @@ spec:
                   echo "Time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
                   echo "Cluster: {{ .Values.backup.clusterName | default (include "common.names.fullname" .) }}"
                   
-                  VAULT_ADDR="http://{{ include "common.names.fullname" . }}-active:{{ .Values.server.service.general.ports.http }}"
+                  VAULT_ADDR="http://{{ include "vault.server.fullname" . }}-active:{{ .Values.server.service.general.ports.http }}"
                   export VAULT_ADDR
                   
                   # Wait for Vault to be ready

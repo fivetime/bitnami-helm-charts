@@ -253,14 +253,12 @@ spec:
           {{- else if .Values.server.args }}
           args: {{- include "common.tplvalues.render" (dict "value" .Values.server.args "context" $) | nindent 12 }}
           {{- else if not (and .Values.restore.enabled .Values.backup.enabled) }}
-          ## Override entrypoint to prevent docker-entrypoint.sh from scanning
-          ## /vault/config directory and starting Vault twice (causing port conflict)
-          command:
-            - /bin/sh
-            - -ec
           args:
-            - |
-              exec /usr/local/bin/docker-entrypoint.sh vault server -config=/vault/config/config.hcl {{- if .Values.server.image.debug }} -log-level=debug{{- end }}
+            - server
+            - -config=/vault/config/config.hcl
+            {{- if .Values.server.image.debug }}
+            - -log-level=debug
+            {{- end }}
           {{- end }}
           env:
             - name: HOST_IP

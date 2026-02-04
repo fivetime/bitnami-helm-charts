@@ -272,11 +272,11 @@ server:
     }
     storage "raft" {
       path = "{{ .Values.server.persistence.mountPath }}"
-      {{- $serverFullName := include "vault.server.fullname" . }}
+      {{- $fullName := include "common.names.fullname" . }}
       {{- $replicas := int .Values.server.replicaCount }}
       {{- range $i := until $replicas }}
       retry_join {
-        leader_api_addr = "http://{{ $serverFullName }}-{{ $i }}.{{ $serverFullName }}-headless:{{ $.Values.server.containerPorts.http }}"
+        leader_api_addr = "http://{{ $fullName }}-{{ $i }}.{{ $fullName }}-headless:{{ $.Values.server.containerPorts.http }}"
       }
       {{- end }}
     }

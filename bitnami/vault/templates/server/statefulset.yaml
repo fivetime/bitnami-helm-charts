@@ -289,6 +289,10 @@ spec:
               value: {{ printf "https://$(HOSTNAME).%s-headless:%v" ( include "vault.server.fullname" . ) .Values.server.containerPorts.internal | quote }}
             - name: HOME
               value: "/vault/home"
+            - name: SKIP_CHOWN
+              value: "true"
+            - name: SKIP_SETCAP
+              value: "true"
             {{- if .Values.server.extraEnvVars }}
             {{- include "common.tplvalues.render" (dict "value" .Values.server.extraEnvVars "context" $) | nindent 12 }}
             {{- end }}

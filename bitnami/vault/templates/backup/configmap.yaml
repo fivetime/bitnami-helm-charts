@@ -24,5 +24,6 @@ data:
     {{- if .Values.backup.rclone.forcePathStyle }}
     force_path_style = true
     {{- end }}
+    no_check_bucket = true
     acl = private
 {{- end }}

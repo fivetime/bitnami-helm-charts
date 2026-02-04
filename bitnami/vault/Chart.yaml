@@ -40,4 +40,4 @@ name: vault
 sources:
 - https://github.com/hashicorp/vault
 - https://github.com/bitnami/charts/tree/main/bitnami/vault
-version: 0.0.7
+version: 0.0.8

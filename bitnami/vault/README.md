@@ -1,209 +1,297 @@
 <!--- app-name: HashiCorp Vault -->
 
-# Bitnami Secure Images Helm chart for HashiCorp Vault
+# HashiCorp Vault Helm Chart (Enhanced)
 
-Vault is a tool for securely managing and accessing secrets using a unified interface. Features secure storage, dynamic secrets, data encryption and revocation.
+基于 Bitnami Vault Helm Chart 的增强版本，使用 `hashicorp/vault` 官方镜像，新增 S3 自动备份/恢复功能。
 
-[Overview of HashiCorp Vault](https://www.vaultproject.io/)
+[HashiCorp Vault 官方文档](https://www.vaultproject.io/)
 
-Trademarks: This software listing is packaged by Bitnami. The respective trademarks mentioned in the offering are owned by the respective companies, and use of them does not imply any affiliation or endorsement.
+## 增强功能
+
+相比原版 Bitnami Chart，本 Chart 新增以下功能：
+
+- **S3 自动备份**：通过 CronJob 定时创建 Raft 快照并上传至 S3 兼容存储（AWS S3、Ceph RGW、MinIO 等）
+- **自动恢复**：Pod 启动时检测空数据目录，自动从 S3 下载最新快照恢复
+- **集群路径隔离**：多集群共用同一 S3 bucket 时，通过 `clusterName` 隔离备份路径
+- **hashicorp/vault 镜像兼容**：正确处理 `docker-entrypoint.sh`，避免 seal 配置重复加载和端口冲突
+
+## 架构说明
+
+本 Chart 默认使用 `hashicorp/vault` 官方镜像而非 `bitnami/vault`。启动时通过 `/bin/sh -ec` 覆盖镜像的 entrypoint，直接执行 `vault server -config=...`，避免 `docker-entrypoint.sh` 自动扫描 `/vault/config` 目录导致的以下问题：
+
+- **端口冲突**：entrypoint 内部启动一次 + args 再启动一次 → `address already in use`
+- **Seal 重复加载**：同一 seal 配置被加载两次 → `more than one enabled seal found`
+
+Seal 配置（GCP KMS、AWS KMS、Transit 等）不在 Chart 内抽象，直接写在 `server.config`（HCL）或 `existingConfigMap` 中，通过 `extraVolumes`/`extraVolumeMounts` 注入凭证文件。这种方式支持所有 seal 类型，无需修改 Chart。
 
 ## TL;DR
 
 ```console
-helm install my-release oci://registry-1.docker.io/bitnamicharts/vault
+helm install vault my-repo/vault -f values.yaml
 ```
 
-## Why use Bitnami Secure Images?
-
-Those are hardened, minimal CVE images built and maintained by Bitnami. Bitnami Secure Images are based on the cloud-optimized, security-hardened enterprise [OS Photon Linux](https://vmware.github.io/photon/). Why choose BSI images?
-
-- Hardened secure images of popular open source software with Near-Zero Vulnerabilities
-- Vulnerability Triage & Prioritization with VEX Statements, KEV and EPSS Scores
-- Compliance focus with FIPS, STIG, and air-gap options, including secure bill of materials (SBOM)
-- Software supply chain provenance attestation through in-toto
-- First class support for the internet’s favorite Helm charts
-
-Each image comes with valuable security metadata. You can view the metadata in [our public catalog here](https://app-catalog.vmware.com/bitnami/apps). Note: Some data is only available with [commercial subscriptions to BSI](https://bitnami.com/).
-
-![Alt text](https://github.com/bitnami/containers/blob/main/BSI%20UI%201.png?raw=true "Application details")
-![Alt text](https://github.com/bitnami/containers/blob/main/BSI%20UI%202.png?raw=true "Packaging report")
-
-If you are looking for our previous generation of images based on Debian Linux, please see the [Bitnami Legacy registry](https://hub.docker.com/u/bitnamilegacy).
-
-## Introduction
-
-This chart bootstraps a [HashiCorp Vault](https://github.com/bitnami/containers/tree/main/bitnami/vault) deployment on a [Kubernetes](https://kubernetes.io) cluster using the [Helm](https://helm.sh) package manager.
-
-## Prerequisites
+## 前提条件
 
 - Kubernetes 1.23+
 - Helm 3.8.0+
 
-## Installing the Chart
+## 快速开始
 
-To install the chart with the release name `my-release`:
+### 1. 基础部署（Raft HA + 外部 ConfigMap）
 
-```console
-helm install my-release my-repo/vault
+创建 Vault 配置：
+
+```bash
+cat << 'EOF' > config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-config
+  namespace: kube-infra
+data:
+  config.hcl: |
+    ui = true
+    disable_mlock = true
+
+    listener "tcp" {
+      address         = "[::]:8200"
+      cluster_address = "[::]:8201"
+      tls_disable     = "true"
+    }
+
+    storage "raft" {
+      path = "/vault/data"
+      retry_join {
+        leader_api_addr = "http://vault-server-0.vault-server-headless:8200"
+      }
+      retry_join {
+        leader_api_addr = "http://vault-server-1.vault-server-headless:8200"
+      }
+      retry_join {
+        leader_api_addr = "http://vault-server-2.vault-server-headless:8200"
+      }
+    }
+
+    service_registration "kubernetes" {}
+EOF
+kubectl apply -f config.yaml
 ```
 
-The command deploys vault on the Kubernetes cluster in the default configuration. The [Parameters](#parameters) section lists the parameters that can be configured during installation.
-
-> **Tip**: List all releases using `helm list`
-
-## Configuration and installation details
-
-### Resource requests and limits
-
-Bitnami charts allow setting resource requests and limits for all containers inside the chart deployment. These are inside the `resources` value (check parameter table). Setting requests is essential for production workloads and these should be adapted to your specific use case.
-
-To make this process easier, the chart contains the `resourcesPreset` values, which automatically sets the `resources` section according to different presets. Check these presets in [the bitnami/common chart](https://github.com/bitnami/charts/blob/main/bitnami/common/templates/_resources.tpl#L15). However, in production workloads using `resourcesPreset` is discouraged as it may not fully adapt to your specific needs. Find more information on container resource management in the [official Kubernetes documentation](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/).
-
-### Prometheus metrics
-
-This chart can be integrated with Prometheus by setting `server.metrics.enabled` to `true`. This will expose Vault native Prometheus endpoint in the service. It will have the necessary annotations to be automatically scraped by Prometheus.
-
-#### Prometheus requirements
-
-It is necessary to have a working installation of Prometheus or Prometheus Operator for the integration to work. Install the [Bitnami Prometheus helm chart](https://github.com/bitnami/charts/tree/main/bitnami/prometheus) or the [Bitnami Kube Prometheus helm chart](https://github.com/bitnami/charts/tree/main/bitnami/kube-prometheus) to easily have a working Prometheus in your cluster.
-
-#### Integration with Prometheus Operator
-
-The chart can deploy `ServiceMonitor` objects for integration with Prometheus Operator installations. To do so, set the value `server.metrics.serviceMonitor.enabled=true`. Ensure that the Prometheus Operator `CustomResourceDefinitions` are installed in the cluster or it will fail with the following error:
-
-```text
-no matches for kind "ServiceMonitor" in version "monitoring.coreos.com/v1"
-```
-
-Install the [Bitnami Kube Prometheus helm chart](https://github.com/bitnami/charts/tree/main/bitnami/kube-prometheus) for having the necessary CRDs and the Prometheus Operator.
-
-### [Rolling VS Immutable tags](https://techdocs.broadcom.com/us/en/vmware-tanzu/application-catalog/tanzu-application-catalog/services/tac-doc/apps-tutorials-understand-rolling-tags-containers-index.html)
-
-It is strongly recommended to use immutable tags in a production environment. This ensures your deployment does not change automatically if the same tag is updated with a different image.
-
-Bitnami will release a new chart updating its containers if a new version of the main container, significant changes, or critical vulnerabilities exist.
-
-### Ingress
-
-This chart provides support for Ingress resources. If you have an ingress controller installed on your cluster, such as [nginx-ingress-controller](https://github.com/bitnami/charts/tree/main/bitnami/nginx-ingress-controller) or [contour](https://github.com/bitnami/charts/tree/main/bitnami/contour) you can utilize the ingress controller to serve your application.To enable Ingress integration, set `server.ingress.enabled` to `true`.
-
-The most common scenario is to have one host name mapped to the deployment. In this case, the `server.ingress.hostname` property can be used to set the host name. The `server.ingress.tls` parameter can be used to add the TLS configuration for this host.
-
-However, it is also possible to have more than one host. To facilitate this, the `server.ingress.extraHosts` parameter (if available) can be set with the host names specified as an array. The `server.ingress.extraTLS` parameter (if available) can also be used to add the TLS configuration for extra hosts.
-
-> NOTE: For each host specified in the `server.ingress.extraHosts` parameter, it is necessary to set a name, path, and any annotations that the Ingress controller should know about. Not all annotations are supported by all Ingress controllers, but [this annotation reference document](https://github.com/kubernetes/ingress-nginx/blob/master/docs/user-guide/nginx-configuration/annotations.md) lists the annotations supported by many popular Ingress controllers.
-
-Adding the TLS parameter (where available) will cause the chart to generate HTTPS URLs, and the  application will be available on port 443. The actual TLS secrets do not have to be generated by this chart. However, if TLS is enabled, the Ingress record will not work until the TLS secret exists.
-
-[Learn more about Ingress controllers](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/).
-
-### TLS secrets
-
-This chart facilitates the creation of TLS secrets for use with the Ingress controller (although this is not mandatory). There are several common use cases:
-
-- Generate certificate secrets based on chart parameters.
-- Enable externally generated certificates.
-- Manage application certificates via an external service (like [cert-manager](https://github.com/jetstack/cert-manager/)).
-- Create self-signed certificates within the chart (if supported).
-
-In the first two cases, a certificate and a key are needed. Files are expected in `.pem` format.
-
-Here is an example of a certificate file:
-
-> NOTE: There may be more than one certificate if there is a certificate chain.
-
-```text
------BEGIN CERTIFICATE-----
-MIID6TCCAtGgAwIBAgIJAIaCwivkeB5EMA0GCSqGSIb3DQEBCwUAMFYxCzAJBgNV
-...
-jScrvkiBO65F46KioCL9h5tDvomdU1aqpI/CBzhvZn1c0ZTf87tGQR8NK7v7
------END CERTIFICATE-----
-```
-
-Here is an example of a certificate key:
-
-```text
------BEGIN RSA PRIVATE KEY-----
-MIIEogIBAAKCAQEAvLYcyu8f3skuRyUgeeNpeDvYBCDcgq+LsWap6zbX5f8oLqp4
-...
-wrj2wDbCDCFmfqnSJ+dKI3vFLlEz44sAV8jX/kd4Y6ZTQhlLbYc=
------END RSA PRIVATE KEY-----
-```
-
-- If using Helm to manage the certificates based on the parameters, copy these values into the `certificate` and `key` values for a given `*.ingress.secrets` entry.
-- If managing TLS secrets separately, it is necessary to create a TLS secret with name `INGRESS_HOSTNAME-tls` (where INGRESS_HOSTNAME is a placeholder to be replaced with the hostname you set using the `*.ingress.hostname` parameter).
-- If your cluster has a [cert-manager](https://github.com/jetstack/cert-manager) add-on to automate the management and issuance of TLS certificates, add to `*.ingress.annotations` the [corresponding ones](https://cert-manager.io/docs/usage/ingress/#supported-annotations) for cert-manager.
-- If using self-signed certificates created by Helm, set both `*.ingress.tls` and `*.ingress.selfSigned` to `true`.
-
-### Additional environment variables
-
-In case you want to add extra environment variables (useful for advanced operations like custom init scripts), you can use the `extraEnvVars` property inside the `server`, `csiProvider` and `injector` sections.
+创建 values.yaml：
 
 ```yaml
 server:
-  extraEnvVars:
-    - name: LOG_LEVEL
-      value: error
+  enabled: true
+  replicaCount: 3
+  existingConfigMap: "vault-config"
+  resourcesPreset: small
+  persistence:
+    enabled: true
+    size: 20Gi
 ```
 
-Alternatively, you can use a ConfigMap or a Secret with the environment variables. To do so, use the `extraEnvVarsCM` or the `extraEnvVarsSecret` values inside the `server`, `csiProvider` and `injector` sections.
+部署：
 
-### Sidecars
+```bash
+helm install vault my-repo/vault -n kube-infra -f values.yaml
+```
 
-If additional containers are needed in the same pod as vault (such as additional metrics or logging exporters), they can be defined using the `sidecars` parameter inside the `server`, `csiProvider` and `injector` sections.
+初始化：
+
+```bash
+kubectl exec -n kube-infra vault-server-0 -- vault operator init -format=json > vault-init.json
+```
+
+### 2. Auto-Unseal 配置（以 GCP KMS 为例）
+
+在 config.hcl 中加入 seal 配置：
+
+```hcl
+seal "gcpckms" {
+  project     = "my-project"
+  region      = "asia-northeast1"
+  key_ring    = "vault-keyring"
+  crypto_key  = "vault-auto-unseal"
+  credentials = "/vault/gcp/key.json"
+}
+```
+
+创建凭证 Secret 并通过 extraVolumes 注入：
+
+```bash
+kubectl -n kube-infra create secret generic gcp-kms-credentials \
+  --from-file=key.json=./service-account-key.json
+```
 
 ```yaml
-sidecars:
-- name: your-image-name
-  image: your-image
-  imagePullPolicy: Always
-  ports:
-  - name: portname
-    containerPort: 1234
+# gcp-kms.yaml
+server:
+  extraVolumes:
+    - name: gcp-credentials
+      secret:
+        secretName: gcp-kms-credentials
+  extraVolumeMounts:
+    - name: gcp-credentials
+      mountPath: /vault/gcp
+      readOnly: true
 ```
 
-If these sidecars export extra ports, extra port definitions can be added using the `service.extraPorts` parameter (where available), as shown in the example below:
+```bash
+helm install vault my-repo/vault -n kube-infra \
+  -f values.yaml \
+  -f gcp-kms.yaml
+```
+
+使用 auto-unseal 时，初始化使用 recovery keys：
+
+```bash
+kubectl exec -n kube-infra vault-server-0 -- vault operator init \
+  -recovery-shares=5 -recovery-threshold=3 -format=json > vault-init.json
+```
+
+> **注意**：务必妥善保管 `vault-init.json` 中的 recovery keys 和 root token。
+
+### 3. S3 备份配置
+
+创建 S3 凭证（以 Ceph RGW OBC 为例）：
 
 ```yaml
-service:
-  extraPorts:
-  - name: extraPort
-    port: 11311
-    targetPort: 11311
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: vault-backup
+  namespace: kube-infra
+spec:
+  bucketName: vault-backup
+  storageClassName: ceph-bucket-openstack
 ```
 
-> NOTE: This Helm chart already includes sidecar containers for the Prometheus exporters (where applicable). These can be activated by adding the `--enable-metrics=true` parameter at deployment time. The `sidecars` parameter should therefore only be used for any extra sidecar containers.
+OBC 会自动生成同名的 Secret（含 `AWS_ACCESS_KEY_ID` 和 `AWS_SECRET_ACCESS_KEY`）。
 
-If additional init containers are needed in the same pod, they can be defined using the `initContainers` parameter. Here is an example:
+创建备份 token：
+
+```bash
+ROOT_TOKEN=$(cat vault-init.json | jq -r '.root_token')
+kubectl -n kube-infra create secret generic vault-backup-token \
+  --from-literal=token="$ROOT_TOKEN"
+```
+
+在 values.yaml 中添加备份配置：
 
 ```yaml
-initContainers:
-  - name: your-image-name
-    image: your-image
-    imagePullPolicy: Always
-    ports:
-      - name: portname
-        containerPort: 1234
+backup:
+  enabled: true
+  clusterName: "my-cluster"
+  schedule: "0 2 * * *"
+  retentionDays: 7
+  vaultTokenSecretName: "vault-backup-token"
+  rclone:
+    provider: "Ceph"
+    bucket: "vault-backup"
+    endpoint: "http://rook-ceph-rgw-openstack.rook-ceph.svc"
+    forcePathStyle: true
+    credentialsSecretName: "vault-backup"
 ```
 
-Learn more about [sidecar containers](https://kubernetes.io/docs/concepts/workloads/pods/) and [init containers](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/).
+手动触发备份测试：
 
-### Pod affinity
+```bash
+kubectl create job --from=cronjob/vault-backup vault-backup-test -n kube-infra
+kubectl logs -f job/vault-backup-test -n kube-infra --all-containers
+```
 
-This chart allows you to set your custom affinity using the `affinity` parameter. Find more information about Pod affinity in the [kubernetes documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity).
+### 4. 灾难恢复（从 S3 恢复）
 
-As an alternative, use one of the preset configurations for pod affinity, pod anti-affinity, and node affinity available at the [bitnami/common](https://github.com/bitnami/charts/tree/main/bitnami/common#affinities) chart. To do so, set the `podAffinityPreset`, `podAntiAffinityPreset`, or `nodeAffinityPreset` parameters inside the `server`, `csiProvider` and `injector` sections.
+删除现有数据后，通过 `--set` 临时启用恢复：
 
-### Backup and restore
+```bash
+helm uninstall vault -n kube-infra
+kubectl delete pvc -n kube-infra -l app.kubernetes.io/instance=vault
 
-To back up and restore Helm chart deployments on Kubernetes, you need to back up the persistent volumes from the source deployment and attach them to a new deployment using [Velero](https://velero.io/), a Kubernetes backup/restore tool. Find the instructions for using Velero in [this guide](https://techdocs.broadcom.com/us/en/vmware-tanzu/application-catalog/tanzu-application-catalog/services/tac-doc/apps-tutorials-backup-restore-deployments-velero-index.html).
+helm install vault my-repo/vault -n kube-infra \
+  -f values.yaml \
+  -f gcp-kms.yaml \
+  --set restore.enabled=true --set restore.mode=auto
+```
 
-## Persistence
+恢复流程：Pod 启动 → init container 检测空数据目录 → 从 S3 下载 `latest.snap` → 恢复 Raft 快照 → Vault 启动 → auto-unseal 自动解封。
 
-The [Bitnami vault](https://github.com/bitnami/containers/tree/main/bitnami/vault) image stores the vault data and configurations at the `/bitnami` path of the container. Persistent Volume Claims are used to keep the data across deployments. This is known to work in GCE, AWS, and minikube.
+> **提示**：恢复成功后，后续升级不带 `--set restore.*` 参数即可，避免重复恢复。
 
-## Parameters
+## 备份参数
+
+| 参数 | 说明 | 默认值 |
+| --- | --- | --- |
+| `backup.enabled` | 启用 S3 备份 | `false` |
+| `backup.clusterName` | 集群标识，用于 S3 路径隔离 | `""` (使用 release name) |
+| `backup.schedule` | CronJob 调度表达式 | `"0 2 * * *"` |
+| `backup.retentionDays` | 备份保留天数 | `7` |
+| `backup.vaultTokenSecretName` | 包含 Vault token 的 Secret 名称 | `""` |
+| `backup.vaultTokenSecretKey` | Secret 中 token 的 key | `"token"` |
+| `backup.rclone.image.repository` | Rclone 镜像 | `rclone/rclone` |
+| `backup.rclone.image.tag` | Rclone 镜像 tag | `"latest"` |
+| `backup.rclone.provider` | S3 provider: AWS, Ceph, Minio 等 | `"AWS"` |
+| `backup.rclone.region` | S3 region | `"ap-northeast-1"` |
+| `backup.rclone.bucket` | S3 bucket 名称 | `""` |
+| `backup.rclone.path` | bucket 内路径前缀 | `"vault-snapshots"` |
+| `backup.rclone.endpoint` | 自定义 S3 endpoint（MinIO/Ceph 用） | `""` |
+| `backup.rclone.forcePathStyle` | 强制 path style（MinIO/Ceph 必须） | `false` |
+| `backup.rclone.credentialsSecretName` | 包含 S3 凭证的 Secret 名称 | `""` |
+| `backup.snapshot.useMemory` | 使用内存 tmpfs 存放临时快照 | `true` |
+| `backup.snapshot.sizeLimit` | 快照最大尺寸 | `"2Gi"` |
+
+## 恢复参数
+
+| 参数 | 说明 | 默认值 |
+| --- | --- | --- |
+| `restore.enabled` | 启用自动恢复 | `false` |
+| `restore.mode` | 恢复模式 | `"auto"` |
+
+恢复模式说明：
+
+- `auto`：数据目录为空时自动恢复（推荐用于 DR）
+- `never`：不自动恢复
+- `force`：强制恢复，即使数据已存在（**危险！**）
+
+## S3 路径结构
+
+备份文件存储路径：`s3://<bucket>/<path>/<clusterName>/`
+
+```
+vault-backup/
+└── vault-snapshots/
+    └── my-cluster/
+        ├── vault-20260204-020000.snap    # 带时间戳的快照
+        ├── vault-20260205-020000.snap
+        └── latest.snap                   # 最新快照（恢复用）
+```
+
+## 安全说明
+
+- Raft 快照中的数据被 seal key 加密，没有对应的 KMS key 无法解密
+- 备份 token 建议使用最小权限策略，生产环境避免使用 root token
+- S3 凭证通过 Kubernetes Secret 管理，建议启用 RBAC 限制访问
+
+## 配置与安装详情
+
+### Prometheus 指标
+
+设置 `server.metrics.enabled=true` 可启用 Vault 原生 Prometheus 端点。配合 `server.metrics.serviceMonitor.enabled=true` 可自动创建 ServiceMonitor 对象供 Prometheus Operator 抓取。
+
+### Ingress
+
+设置 `server.ingress.enabled=true` 启用 Ingress。通过 `server.ingress.hostname` 设置域名，`server.ingress.tls` 启用 TLS。
+
+### 自定义配置
+
+两种方式提供 Vault 配置：
+
+1. **内联配置**：通过 `server.config` 直接在 values.yaml 中编写 HCL（支持模板变量）
+2. **外部 ConfigMap**：通过 `server.existingConfigMap` 引用预创建的 ConfigMap（推荐，灵活性更高）
+
+使用外部 ConfigMap 时，Chart 不会生成 configmap，你可以完全控制配置内容。
+
+## Bitnami 原始参数
 
 ### Global parameters
 
@@ -712,18 +800,6 @@ helm install my-release -f values.yaml my-repo/vault
 
 > **Tip**: You can use the default [values.yaml](https://github.com/bitnami/charts/tree/main/bitnami/vault/values.yaml)
 
-## Troubleshooting
-
-Find more information about how to deal with common errors related to Bitnami's Helm charts in [this troubleshooting guide](https://docs.bitnami.com/general/how-to/troubleshoot-helm-chart-issues).
-
-### To 1.0.0
-
-This major bump changes the following security defaults:
-
-- `resourcesPreset` is changed from `none` to the minimum size working in our test suites (NOTE: `resourcesPreset` is not meant for production usage, but `resources` adapted to your use case).
-- `global.compatibility.openshift.adaptSecurityContext` is changed from `disabled` to `auto`.
-
-This could potentially break any customization or init scripts used in your deployment. If this is the case, change the default values to the previous ones.
 
 ## License
 

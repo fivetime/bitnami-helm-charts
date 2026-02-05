@@ -11,7 +11,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 3.0.5
-    created: "2026-02-04T14:30:43.278330403Z"
+    created: "2026-02-05T02:55:24.830446501Z"
     dependencies:
     - condition: redis.enabled
       name: redis
@@ -59,7 +59,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 2.4.65
-    created: "2026-02-04T14:30:43.280511009Z"
+    created: "2026-02-05T02:55:24.833443573Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -101,7 +101,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 3.13.0
-    created: "2026-02-04T14:30:43.289415726Z"
+    created: "2026-02-05T02:55:24.84937053Z"
     dependencies:
     - condition: etcd.enabled
       name: etcd
@@ -151,7 +151,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 1.85.0
-    created: "2026-02-04T14:30:43.304314494Z"
+    created: "2026-02-05T02:55:24.865991414Z"
     dependencies:
     - condition: redis.enabled
       name: redis
@@ -198,7 +198,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 3.1.1
-    created: "2026-02-04T14:30:43.318787182Z"
+    created: "2026-02-05T02:55:24.894412346Z"
     dependencies:
     - condition: redis.enabled
       name: redis
@@ -240,7 +240,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 3.7.1
-    created: "2026-02-04T14:30:43.331143044Z"
+    created: "2026-02-05T02:55:24.907235808Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -288,7 +288,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 9.0.8
-    created: "2026-02-04T14:30:43.333138243Z"
+    created: "2026-02-05T02:55:24.909312082Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -322,7 +322,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 0.53.0
-    created: "2026-02-04T14:30:43.334958193Z"
+    created: "2026-02-05T02:55:24.911190827Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -360,7 +360,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 5.0.5
-    created: "2026-02-04T14:30:43.338216806Z"
+    created: "2026-02-05T02:55:24.914654053Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -392,7 +392,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 1.0.0
-    created: "2026-02-04T14:30:43.339602312Z"
+    created: "2026-02-05T02:55:24.915975658Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -434,7 +434,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 1.18.2
-    created: "2026-02-04T14:30:43.343727161Z"
+    created: "2026-02-05T02:55:24.920633071Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -475,7 +475,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 1.43.1
-    created: "2026-02-04T14:30:43.356527847Z"
+    created: "2026-02-05T02:55:24.933389305Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -549,7 +549,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 1.18.1
-    created: "2026-02-04T14:30:43.366907936Z"
+    created: "2026-02-05T02:55:24.944658846Z"
     dependencies:
     - condition: etcd.enabled
       name: etcd
@@ -594,7 +594,7 @@ entries:
       licenses: AGPL-3.0
     apiVersion: v2
     appVersion: 13.0.3
-    created: "2026-02-04T14:30:43.370296068Z"
+    created: "2026-02-05T02:55:24.948100305Z"
     dependencies:
     - name: common
       repository: file://../common
@@ -642,7 +642,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 25.7.5
-    created: "2026-02-04T14:30:43.37417706Z"
+    created: "2026-02-05T02:55:24.953223231Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -681,7 +681,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 0.25.3
-    created: "2026-02-04T14:30:43.377675973Z"
+    created: "2026-02-05T02:55:24.956700319Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -724,7 +724,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 1.27.0
-    created: "2026-02-04T14:30:43.385271798Z"
+    created: "2026-02-05T02:55:24.965404138Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -754,7 +754,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 2.31.7
-    created: "2026-02-04T14:30:43.385923138Z"
+    created: "2026-02-05T02:55:24.96614458Z"
     description: A Library Helm Chart for grouping common logic between bitnami charts.
       This chart is not deployable by itself.
     digest: 15c9b59a4c42e4e46c41077b476753ef0e02d9d310fac440e1d626cf1ef2c6a2
@@ -787,7 +787,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 7.13.2
-    created: "2026-02-04T14:30:43.393994212Z"
+    created: "2026-02-05T02:55:24.973933643Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -833,7 +833,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 1.21.4
-    created: "2026-02-04T14:30:43.396969956Z"
+    created: "2026-02-05T02:55:24.977120345Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -871,7 +871,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 1.32.1
-    created: "2026-02-04T14:30:43.40648236Z"
+    created: "2026-02-05T02:55:24.986281348Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -909,7 +909,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 0.17.5
-    created: "2026-02-04T14:30:43.409948998Z"
+    created: "2026-02-05T02:55:24.99010768Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -949,7 +949,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 3.5.0
-    created: "2026-02-04T14:30:43.422564294Z"
+    created: "2026-02-05T02:55:25.003553641Z"
     dependencies:
     - condition: redis.enabled
       name: redis
@@ -992,7 +992,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 2.0.2
-    created: "2026-02-04T14:30:43.425773278Z"
+    created: "2026-02-05T02:55:25.007093675Z"
     dependencies:
     - name: common
       repository: file://../common
@@ -1034,7 +1034,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 26.0.0
-    created: "2026-02-04T14:30:43.437533853Z"
+    created: "2026-02-05T02:55:25.018904173Z"
     dependencies:
     - condition: minio.enabled
       name: minio
@@ -1081,7 +1081,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 11.2.3
-    created: "2026-02-04T14:30:43.444829042Z"
+    created: "2026-02-05T02:55:25.025804655Z"
     dependencies:
     - condition: mariadb.enabled
       name: mariadb
@@ -1124,7 +1124,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 9.1.1
-    created: "2026-02-04T14:30:43.450971043Z"
+    created: "2026-02-05T02:55:25.032842161Z"
     dependencies:
     - condition: mariadb.enabled
       name: mariadb
@@ -1169,7 +1169,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 9.1.2
-    created: "2026-02-04T14:30:43.458977393Z"
+    created: "2026-02-05T02:55:25.04073457Z"
     dependencies:
     - condition: global.kibanaEnabled
       name: kibana
@@ -1197,46 +1197,6 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/elasticsearch-22.1.7/elasticsearch-22.1.7.tgz
     version: 22.1.7
-  envoy-gateway:
-  - annotations:
-      images: |
-        - name: envoy
-          image: docker.io/bitnami/envoy:1.35.1-debian-12-r0
-        - name: envoy-gateway
-          image: docker.io/bitnami/envoy-gateway:1.5.0-debian-12-r1
-        - name: envoy-ratelimit
-          image: docker.io/bitnami/envoy-ratelimit:2025.8.15-debian-12-r0
-      licenses: Apache-2.0
-      tanzuCategory: service
-    apiVersion: v2
-    appVersion: 1.5.0
-    created: "2026-02-04T14:30:43.473180498Z"
-    dependencies:
-    - name: common
-      repository: oci://registry-1.docker.io/bitnamicharts
-      tags:
-      - bitnami-common
-      version: 2.x.x
-    description: Envoy Gateway simplifies traffic management by extending Envoy Proxy's
-      features, offering Kubernetes Gateway API integration for secure, scalable,
-      and observable application routing
-    digest: 4c4145ccbd71d06ad26895e7c1f29b0d45f842e317f392d2054b3687a276f0a3
-    home: https://bitnami.com
-    icon: https://bitnami.com/assets/stacks/envoy-gateway/img/envoy-gateway-stack-220x234.png
-    keywords:
-    - envoy-gateway
-    - traffic
-    - gateway
-    - ingress
-    maintainers:
-    - name: Broadcom, Inc. All Rights Reserved.
-      url: https://github.com/bitnami/charts
-    name: envoy-gateway
-    sources:
-    - https://github.com/bitnami/charts/tree/main/bitnami/envoy-gateway
-    urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/envoy-gateway-2.0.5/envoy-gateway-2.0.5.tgz
-    version: 2.0.5
   etcd:
   - annotations:
       images: |
@@ -1248,7 +1208,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 3.6.4
-    created: "2026-02-04T14:30:43.476072357Z"
+    created: "2026-02-05T02:55:25.043677741Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1285,7 +1245,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 0.18.0
-    created: "2026-02-04T14:30:43.480133167Z"
+    created: "2026-02-05T02:55:25.047509377Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1319,7 +1279,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 2.1.0
-    created: "2026-02-04T14:30:43.482295829Z"
+    created: "2026-02-05T02:55:25.049630725Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1353,7 +1313,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 4.0.8
-    created: "2026-02-04T14:30:43.48475124Z"
+    created: "2026-02-05T02:55:25.051966223Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1388,7 +1348,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 1.19.0
-    created: "2026-02-04T14:30:43.488770579Z"
+    created: "2026-02-05T02:55:25.063217966Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1436,7 +1396,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 1.6.2
-    created: "2026-02-04T14:30:43.497329415Z"
+    created: "2026-02-05T02:55:25.073015694Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1467,7 +1427,7 @@ entries:
   geoip-database:
   - apiVersion: v2
     appVersion: "2026.01"
-    created: "2026-02-04T14:30:43.49866608Z"
+    created: "2026-02-05T02:55:25.075377754Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1503,7 +1463,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 6.0.5
-    created: "2026-02-04T14:30:43.50522393Z"
+    created: "2026-02-05T02:55:25.08259222Z"
     dependencies:
     - condition: mysql.enabled
       name: mysql
@@ -1550,7 +1510,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 1.24.5
-    created: "2026-02-04T14:30:43.512379406Z"
+    created: "2026-02-05T02:55:25.089637204Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -1593,7 +1553,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 18.3.0
-    created: "2026-02-04T14:30:43.515002641Z"
+    created: "2026-02-05T02:55:25.092295747Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1629,7 +1589,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 12.1.1
-    created: "2026-02-04T14:30:43.518785682Z"
+    created: "2026-02-05T02:55:25.094799468Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1665,7 +1625,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 1.10.2
-    created: "2026-02-04T14:30:43.521128151Z"
+    created: "2026-02-05T02:55:25.097749021Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1709,7 +1669,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 0.0.23
-    created: "2026-02-04T14:30:43.52465111Z"
+    created: "2026-02-05T02:55:25.10087486Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1748,7 +1708,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 3.5.3
-    created: "2026-02-04T14:30:43.537177163Z"
+    created: "2026-02-05T02:55:25.114073798Z"
     dependencies:
     - alias: grafanaalloy
       condition: grafanaalloy.enabled
@@ -1815,7 +1775,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 2.17.0
-    created: "2026-02-04T14:30:43.552604721Z"
+    created: "2026-02-05T02:55:25.128779466Z"
     dependencies:
     - condition: minio.enabled
       name: minio
@@ -1876,7 +1836,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 5.19.4
-    created: "2026-02-04T14:30:43.55699243Z"
+    created: "2026-02-05T02:55:25.133677419Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -1916,7 +1876,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 2.8.2
-    created: "2026-02-04T14:30:43.565207545Z"
+    created: "2026-02-05T02:55:25.142351829Z"
     dependencies:
     - condition: memcached.enabled
       name: memcached
@@ -1956,7 +1916,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 3.2.4
-    created: "2026-02-04T14:30:43.567028096Z"
+    created: "2026-02-05T02:55:25.144255531Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2007,7 +1967,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 2.13.2
-    created: "2026-02-04T14:30:43.585745968Z"
+    created: "2026-02-05T02:55:25.162232177Z"
     dependencies:
     - condition: redis.enabled
       name: redis
@@ -2055,7 +2015,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 3.4.1
-    created: "2026-02-04T14:30:43.588622468Z"
+    created: "2026-02-05T02:55:25.165230421Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2092,7 +2052,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 2.9.0
-    created: "2026-02-04T14:30:43.594766322Z"
+    created: "2026-02-05T02:55:25.171422995Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2134,7 +2094,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 1.1.0
-    created: "2026-02-04T14:30:43.599408541Z"
+    created: "2026-02-05T02:55:25.17706916Z"
     dependencies:
     - condition: storageBackend.cassandra.enabled
       name: cassandra
@@ -2179,7 +2139,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 2.516.2
-    created: "2026-02-04T14:30:43.602840368Z"
+    created: "2026-02-05T02:55:25.179642912Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2223,7 +2183,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 5.3.0
-    created: "2026-02-04T14:30:43.612054976Z"
+    created: "2026-02-05T02:55:25.189068413Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -2267,7 +2227,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 4.0.0
-    created: "2026-02-04T14:30:43.617413237Z"
+    created: "2026-02-05T02:55:25.195485895Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2305,7 +2265,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 26.3.3
-    created: "2026-02-04T14:30:43.626610518Z"
+    created: "2026-02-05T02:55:25.203692523Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -2347,7 +2307,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 6.3.4
-    created: "2026-02-04T14:30:43.629822847Z"
+    created: "2026-02-05T02:55:25.206926027Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2383,7 +2343,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 4.2.0
-    created: "2026-02-04T14:30:43.632819793Z"
+    created: "2026-02-05T02:55:25.210566489Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2419,7 +2379,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 9.1.2
-    created: "2026-02-04T14:30:43.636182446Z"
+    created: "2026-02-05T02:55:25.213282937Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2458,7 +2418,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 3.9.1
-    created: "2026-02-04T14:30:43.646380124Z"
+    created: "2026-02-05T02:55:25.225046997Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -2508,7 +2468,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 1.3.0
-    created: "2026-02-04T14:30:43.650070088Z"
+    created: "2026-02-05T02:55:25.22778768Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2551,7 +2511,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 0.85.0
-    created: "2026-02-04T14:30:43.685203868Z"
+    created: "2026-02-05T02:55:25.263901629Z"
     dependencies:
     - condition: exporters.enabled,exporters.node-exporter.enabled
       name: node-exporter
@@ -2598,7 +2558,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 2.16.0
-    created: "2026-02-04T14:30:43.687180562Z"
+    created: "2026-02-05T02:55:25.266753931Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2636,7 +2596,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 1.4.2
-    created: "2026-02-04T14:30:43.694810559Z"
+    created: "2026-02-05T02:55:25.275709733Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2670,7 +2630,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 1.7.0
-    created: "2026-02-04T14:30:43.696864979Z"
+    created: "2026-02-05T02:55:25.27760008Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2710,7 +2670,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 9.1.2
-    created: "2026-02-04T14:30:43.699482503Z"
+    created: "2026-02-05T02:55:25.279653622Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2749,7 +2709,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 12.0.2
-    created: "2026-02-04T14:30:43.703687212Z"
+    created: "2026-02-05T02:55:25.283554694Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2788,7 +2748,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 12.0.2
-    created: "2026-02-04T14:30:43.706805547Z"
+    created: "2026-02-05T02:55:25.287336231Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2827,7 +2787,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 4.4.3
-    created: "2026-02-04T14:30:43.735630336Z"
+    created: "2026-02-05T02:55:25.31661554Z"
     dependencies:
     - condition: redis.enabled
       name: redis
@@ -2885,7 +2845,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 5.3.2
-    created: "2026-02-04T14:30:43.742273293Z"
+    created: "2026-02-05T02:55:25.324333492Z"
     dependencies:
     - condition: mariadb.enabled
       name: mariadb
@@ -2930,7 +2890,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 1.6.39
-    created: "2026-02-04T14:30:43.745022084Z"
+    created: "2026-02-05T02:55:25.327350119Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -2966,7 +2926,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 0.15.2
-    created: "2026-02-04T14:30:43.748720374Z"
+    created: "2026-02-05T02:55:25.33016434Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3005,7 +2965,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 0.8.0
-    created: "2026-02-04T14:30:43.751026737Z"
+    created: "2026-02-05T02:55:25.331883818Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3046,7 +3006,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 2.6.0
-    created: "2026-02-04T14:30:43.770883324Z"
+    created: "2026-02-05T02:55:25.355788251Z"
     dependencies:
     - condition: etcd.enabled
       name: etcd
@@ -3101,7 +3061,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 2025.7.23
-    created: "2026-02-04T14:30:43.774401537Z"
+    created: "2026-02-05T02:55:25.359474378Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3142,7 +3102,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 7.1.1
-    created: "2026-02-04T14:30:43.776626576Z"
+    created: "2026-02-05T02:55:25.362077014Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3181,7 +3141,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 3.3.2
-    created: "2026-02-04T14:30:43.788989491Z"
+    created: "2026-02-05T02:55:25.375845617Z"
     dependencies:
     - condition: minio.enabled
       name: minio
@@ -3236,7 +3196,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 8.0.13
-    created: "2026-02-04T14:30:43.794266388Z"
+    created: "2026-02-05T02:55:25.380892743Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3278,7 +3238,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 8.0.13
-    created: "2026-02-04T14:30:43.798698813Z"
+    created: "2026-02-05T02:55:25.38620903Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3320,7 +3280,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 5.0.2
-    created: "2026-02-04T14:30:43.805549621Z"
+    created: "2026-02-05T02:55:25.393429104Z"
     dependencies:
     - condition: mariadb.enabled
       name: mariadb
@@ -3359,7 +3319,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 4.2.3
-    created: "2026-02-04T14:30:43.806966846Z"
+    created: "2026-02-05T02:55:25.394955221Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3398,7 +3358,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 9.4.0
-    created: "2026-02-04T14:30:43.81125436Z"
+    created: "2026-02-05T02:55:25.398335318Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3432,7 +3392,7 @@ entries:
       artifacthub.io/license: Apache-2.0
     apiVersion: v2
     appVersion: 3.1.1
-    created: "2026-02-04T14:30:43.812456853Z"
+    created: "2026-02-05T02:55:25.400401941Z"
     description: 'Nacos Helm Chart - An easy-to-use dynamic service discovery, configuration  and
       service management platform for building cloud native applications. '
     digest: 694e3bf28eb1817e436d397e92389071f410a966a4c05571e65420fae8be63fc
@@ -3467,7 +3427,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 2.11.8
-    created: "2026-02-04T14:30:43.814830451Z"
+    created: "2026-02-05T02:55:25.402823469Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3505,7 +3465,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 5.26.11
-    created: "2026-02-04T14:30:43.816992582Z"
+    created: "2026-02-05T02:55:25.405526001Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3548,7 +3508,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 0.104.10
-    created: "2026-02-04T14:30:43.82453395Z"
+    created: "2026-02-05T02:55:25.413584223Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -3592,7 +3552,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 1.29.1
-    created: "2026-02-04T14:30:43.827666309Z"
+    created: "2026-02-05T02:55:25.416320568Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3631,7 +3591,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 1.13.1
-    created: "2026-02-04T14:30:43.830417955Z"
+    created: "2026-02-05T02:55:25.419126103Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3669,7 +3629,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 1.9.1
-    created: "2026-02-04T14:30:43.832985968Z"
+    created: "2026-02-05T02:55:25.421120364Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3703,7 +3663,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 7.12.0
-    created: "2026-02-04T14:30:43.840869048Z"
+    created: "2026-02-05T02:55:25.430187381Z"
     dependencies:
     - condition: redis.enabled
       name: redis
@@ -3745,7 +3705,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 18.0.20250805
-    created: "2026-02-04T14:30:43.848105239Z"
+    created: "2026-02-05T02:55:25.43674713Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -3790,7 +3750,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 3.2.0
-    created: "2026-02-04T14:30:43.854375718Z"
+    created: "2026-02-05T02:55:25.445334977Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3827,7 +3787,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 8.2.3
-    created: "2026-02-04T14:30:43.863554076Z"
+    created: "2026-02-05T02:55:25.455130812Z"
     dependencies:
     - name: mongodb
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3870,7 +3830,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 5.2.2
-    created: "2026-02-04T14:30:43.869685245Z"
+    created: "2026-02-05T02:55:25.462169062Z"
     dependencies:
     - condition: db.bundleTestDB
       name: mariadb
@@ -3911,7 +3871,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 0.40.0
-    created: "2026-02-04T14:30:43.873969551Z"
+    created: "2026-02-05T02:55:25.466616191Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3949,7 +3909,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 17.6.0
-    created: "2026-02-04T14:30:43.878091013Z"
+    created: "2026-02-05T02:55:25.471977046Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -3993,7 +3953,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 17.6.0
-    created: "2026-02-04T14:30:43.883558669Z"
+    created: "2026-02-05T02:55:25.477204439Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4038,7 +3998,7 @@ entries:
       licenses: MIT
     apiVersion: v2
     appVersion: 0.4.2
-    created: "2026-02-04T14:30:43.887575756Z"
+    created: "2026-02-05T02:55:25.481872416Z"
     dependencies:
     - name: common
       repository: file://../common
@@ -4083,7 +4043,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 5.0.2
-    created: "2026-02-04T14:30:43.890464258Z"
+    created: "2026-02-05T02:55:25.484954908Z"
     dependencies:
     - name: common
       repository: file://../common
@@ -4119,7 +4079,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 5.3.4
-    created: "2026-02-04T14:30:43.892879905Z"
+    created: "2026-02-05T02:55:25.487483365Z"
     dependencies:
     - name: common
       repository: file://../common
@@ -4165,7 +4125,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 3.5.0
-    created: "2026-02-04T14:30:43.897331878Z"
+    created: "2026-02-05T02:55:25.49197635Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4206,7 +4166,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 2.8.0
-    created: "2026-02-04T14:30:43.899165334Z"
+    created: "2026-02-05T02:55:25.493869583Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4244,7 +4204,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 4.1.3
-    created: "2026-02-04T14:30:43.902550096Z"
+    created: "2026-02-05T02:55:25.499188249Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4273,7 +4233,7 @@ entries:
   rabbitmq-operator:
   - apiVersion: v2
     appVersion: 2.19.0
-    created: "2026-02-04T14:30:43.907031153Z"
+    created: "2026-02-05T02:55:25.503946851Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4315,7 +4275,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 8.2.1
-    created: "2026-02-04T14:30:43.913214526Z"
+    created: "2026-02-05T02:55:25.509255155Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4354,7 +4314,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 8.2.1
-    created: "2026-02-04T14:30:43.917792547Z"
+    created: "2026-02-05T02:55:25.513820207Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4391,7 +4351,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 6.0.6
-    created: "2026-02-04T14:30:43.928785224Z"
+    created: "2026-02-05T02:55:25.52630985Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -4439,7 +4399,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 8.0.0
-    created: "2026-02-04T14:30:43.936787227Z"
+    created: "2026-02-05T02:55:25.533825923Z"
     dependencies:
     - condition: kafka.enabled
       name: kafka
@@ -4482,7 +4442,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 2025.2.2
-    created: "2026-02-04T14:30:43.939391316Z"
+    created: "2026-02-05T02:55:25.538242006Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4517,7 +4477,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 0.31.0
-    created: "2026-02-04T14:30:43.94226852Z"
+    created: "2026-02-05T02:55:25.540466296Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4559,7 +4519,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 3.96.0
-    created: "2026-02-04T14:30:43.959001754Z"
+    created: "2026-02-05T02:55:25.557232946Z"
     dependencies:
     - condition: mariadb.enabled
       name: mariadb
@@ -4610,7 +4570,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 9.9.0
-    created: "2026-02-04T14:30:43.964203651Z"
+    created: "2026-02-05T02:55:25.562437597Z"
     dependencies:
     - condition: zookeeper.enabled
       name: zookeeper
@@ -4653,7 +4613,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 25.8.0
-    created: "2026-02-04T14:30:43.972995202Z"
+    created: "2026-02-05T02:55:25.571118512Z"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -4693,7 +4653,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 4.0.0
-    created: "2026-02-04T14:30:43.975646219Z"
+    created: "2026-02-05T02:55:25.573869915Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4727,7 +4687,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 5.0.0
-    created: "2026-02-04T14:30:43.990172588Z"
+    created: "2026-02-05T02:55:25.589893537Z"
     dependencies:
     - condition: redis.enabled
       name: redis
@@ -4771,7 +4731,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 2.19.1
-    created: "2026-02-04T14:30:43.991832809Z"
+    created: "2026-02-05T02:55:25.591583059Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4810,7 +4770,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 0.39.2
-    created: "2026-02-04T14:30:44.004687337Z"
+    created: "2026-02-05T02:55:25.606217629Z"
     dependencies:
     - condition: minio.enabled
       name: minio
@@ -4854,7 +4814,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 11.0.10
-    created: "2026-02-04T14:30:44.006920331Z"
+    created: "2026-02-05T02:55:25.609439343Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4891,7 +4851,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 10.0.0
-    created: "2026-02-04T14:30:44.010750286Z"
+    created: "2026-02-05T02:55:25.612684007Z"
     dependencies:
     - name: common
       repository: file://../common
@@ -4940,7 +4900,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 8.1.3
-    created: "2026-02-04T14:30:44.015441816Z"
+    created: "2026-02-05T02:55:25.618324781Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -4979,7 +4939,7 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 8.1.3
-    created: "2026-02-04T14:30:44.019675402Z"
+    created: "2026-02-05T02:55:25.621840861Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -5021,7 +4981,7 @@ entries:
           image: docker.io/rclone/rclone:latest
     apiVersion: v2
     appVersion: 1.21.2
-    created: "2026-02-05T02:41:28.974994167Z"
+    created: "2026-02-05T02:55:25.627102296Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -5050,135 +5010,6 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/vault-0.0.9/vault-0.0.9.tgz
     version: 0.0.9
-  - annotations:
-      images: |
-        - name: os-shell
-          image: docker.io/bitnami/os-shell:12-debian-12-r50
-        - name: vault
-          image: docker.io/hashicorp/vault:1.19.0
-        - name: vault-csi-provider
-          image: docker.io/hashicorp/vault-csi-provider:1.4.1
-        - name: vault-k8s
-          image: docker.io/hashicorp/vault-k8s:1.4.1
-        - name: rclone
-          image: docker.io/rclone/rclone:latest
-    apiVersion: v2
-    appVersion: 1.19.0
-    created: "2026-02-04T14:50:17.913873808Z"
-    dependencies:
-    - name: common
-      repository: oci://registry-1.docker.io/bitnamicharts
-      tags:
-      - bitnami-common
-      version: 2.x.x
-    description: 'HashiCorp Vault with S3 backup/restore support. Based on Bitnami
-      chart with official HashiCorp images. '
-    digest: c0eca1d2158768dbf24552a34862bb96c7f641f1d985807fcc893a3757370a6f
-    home: https://www.vaultproject.io
-    icon: https://www.vaultproject.io/img/logo-hashicorp.svg
-    keywords:
-    - security
-    - secrets
-    - injection
-    - vault
-    - backup
-    - disaster-recovery
-    maintainers:
-    - name: Custom Fork (based on Bitnami)
-      url: https://github.com/bitnami/charts
-    name: vault
-    sources:
-    - https://github.com/hashicorp/vault
-    - https://github.com/bitnami/charts/tree/main/bitnami/vault
-    urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/vault-0.0.8/vault-0.0.8.tgz
-    version: 0.0.8
-  - annotations:
-      images: |
-        - name: os-shell
-          image: docker.io/bitnami/os-shell:12-debian-12-r50
-        - name: vault
-          image: docker.io/hashicorp/vault:1.19.0
-        - name: vault-csi-provider
-          image: docker.io/hashicorp/vault-csi-provider:1.4.1
-        - name: vault-k8s
-          image: docker.io/hashicorp/vault-k8s:1.4.1
-        - name: rclone
-          image: docker.io/rclone/rclone:latest
-    apiVersion: v2
-    appVersion: 1.19.0
-    created: "2026-02-04T14:37:48.643136677Z"
-    dependencies:
-    - name: common
-      repository: oci://registry-1.docker.io/bitnamicharts
-      tags:
-      - bitnami-common
-      version: 2.x.x
-    description: 'HashiCorp Vault with S3 backup/restore support. Based on Bitnami
-      chart with official HashiCorp images. '
-    digest: 648cd6d4045b33b6c74473bc02a6a66c75d2d6fbe8c06c451063552da714f9b5
-    home: https://www.vaultproject.io
-    icon: https://www.vaultproject.io/img/logo-hashicorp.svg
-    keywords:
-    - security
-    - secrets
-    - injection
-    - vault
-    - backup
-    - disaster-recovery
-    maintainers:
-    - name: Custom Fork (based on Bitnami)
-      url: https://github.com/bitnami/charts
-    name: vault
-    sources:
-    - https://github.com/hashicorp/vault
-    - https://github.com/bitnami/charts/tree/main/bitnami/vault
-    urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/vault-0.0.7/vault-0.0.7.tgz
-    version: 0.0.7
-  - annotations:
-      images: |
-        - name: os-shell
-          image: docker.io/bitnami/os-shell:12-debian-12-r50
-        - name: vault
-          image: docker.io/hashicorp/vault:1.19.0
-        - name: vault-csi-provider
-          image: docker.io/hashicorp/vault-csi-provider:1.4.1
-        - name: vault-k8s
-          image: docker.io/hashicorp/vault-k8s:1.4.1
-        - name: rclone
-          image: docker.io/rclone/rclone:latest
-    apiVersion: v2
-    appVersion: 1.19.0
-    created: "2026-02-04T14:30:44.024427554Z"
-    dependencies:
-    - name: common
-      repository: oci://registry-1.docker.io/bitnamicharts
-      tags:
-      - bitnami-common
-      version: 2.x.x
-    description: 'HashiCorp Vault with S3 backup/restore support. Based on Bitnami
-      chart with official HashiCorp images. '
-    digest: 22e7644f85d9a070e7b562a0ef002d27189bbfbd3952bedd62293ed3003aea77
-    home: https://www.vaultproject.io
-    icon: https://www.vaultproject.io/img/logo-hashicorp.svg
-    keywords:
-    - security
-    - secrets
-    - injection
-    - vault
-    - backup
-    - disaster-recovery
-    maintainers:
-    - name: Custom Fork (based on Bitnami)
-      url: https://github.com/bitnami/charts
-    name: vault
-    sources:
-    - https://github.com/hashicorp/vault
-    - https://github.com/bitnami/charts/tree/main/bitnami/vault
-    urls:
-    - https://github.com/fivetime/bitnami-helm-charts/releases/download/vault-0.0.6/vault-0.0.6.tgz
-    version: 0.0.6
   victoriametrics:
   - annotations:
       images: |
@@ -5199,7 +5030,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 1.124.0
-    created: "2026-02-04T14:30:44.031488908Z"
+    created: "2026-02-05T02:55:25.633999505Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -5232,7 +5063,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 0.9.2
-    created: "2026-02-04T14:30:44.032990081Z"
+    created: "2026-02-05T02:55:25.63572249Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -5269,7 +5100,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 37.0.0
-    created: "2026-02-04T14:30:44.034977495Z"
+    created: "2026-02-05T02:55:25.637760212Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -5310,7 +5141,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 6.8.2
-    created: "2026-02-04T14:30:44.044610773Z"
+    created: "2026-02-05T02:55:25.648331758Z"
     dependencies:
     - condition: memcached.enabled
       name: memcached
@@ -5359,7 +5190,7 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 3.5.1
-    created: "2026-02-04T14:30:44.050065714Z"
+    created: "2026-02-05T02:55:25.653237792Z"
     dependencies:
     - condition: cassandra.enabled
       name: cassandra
@@ -5401,7 +5232,7 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 3.9.3
-    created: "2026-02-04T14:30:44.052577831Z"
+    created: "2026-02-05T02:55:25.65716114Z"
     dependencies:
     - name: common
       repository: oci://registry-1.docker.io/bitnamicharts
@@ -5424,4 +5255,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-02-05T02:41:28.975031296Z"
+generated: "2026-02-05T02:55:24.792514425Z"

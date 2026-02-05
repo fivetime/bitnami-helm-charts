@@ -5020,6 +5020,49 @@ entries:
         - name: rclone
           image: docker.io/rclone/rclone:latest
     apiVersion: v2
+    appVersion: 1.21.2
+    created: "2026-02-05T02:41:28.974994167Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: 'HashiCorp Vault with S3 backup/restore support. Based on Bitnami
+      chart with official HashiCorp images. '
+    digest: 71d922d649cd3dbfb3b7b213afa552b0ca5329358954a75310bfbeb414ef8177
+    home: https://www.vaultproject.io
+    icon: https://www.vaultproject.io/img/logo-hashicorp.svg
+    keywords:
+    - security
+    - secrets
+    - injection
+    - vault
+    - backup
+    - disaster-recovery
+    maintainers:
+    - name: Custom Fork (based on Bitnami)
+      url: https://github.com/bitnami/charts
+    name: vault
+    sources:
+    - https://github.com/hashicorp/vault
+    - https://github.com/bitnami/charts/tree/main/bitnami/vault
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/vault-0.0.9/vault-0.0.9.tgz
+    version: 0.0.9
+  - annotations:
+      images: |
+        - name: os-shell
+          image: docker.io/bitnami/os-shell:12-debian-12-r50
+        - name: vault
+          image: docker.io/hashicorp/vault:1.19.0
+        - name: vault-csi-provider
+          image: docker.io/hashicorp/vault-csi-provider:1.4.1
+        - name: vault-k8s
+          image: docker.io/hashicorp/vault-k8s:1.4.1
+        - name: rclone
+          image: docker.io/rclone/rclone:latest
+    apiVersion: v2
     appVersion: 1.19.0
     created: "2026-02-04T14:50:17.913873808Z"
     dependencies:
@@ -5381,4 +5424,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-02-04T14:50:17.913895308Z"
+generated: "2026-02-05T02:41:28.975031296Z"

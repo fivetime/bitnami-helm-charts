@@ -1,8 +1,21 @@
 # Changelog
 
-## 17.0.1 (2025-10-14)
+## 17.1.0 (2026-02-25)
 
-* [bitnami/postgresql] collect metrics as postgres user ([#36349](https://github.com/bitnami/charts/pull/36349))
+* [bitnami/postgresql]: configurable data source credentials for postgresql exporter ([#36465](https://github.com/bitnami/charts/pull/36465))
+
+## <small>17.0.2 (2026-02-09)</small>
+
+* [bitnami/*][TNZ-62332] Modify charts' READMEs title (#36372) ([2012e46](https://github.com/bitnami/charts/commit/2012e46699f555bb1e10134691031975bb5ca50b)), closes [#36372](https://github.com/bitnami/charts/issues/36372)
+* [bitnami/postgresql] Add primary.service.enabled parameter to allow disabling regular service (#3643 ([b631836](https://github.com/bitnami/charts/commit/b6318363965aab7da16643c5418e29bd509bb5f1)), closes [#36431](https://github.com/bitnami/charts/issues/36431)
+* Change wording in Chart's READMEs (#36379) ([a4ef0a6](https://github.com/bitnami/charts/commit/a4ef0a63877fcf32895869ceef0916c15a4718e5)), closes [#36379](https://github.com/bitnami/charts/issues/36379)
+* Remove TAC sentence present in some READMEs (#36381) ([e07d331](https://github.com/bitnami/charts/commit/e07d3319b61f49ddf6f431da3ed7ec0e0be3d5d0)), closes [#36381](https://github.com/bitnami/charts/issues/36381)
+
+## <small>17.0.1 (2025-10-14)</small>
+
+* [bitnami/*] Remove annotations.category (#36224) ([2abc0f9](https://github.com/bitnami/charts/commit/2abc0f9d7e89a5453e57f029c66f581b3d5855ef)), closes [#36224](https://github.com/bitnami/charts/issues/36224)
+* [bitnami/postgresql] collect metrics as postgres user (#36349) ([0a10190](https://github.com/bitnami/charts/commit/0a101909ce511465df195263fda978dfae973ebc)), closes [#36349](https://github.com/bitnami/charts/issues/36349)
+* Update kubectl command for creating secrets (#36328) ([b6abcbe](https://github.com/bitnami/charts/commit/b6abcbe116e03c2d2849042eae88952cde2d9df5)), closes [#36328](https://github.com/bitnami/charts/issues/36328)
 
 ## <small>16.7.27 (2025-08-26)</small>
 
@@ -2213,7 +2226,7 @@ Co-authored-by: Carlos Rodríguez Hernández <carlosrh@vmware.com>
 
 ## <small>9.7.1 (2020-09-23)</small>
 
-* [bitnami/chart] postgre #3722: In exsistingSecret: Switched password keys (#3744) ([1517668](https://github.com/bitnami/charts/commit/15176687345d93632a1e16753b0cd2fb52c35868)), closes [#3722](https://github.com/bitnami/charts/issues/3722) [#3744](https://github.com/bitnami/charts/issues/3744)
+* [bitnami/chart] postgre #3722: In exsistingSecret: Switched password keys (#3744) ([1517668](https://github.com/bitnami/charts/commit/15176687345d93632a1e16753b0cd2fb52c35868)), closes [#3744](https://github.com/bitnami/charts/issues/3744)
 
 ## 9.7.0 (2020-09-21)
 

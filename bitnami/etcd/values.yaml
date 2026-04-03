@@ -89,8 +89,8 @@ diagnosticMode:
 ##
 image:
   registry: docker.io
-  repository: bitnami/etcd
-  tag: 3.6.4-debian-12-r3
+  repository: bitnamilegacy/etcd
+  tag: latest
   digest: ""
   ## @param image.pullPolicy etcd image pull policy
   ## Specify a imagePullPolicy
@@ -673,8 +673,8 @@ volumePermissions:
   ##
   image:
     registry: docker.io
-    repository: bitnami/os-shell
-    tag: 12-debian-12-r50
+    repository: bitnamilegacy/os-shell
+    tag: latest
     digest: ""
     ## @param volumePermissions.image.pullPolicy Init container volume-permissions image pull policy
     ##

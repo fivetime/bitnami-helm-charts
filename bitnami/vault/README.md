@@ -13,6 +13,7 @@
 - **S3 自动备份**：通过 CronJob 定时创建 Raft 快照并上传至 S3 兼容存储（AWS S3、Ceph RGW、MinIO 等）
 - **自动恢复**：Pod 启动时检测空数据目录，自动从 S3 下载最新快照恢复
 - **集群路径隔离**：多集群共用同一 S3 bucket 时，通过 `clusterName` 隔离备份路径
+- **Listener TLS 支持**：通过 `server.tls.enabled` 一键启用 Vault API 端口（8200）的 TLS 加密，自动切换所有组件（Server、Injector、Backup CronJob）的协议和证书挂载
 - **hashicorp/vault 镜像兼容**：正确处理 `docker-entrypoint.sh`，避免 seal 配置重复加载和端口冲突
 
 ## 架构说明
@@ -218,6 +219,51 @@ helm install vault my-repo/vault -n kube-infra \
 
 > **提示**：恢复成功后，后续升级不带 `--set restore.*` 参数即可，避免重复恢复。
 
+### 5. 启用 Listener TLS
+
+使用 Cert-Manager 签发证书后，只需在 values.yaml 中启用 TLS：
+
+```yaml
+server:
+  tls:
+    enabled: true
+    secretName: "vault-server-tls"    # 包含 tls.crt、tls.key、ca.crt 的 Secret
+```
+
+启用后 Chart 自动完成以下变更：
+
+- `VAULT_ADDR` 从 `http://` 切换到 `https://`
+- `VAULT_API_ADDR` 从 `http://` 切换到 `https://`
+- 注入 `VAULT_CACERT=/vault/tls/ca.crt` 环境变量
+- 挂载 TLS Secret 到 `/vault/tls`
+- Injector 的 `AGENT_INJECT_VAULT_ADDR` 切换到 `https://`
+- Backup CronJob 的 `VAULT_ADDR` 和 `VAULT_CACERT` 同步更新
+
+使用内置 `server.config` 时，listener 配置会自动切换为 TLS 模式。使用 `existingConfigMap` 时，需要在 ConfigMap 中手动配置 listener TLS：
+
+```hcl
+listener "tcp" {
+  address            = "[::]:8200"
+  cluster_address    = "[::]:8201"
+  tls_cert_file      = "/vault/tls/tls.crt"
+  tls_key_file       = "/vault/tls/tls.key"
+  tls_client_ca_file = "/vault/tls/ca.crt"
+}
+```
+
+同时 Raft `retry_join` 也需要改为 HTTPS 并指定 CA 证书：
+
+```hcl
+retry_join {
+  leader_api_addr         = "https://vault-server-0.vault-server-headless:8200"
+  leader_ca_cert_file     = "/vault/tls/ca.crt"
+  leader_client_cert_file = "/vault/tls/tls.crt"
+  leader_client_key_file  = "/vault/tls/tls.key"
+}
+```
+
+> **证书要求**：TLS Secret 必须包含 `tls.crt`、`tls.key` 和 `ca.crt`，SAN 需覆盖所有 Pod FQDN（如 `vault-server-{0,1,2}.vault-server-headless.<namespace>.svc.cluster.local`）。推荐使用 Cert-Manager 签发。
+
 ## 备份参数
 
 | 参数 | 说明 | 默认值 |
@@ -282,6 +328,8 @@ vault-backup/
 
 设置 `server.ingress.enabled=true` 启用 Ingress。通过 `server.ingress.hostname` 设置域名，`server.ingress.tls` 启用 TLS。
 
+启用 `server.tls.enabled=true` 后，Vault 后端变为 HTTPS，需要在 Ingress annotations 中声明后端协议。例如 Cilium Ingress 需要添加 `ingress.cilium.io/service-backend-protocol: https`，Nginx Ingress 需要添加 `nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"`。
+
 ### 自定义配置
 
 两种方式提供 Vault 配置：
@@ -335,6 +383,8 @@ vault-backup/
 | `server.podManagementPolicy`                               | Pod management policy                                                                                                                                                                                                           | `Parallel`              |
 | `server.containerPorts.http`                               | Vault Server http container port                                                                                                                                                                                                | `8200`                  |
 | `server.containerPorts.internal`                           | Vault Server internal (HTTPS) container port                                                                                                                                                                                    | `8201`                  |
+| `server.tls.enabled`                                       | Enable TLS for the Vault listener (port 8200). Switches VAULT_ADDR/VAULT_API_ADDR to HTTPS, injects VAULT_CACERT, and mounts the TLS secret                                                                                   | `false`                 |
+| `server.tls.secretName`                                    | Name of the Kubernetes Secret containing `tls.crt`, `tls.key`, and `ca.crt`                                                                                                                                                    | `"vault-server-tls"`    |
 | `server.livenessProbe.enabled`                             | Enable livenessProbe on Vault Server containers                                                                                                                                                                                 | `false`                 |
 | `server.livenessProbe.initialDelaySeconds`                 | Initial delay seconds for livenessProbe                                                                                                                                                                                         | `5`                     |
 | `server.livenessProbe.periodSeconds`                       | Period seconds for livenessProbe                                                                                                                                                                                                | `10`                    |

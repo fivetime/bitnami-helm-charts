@@ -50,8 +50,11 @@ spec:
                   echo "Time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
                   echo "Cluster: {{ .Values.backup.clusterName | default (include "common.names.fullname" .) }}"
                   
-                  VAULT_ADDR="http://{{ include "vault.server.fullname" . }}-active:{{ .Values.server.service.general.ports.http }}"
+                  VAULT_ADDR="{{ ternary "https" "http" .Values.server.tls.enabled }}://{{ include "vault.server.fullname" . }}-active:{{ .Values.server.service.general.ports.http }}"
                   export VAULT_ADDR
+                  {{- if .Values.server.tls.enabled }}
+                  export VAULT_CACERT="/vault/tls/ca.crt"
+                  {{- end }}
                   
                   # Wait for Vault to be ready
                   echo "Waiting for Vault to be ready..."
@@ -105,6 +108,11 @@ spec:
                 {{- if .Values.backup.vaultTokenSecretName }}
                 - name: vault-token
                   mountPath: /vault/token
+                  readOnly: true
+                {{- end }}
+                {{- if .Values.server.tls.enabled }}
+                - name: vault-tls
+                  mountPath: /vault/tls
                   readOnly: true
                 {{- end }}
               resources:
@@ -223,5 +231,10 @@ spec:
             - name: vault-token
               secret:
                 secretName: {{ .Values.backup.vaultTokenSecretName }}
+            {{- end }}
+            {{- if .Values.server.tls.enabled }}
+            - name: vault-tls
+              secret:
+                secretName: {{ .Values.server.tls.secretName }}
             {{- end }}
 {{- end }}

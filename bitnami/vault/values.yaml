@@ -95,7 +95,7 @@ server:
   image:
     registry: docker.io
     repository: hashicorp/vault
-    tag: 1.21.2
+    tag: 1.21.4
     digest: ""
     ## Specify a imagePullPolicy
     ## ref: http://kubernetes.io/docs/concepts/containers/images/#pre-pulled-images
@@ -125,6 +125,14 @@ server:
   containerPorts:
     http: 8200
     internal: 8201
+  ## TLS configuration for Vault Server listener
+  ## When enabled, Vault will listen on HTTPS instead of HTTP
+  ## @param server.tls.enabled Enable TLS for the Vault listener (port 8200)
+  ## @param server.tls.secretName Name of the Kubernetes Secret containing TLS cert/key/ca
+  ##
+  tls:
+    enabled: false
+    secretName: "vault-server-tls"
   ## Configure extra options for Vault Server containers' liveness and readiness probes
   ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
   ## @param server.livenessProbe.enabled Enable livenessProbe on Vault Server containers
@@ -260,7 +268,13 @@ server:
     disable_mlock = true
     ui = true
     listener "tcp" {
+      {{- if .Values.server.tls.enabled }}
+      tls_cert_file = "/vault/tls/tls.crt"
+      tls_key_file  = "/vault/tls/tls.key"
+      tls_client_ca_file = "/vault/tls/ca.crt"
+      {{- else }}
       tls_disable = 1
+      {{- end }}
       address = "[::]:{{ .Values.server.containerPorts.http }}"
       cluster_address = "[::]:{{ .Values.server.containerPorts.internal }}"
       {{- if .Values.server.metrics.enabled }}
@@ -922,7 +936,7 @@ csiProvider:
   image:
     registry: docker.io
     repository: hashicorp/vault-csi-provider
-    tag: 1.7.0
+    tag: 1.7.1
     digest: ""
     ## Specify a imagePullPolicy
     ## ref: http://kubernetes.io/docs/concepts/containers/images/#pre-pulled-images
@@ -1426,7 +1440,7 @@ injector:
   image:
     registry: docker.io
     repository: hashicorp/vault-k8s
-    tag: 1.7.2
+    tag: 1.7.3
     digest: ""
     ## Specify a imagePullPolicy
     ## ref: http://kubernetes.io/docs/concepts/containers/images/#pre-pulled-images

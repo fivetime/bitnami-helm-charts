@@ -280,9 +280,13 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
             - name: VAULT_ADDR
-              value: {{ printf "http://127.0.0.1:%v" .Values.server.containerPorts.http | quote }}
+              value: {{ printf "%s://127.0.0.1:%v" (ternary "https" "http" .Values.server.tls.enabled) .Values.server.containerPorts.http | quote }}
             - name: VAULT_API_ADDR
-              value: {{ printf "http://$(POD_IP):%v" .Values.server.containerPorts.http | quote }}
+              value: {{ printf "%s://$(POD_IP):%v" (ternary "https" "http" .Values.server.tls.enabled) .Values.server.containerPorts.http | quote }}
+            {{- if .Values.server.tls.enabled }}
+            - name: VAULT_CACERT
+              value: "/vault/tls/ca.crt"
+            {{- end }}
             - name: HOSTNAME
               valueFrom:
                 fieldRef:
@@ -377,6 +381,11 @@ spec:
               mountPath: /vault/config
             - name: home
               mountPath: /vault/home
+            {{- if .Values.server.tls.enabled }}
+            - name: vault-tls
+              mountPath: /vault/tls
+              readOnly: true
+            {{- end }}
             {{- if and .Values.restore.enabled .Values.backup.enabled }}
             - name: restore
               mountPath: /vault/restore
@@ -393,6 +402,11 @@ spec:
             name: {{ include "vault.server.configmapName" . }}
         - name: home
           emptyDir: {}
+        {{- if .Values.server.tls.enabled }}
+        - name: vault-tls
+          secret:
+            secretName: {{ .Values.server.tls.secretName }}
+        {{- end }}
         {{- if and .Values.restore.enabled .Values.backup.enabled }}
         - name: restore
           emptyDir: {}

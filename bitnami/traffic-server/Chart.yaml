@@ -7,7 +7,7 @@ annotations:
       image: docker.io/trafficserver/trafficserver:latest
   licenses: Apache-2.0
 apiVersion: v2
-appVersion: 10.0.0
+appVersion: 10.1.2
 dependencies:
 - name: common
   repository: file://../common
@@ -35,4 +35,4 @@ name: trafficserver
 sources:
 - https://github.com/apache/trafficserver
 - https://trafficserver.apache.org/docs/
-version: 1.0.0
+version: 1.0.1

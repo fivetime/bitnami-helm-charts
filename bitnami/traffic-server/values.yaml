@@ -168,9 +168,6 @@ clusterMode:
   policy: consistent_hash
   hashKey: cache_key
   hashUrl: cache
-## @param clusterDomain K8s cluster DNS domain (used for in-cluster peer FQDN)
-##
-clusterDomain: cluster.local
 ## @param podLabels Additional labels for Apache Traffic Server pods
 ## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 ##

@@ -1,10 +1,10 @@
 {{- /*
-Copyright Broadcom, Inc. All Rights Reserved.
+Apache Traffic Server cluster mode (StatefulSet)
 SPDX-License-Identifier: APACHE-2.0
 */}}
 
-apiVersion: {{ include "common.capabilities.deployment.apiVersion" . }}
-kind: Deployment
+apiVersion: apps/v1
+kind: StatefulSet
 metadata:
   name: {{ include "common.names.fullname" . }}
   namespace: {{ include "common.names.namespace" . | quote }}
@@ -13,12 +13,12 @@ metadata:
   annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not .Values.autoscaling.hpa.enabled }}
+  serviceName: {{ include "common.names.fullname" . }}-headless
   replicas: {{ .Values.replicaCount }}
-  {{- end }}
+  podManagementPolicy: {{ .Values.podManagementPolicy | default "Parallel" }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   {{- if .Values.updateStrategy }}
-  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  updateStrategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
   {{- end }}
   {{- $podLabels := include "common.tplvalues.merge" ( dict "values" ( list .Values.podLabels .Values.commonLabels ) "context" . ) }}
   selector:
@@ -51,7 +51,7 @@ spec:
         {{- if or .Values.parentConfig .Values.existingParentConfigmap }}
         checksum/parent-config: {{ include (print $.Template.BasePath "/parent-configmap.yaml") . | sha256sum }}
         {{- end }}
-        {{- if or .Values.strategiesConfig .Values.existingStrategiesConfigmap }}
+        {{- if or .Values.strategiesConfig .Values.clusterMode.enabled .Values.existingStrategiesConfigmap }}
         checksum/strategies-config: {{ include (print $.Template.BasePath "/strategies-configmap.yaml") . | sha256sum }}
         {{- end }}
         {{- if or .Values.sslMulticertConfig .Values.existingSslMulticertConfigmap }}
@@ -151,6 +151,20 @@ spec:
           env:
             - name: BITNAMI_DEBUG
               value: {{ ternary "true" "false" .Values.image.debug | quote }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            {{- if .Values.clusterMode.enabled }}
+            - name: HEADLESS_SERVICE_NAME
+              value: {{ printf "%s-headless" (include "common.names.fullname" .) | quote }}
+            - name: CLUSTER_DOMAIN
+              value: {{ .Values.clusterDomain | default "cluster.local" | quote }}
+            {{- end }}
             {{- if .Values.extraEnvVars }}
             {{- include "common.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
             {{- end }}
@@ -251,10 +265,16 @@ spec:
               mountPath: /opt/etc/trafficserver/parent.config
               subPath: parent.config
             {{- end }}
-            {{- if or .Values.strategiesConfig .Values.existingStrategiesConfigmap }}
+            {{- if or .Values.strategiesConfig .Values.clusterMode.enabled .Values.existingStrategiesConfigmap }}
+            {{- if .Values.clusterMode.enabled }}
+            - name: strategies-config
+              mountPath: /opt/etc/trafficserver/strategies.yaml.tpl
+              subPath: strategies.yaml
+            {{- else }}
             - name: strategies-config
               mountPath: /opt/etc/trafficserver/strategies.yaml
               subPath: strategies.yaml
+            {{- end }}
             {{- end }}
             {{- if or .Values.sslMulticertConfig .Values.existingSslMulticertConfigmap }}
             - name: ssl-multicert-config
@@ -300,13 +320,6 @@ spec:
         {{- include "common.tplvalues.render" ( dict "value" .Values.sidecars "context" $) | nindent 8 }}
         {{- end }}
       volumes:
-        - name: cache
-          {{- if .Values.persistence.enabled }}
-          persistentVolumeClaim:
-            claimName: {{ .Values.persistence.existingClaim | default (include "common.names.fullname" .) }}
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
         - name: logs
           {{- if and .Values.logsPersistence .Values.logsPersistence.enabled }}
           persistentVolumeClaim:
@@ -351,7 +364,7 @@ spec:
           configMap:
             name: {{ include "trafficserver.parentConfigmapName" . }}
         {{- end }}
-        {{- if or .Values.strategiesConfig .Values.existingStrategiesConfigmap }}
+        {{- if or .Values.strategiesConfig .Values.clusterMode.enabled .Values.existingStrategiesConfigmap }}
         - name: strategies-config
           configMap:
             name: {{ include "trafficserver.strategiesConfigmapName" . }}
@@ -398,3 +411,22 @@ spec:
         {{- if .Values.extraVolumes }}
         {{- include "common.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $) | nindent 8 }}
         {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: cache
+        {{- if or .Values.persistence.annotations .Values.commonAnnotations }}
+        {{- $annotations := include "common.tplvalues.merge" ( dict "values" ( list .Values.persistence.annotations .Values.commonAnnotations ) "context" . ) }}
+        annotations: {{- include "common.tplvalues.render" ( dict "value" $annotations "context" $) | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- range .Values.persistence.accessModes }}
+          - {{ . | quote }}
+          {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size | quote }}
+        {{- if .Values.persistence.selector }}
+        selector: {{- include "common.tplvalues.render" (dict "value" .Values.persistence.selector "context" $) | nindent 10 }}
+        {{- end }}
+        {{- include "common.storage.class" (dict "persistence" .Values.persistence "global" .Values.global) | nindent 8 }}

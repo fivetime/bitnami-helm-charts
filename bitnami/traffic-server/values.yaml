@@ -141,15 +141,36 @@ replicaCount: 1
 ## @param revisionHistoryLimit The number of old history to retain to allow rollback
 ##
 revisionHistoryLimit: 10
-## @param updateStrategy.type Apache Traffic Server deployment strategy type
-## @param updateStrategy.rollingUpdate Apache Traffic Server deployment rolling update configuration parameters
-## ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
+## @param podManagementPolicy StatefulSet pod management policy (Parallel|OrderedReady)
+## Parallel is recommended for cache cluster — all pods start at once
+##
+podManagementPolicy: Parallel
+## @param updateStrategy.type StatefulSet update strategy type (RollingUpdate|OnDelete)
+## @param updateStrategy.rollingUpdate Rolling update configuration parameters
+## ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#update-strategies
+## Note: maxSurge is not supported for StatefulSet — only maxUnavailable / partition
 ##
 updateStrategy:
   type: RollingUpdate
   rollingUpdate:
-    maxSurge: 1
-    maxUnavailable: 0
+    partition: 0
+## ---- Cluster mode (consistent-hash sharding via strategies.yaml) ----
+## Enable for true HA: multiple pods each holding 1/N of cache keys.
+## A pod failure causes 1/N cold misses, not full cache loss.
+## Each pod gets its own PVC via volumeClaimTemplates (per-pod cache).
+## @param clusterMode.enabled Enable consistent-hash sharded cluster mode
+## @param clusterMode.policy Strategy policy (consistent_hash|round_robin)
+## @param clusterMode.hashKey What to hash (cache_key|url|path|path+query|hostname)
+## @param clusterMode.hashUrl Which URL to hash (request|cache|parent)
+##
+clusterMode:
+  enabled: false
+  policy: consistent_hash
+  hashKey: cache_key
+  hashUrl: cache
+## @param clusterDomain K8s cluster DNS domain (used for in-cluster peer FQDN)
+##
+clusterDomain: cluster.local
 ## @param podLabels Additional labels for Apache Traffic Server pods
 ## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 ##
@@ -397,78 +418,6 @@ customLivenessProbe: {}
 ## @param customReadinessProbe Override default readiness probe
 ##
 customReadinessProbe: {}
-
-## Autoscaling parameters
-## @param autoscaling.enabled Enable autoscaling for Apache Traffic Server deployment
-## @param autoscaling.minReplicas Minimum number of replicas to scale back
-## @param autoscaling.maxReplicas Maximum number of replicas to scale out
-## @param autoscaling.targetCPU Target CPU utilization percentage
-## @param autoscaling.targetMemory Target Memory utilization percentage
-##
-autoscaling:
-  ## Vertical Pod Autoscaler configuration
-  ## ref: https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler
-  ##
-  vpa:
-    ## @param autoscaling.vpa.enabled Enable VPA for Apache Traffic Server
-    ##
-    enabled: false
-    ## @param autoscaling.vpa.annotations Annotations for VPA resource
-    ##
-    annotations: {}
-    ## @param autoscaling.vpa.controlledResources VPA controlled resources (cpu, memory)
-    ## 注意：如果启用 VPA 但不配置 controlledResources，VPA 将不会生效
-    ## e.g:
-    ## controlledResources:
-    ##   - cpu
-    ##   - memory
-    ##
-    controlledResources:
-      - cpu
-      - memory
-    ## @param autoscaling.vpa.maxAllowed VPA max resources limits
-    ## e.g:
-    ## maxAllowed:
-    ##   cpu: 4
-    ##   memory: 8Gi
-    ##
-    maxAllowed: {}
-    ## @param autoscaling.vpa.minAllowed VPA min resources limits
-    ## e.g:
-    ## minAllowed:
-    ##   cpu: 100m
-    ##   memory: 128Mi
-    ##
-    minAllowed: {}
-    ## @param autoscaling.vpa.controlledValues VPA controlled values (RequestsAndLimits, RequestsOnly)
-    ## controlledValues: RequestsAndLimits
-    ##
-    controlledValues: ""
-    ## @param autoscaling.vpa.updatePolicy.updateMode Autoscaling update policy (Off, Initial, Recreate, Auto)
-    ## Specifies whether recommended updates are applied when a Pod is started and whether recommended updates
-    ## are applied during the life of a Pod. Possible values are "Off", "Initial", "Recreate", and "Auto".
-    ##
-    updatePolicy:
-      updateMode: Auto
-  ## Horizontal Pod Autoscaler configuration
-  ## ref: https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
-  ##
-  hpa:
-    ## @param autoscaling.hpa.enabled Enable HPA for Apache Traffic Server pods
-    ##
-    enabled: false
-    ## @param autoscaling.hpa.minReplicas Minimum number of Apache Traffic Server replicas
-    ##
-    minReplicas: 3
-    ## @param autoscaling.hpa.maxReplicas Maximum number of Apache Traffic Server replicas
-    ##
-    maxReplicas: 10
-    ## @param autoscaling.hpa.targetCPU Target CPU utilization percentage
-    ##
-    targetCPU: 70
-    ## @param autoscaling.hpa.targetMemory Target Memory utilization percentage
-    ##
-    targetMemory: 80
 
 ## @param extraVolumes Array to add extra volumes
 ##
@@ -1118,6 +1067,13 @@ startupScript: |
     fi
   done
 
+  # Render strategies.yaml.tpl with per-pod SELF_HOST when cluster mode enabled
+  if [ -f /opt/etc/trafficserver/strategies.yaml.tpl ]; then
+    SELF_HOST="${POD_NAME}.${HEADLESS_SERVICE_NAME}.${POD_NAMESPACE}.svc.${CLUSTER_DOMAIN:-cluster.local}"
+    echo "Rendering strategies.yaml with SELF_HOST=${SELF_HOST}"
+    sed "s|__SELF_HOST__|${SELF_HOST}|g" /opt/etc/trafficserver/strategies.yaml.tpl > /tmp/strategies-rendered.yaml
+  fi
+
   echo ""
   echo "Starting traffic_server..."
   exec /opt/bin/traffic_server
@@ -1160,6 +1116,13 @@ startupScriptWithLogForwarding: |
       exit 1
     fi
   done
+
+  # Render strategies.yaml.tpl with per-pod SELF_HOST when cluster mode enabled
+  if [ -f /opt/etc/trafficserver/strategies.yaml.tpl ]; then
+    SELF_HOST="${POD_NAME}.${HEADLESS_SERVICE_NAME}.${POD_NAMESPACE}.svc.${CLUSTER_DOMAIN:-cluster.local}"
+    echo "Rendering strategies.yaml with SELF_HOST=${SELF_HOST}"
+    sed "s|__SELF_HOST__|${SELF_HOST}|g" /opt/etc/trafficserver/strategies.yaml.tpl > /tmp/strategies-rendered.yaml
+  fi
 
   # Start traffic_server in background
   echo ""
@@ -1400,22 +1363,27 @@ ingress:
 ## Persistence Parameters
 ## ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
 ##
+## Note: this chart uses StatefulSet volumeClaimTemplates — each pod gets its
+## own dedicated PVC. ReadWriteOnce on RBD/block storage is the right choice
+## for ATS (CephFS does NOT support O_DIRECT well, hurts cache performance).
+##
 persistence:
   ## @param persistence.enabled Enable Apache Traffic Server data persistence using PVC
   ##
   enabled: true
   ## @param persistence.storageClass PVC Storage Class for Apache Traffic Server data volume
-  ## If defined, storageClassName: <storageClass>
-  ## If set to "-", storageClassName: "", which disables dynamic provisioning
-  ## If undefined (the default) or set to null, no storageClassName spec is
-  ## set, choosing the default provisioner.
+  ## Recommend RBD block storage class (e.g. hdd-rep3-rbd-pool) — NOT CephFS.
+  ## ATS cache.db uses O_DIRECT + pwritev, which performs poorly on CephFS.
   ##
   storageClass: ""
   ## @param persistence.accessModes PVC Access Modes for Apache Traffic Server data volume
+  ## With StatefulSet volumeClaimTemplates, each pod has its own PVC, so RWO is correct.
   ##
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   ## @param persistence.size PVC Storage Request for Apache Traffic Server data volume
+  ## Per-pod cache size. For ATS, max 1 TiB per file (CephFS) — set storage.config
+  ## accordingly to match.
   ##
   size: 100Gi
   ## @param persistence.annotations Annotations for the PVC

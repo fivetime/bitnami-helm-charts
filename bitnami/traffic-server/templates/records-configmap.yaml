@@ -4,6 +4,11 @@ SPDX-License-Identifier: APACHE-2.0
 */}}
 
 {{- if not .Values.existingRecordsConfigmap }}
+{{- $records := .Values.recordsConfig | deepCopy }}
+{{- if .Values.clusterMode.enabled }}
+{{- $override := dict "records" (dict "url_remap" (dict "strategies" (dict "filename" "/tmp/strategies-rendered.yaml"))) }}
+{{- $records = mergeOverwrite $records $override }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -15,5 +20,5 @@ metadata:
   {{- end }}
 data:
   records.yaml: |
-    {{- .Values.recordsConfig | toYaml | nindent 4 }}
+    {{- $records | toYaml | nindent 4 }}
 {{- end }}

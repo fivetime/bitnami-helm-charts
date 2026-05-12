@@ -2,33 +2,50 @@
 
 ## 项目概述
 
-Bitnami 风格的 Apache Traffic Server Helm Chart，用于在 Kubernetes 上部署高性能 HTTP 代理和缓存服务器。主要用途：
+Bitnami 风格的 Apache Traffic Server Helm Chart，**StatefulSet + 一致性哈希集群模式**专用。用于在 Kubernetes 上部署高性能 HTTP 代理和缓存服务器：
 - 容器镜像代理（Docker Hub、GHCR、GCR、Quay.io、registry.k8s.io）
 - Linux 发行版镜像缓存（Ubuntu、Debian、CentOS 等）
 - CDN 缓存服务
 
+## 架构
+
+**只支持 StatefulSet**。ATS 的 cache.db 是单进程独占设计，多 pod 共享同一 cache 文件会互相覆写。Chart 仅提供两种部署形态：
+
+| 配置 | 用法 |
+|---|---|
+| `replicaCount: 1` + `clusterMode.enabled: false` | 单实例，K8s 自愈做 HA（RTO 30-60s） |
+| `replicaCount: 3+` + `clusterMode.enabled: true` | 集群模式，一致性哈希分片，真 HA（1 pod 挂仅 1/N 冷 miss） |
+
+集群模式机制：
+- `volumeClaimTemplates` 给每个 pod 独立 PVC（block storage / RBD）
+- Headless Service 提供稳定 pod DNS（`ats-N.ats-headless.<ns>.svc.cluster.local`）
+- 自动渲染 `strategies.yaml` 列出所有 peer + `consistent_hash` 策略
+- 客户端访问 LB → 任意 pod → URL hash 决定哪个 peer 拥有缓存 → 必要时 peer 间转发
+
 ## 依赖关系
 
 - 使用本地 common chart: `repository: file://../common`
-- 已删除 `charts/common/` 目录，改用共享的 `bitnami/common`
+- ATS 10.x 镜像：`docker.io/trafficserver/trafficserver:10.1.2`（注意 chart `appVersion: 10.0.0` 是占位，Docker Hub 没这 tag）
 
 ## 已完成功能
 
-### 核心功能
-- [x] 完整的 ATS 配置文件支持（records.yaml、remap.config、cache.config 等 17+ 配置文件）
-- [x] SSL/HTTPS 源站支持（可代理 HTTPS 后端）
-- [x] 认证 Token 透传（Authorization header 自动转发）
-- [x] ConfigMap checksum 注解（配置变更自动触发 Pod 重启）
+### 核心
+- [x] StatefulSet 部署（每 pod 独立 PVC via volumeClaimTemplates）
+- [x] Headless Service 提供稳定 pod DNS
+- [x] 一致性哈希集群（auto-generate `strategies.yaml` peer list）
+- [x] 完整 ATS 配置文件支持（records.yaml、remap.config、cache.config 等 17+）
+- [x] SSL/HTTPS 源站
+- [x] ConfigMap checksum 注解（变更触发 rollout）
 
-### 运维功能
-- [x] 日志持久化 (`logsPersistence.enabled`)
-- [x] 日志输出到 stdout (`logsPersistence.toStdout: true`，默认启用，云原生最佳实践)
-- [x] RBAC 模板 (`templates/role.yaml`, `templates/rolebinding.yaml`)
-- [x] VPA 验证（`controlledResources` 默认为 `["cpu", "memory"]`，空值显示警告）
-- [x] 状态目录 emptyDir (`/opt/var/trafficserver`)
+### 运维
+- [x] 日志持久化 / stdout 模式
+- [x] RBAC 模板
+- [x] HPA/VPA 已删除（StatefulSet + per-pod PVC 不适合自动伸缩，需要时手动 scale + 扩 strategies.yaml peer 列表）
+- [x] state emptyDir for `/opt/var/trafficserver`
 
-### 暴露方式
-- [x] Service (LoadBalancer/ClusterIP/NodePort)
+### 暴露
+- [x] Service (LoadBalancer/ClusterIP/NodePort) — 客户端入口
+- [x] Headless Service — pod-to-pod DNS
 - [x] Ingress 支持
 - [x] Metrics 端口 (ServiceMonitor)
 
@@ -36,41 +53,58 @@ Bitnami 风格的 Apache Traffic Server Helm Chart，用于在 Kubernetes 上部
 
 | 文件 | 用途 |
 |------|------|
-| `values.yaml` | 主配置，包含容器镜像代理示例 |
-| `templates/deployment.yaml` | 部署模板，含所有 ConfigMap checksum |
-| `templates/startup-configmap.yaml` | 启动脚本，支持日志转发 |
-| `templates/role.yaml` | RBAC Role 模板 |
-| `templates/rolebinding.yaml` | RBAC RoleBinding 模板 |
-| `templates/logs-pvc.yaml` | 日志 PVC 模板 |
+| `values.yaml` | 主配置，含 `clusterMode` 块 |
+| `templates/statefulset.yaml` | 主部署模板（含 volumeClaimTemplates） |
+| `templates/headless-svc.yaml` | Headless Service 用于 StatefulSet pod DNS |
+| `templates/svc.yaml` | 用户访问 Service（LB/ClusterIP） |
+| `templates/strategies-configmap.yaml` | 自动生成集群分片 peer list |
+| `templates/startup-configmap.yaml` | 启动脚本 |
+| `templates/role.yaml` | RBAC Role |
+| `templates/logs-pvc.yaml` | 日志 PVC（如启用 logsPersistence） |
 | `README.md` | 参数文档（中文） |
 | `DEPLOYMENT.md` | 部署指南（中文） |
 
 ## 部署注意事项
 
-### 存储
-- 多副本部署使用 CephFS (`ReadWriteMany`)，单副本可用 RBD (`ReadWriteOnce`)
-- 日志建议用 `toStdout: true`，避免多 Pod 共享日志 PVC 的锁冲突
+### 存储（**重要**）
+- 用 **RBD 块存储**（如 `hdd-rep3-rbd-pool` / `nvme-rep3-rbd-pool`），**不要用 CephFS**
+- ATS 的 cache.db 用 `O_DIRECT + pwritev`，CephFS 上性能极差且单文件限制 1 TiB
+- StatefulSet `volumeClaimTemplates` → `ReadWriteOnce` 是正确的（每 pod 独立 PVC）
+
+### 集群模式（cluster mode）
+启用：
+```yaml
+replicaCount: 3                  # 至少 3 个 peer 才有意义
+clusterMode:
+  enabled: true
+  policy: consistent_hash
+  hashKey: cache_key             # cache_key / url / path / path+query / hostname
+```
+
+remap 规则要引用 strategy：
+```
+map http://ubuntu.mirrors.cluster.local/ http://archive.ubuntu.com/ubuntu/ @strategy=ats-cluster
+```
 
 ### Helm 升级
 ```bash
-# 保留之前的参数
-helm upgrade traffic-server . -n traffic-server --reuse-values
-
-# 或使用 values 文件
-helm upgrade traffic-server . -n traffic-server -f my-values.yaml
+helm upgrade ats . -n trafficserver --reuse-values
+# 或
+helm upgrade ats . -n trafficserver -f my-values.yaml
 ```
 
-### 已修复问题
+### 已修复问题（历史）
 1. **权限错误** `unable to access() local state dir '/opt/var/trafficserver': Permission denied`
    - 解决：添加 emptyDir 卷挂载到 `/opt/var/trafficserver`
 
 2. **PVC 绑定失败** `pod has unbound immediate PersistentVolumeClaims`
-   - 原因：`ReadWriteMany` 不兼容 RBD
-   - 解决：使用 CephFS 存储类
+   - 历史原因：之前用 Deployment + RWM CephFS 配错
+   - **新架构无此问题**：StatefulSet + RWO + 块存储
 
-3. **nil pointer 错误** `nil pointer evaluating interface {}.toStdout`
-   - 原因：`--reuse-values` 时旧配置无 `logsPersistence` 字段
-   - 解决：模板中添加 `.Values.logsPersistence` 存在性检查
+3. **多 pod 缓存冲突**（之前用 Deployment + 共享 PVC）
+   - 现象：`cache_writes: 1, bytes_used: 0`，请求都未命中
+   - 根因：ATS cache.db 单进程独占设计，不支持多写
+   - **新架构无此问题**：每 pod 独立 cache.db + 一致性哈希分流
 
 ## 容器镜像代理配置示例
 
@@ -84,8 +118,8 @@ recordsConfig:
             policy: PERMISSIVE
 
 remapConfig: |
-  map http://docker.mirrors.local/ https://registry-1.docker.io/
-  map http://ghcr.mirrors.local/ https://ghcr.io/
+  map http://docker.mirrors.local/ https://registry-1.docker.io/ @strategy=ats-cluster
+  map http://ghcr.mirrors.local/ https://ghcr.io/ @strategy=ats-cluster
 
 cacheConfig: |
   # 不缓存认证请求
@@ -97,12 +131,6 @@ cacheConfig: |
   # 缓存镜像层 7 天
   dest_domain=registry-1.docker.io ttl-in-cache=7d
 ```
-
-## 待办/后续优化
-
-- [ ] 测试更多容器镜像仓库的兼容性
-- [ ] 添加 Prometheus 告警规则示例
-- [ ] 考虑添加 HPA 基于自定义指标的伸缩
 
 ## 文档语言
 

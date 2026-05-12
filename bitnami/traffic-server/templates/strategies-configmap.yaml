@@ -1,9 +1,10 @@
 {{- /*
-Copyright Broadcom, Inc. All Rights Reserved.
+strategies.yaml — Next-Hop consistent_hash sharding for ATS cluster mode.
+Generated as a template (.tpl). start-ats.sh renders __SELF_HOST__ at pod start.
 SPDX-License-Identifier: APACHE-2.0
 */}}
 
-{{- if and .Values.strategiesConfig (not .Values.existingStrategiesConfigmap) }}
+{{- if and (or .Values.strategiesConfig .Values.clusterMode.enabled) (not .Values.existingStrategiesConfigmap) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -15,5 +16,49 @@ metadata:
   {{- end }}
 data:
   strategies.yaml: |
+    {{- if .Values.clusterMode.enabled }}
+    # Auto-generated template. start-ats.sh replaces __SELF_HOST__ with each pod's FQDN.
+    hosts:
+{{- $fullname := include "common.names.fullname" . }}
+{{- $headless := printf "%s-headless" $fullname }}
+{{- $ns := include "common.names.namespace" . }}
+{{- $cluster := .Values.clusterDomain | default "cluster.local" }}
+{{- range $i, $e := until (int .Values.replicaCount) }}
+      - &peer-{{ $i }}
+        host: {{ printf "%s-%d.%s.%s.svc.%s" $fullname $i $headless $ns $cluster }}
+        protocol:
+          - scheme: http
+            port: {{ $.Values.containerPorts.http }}
+            health_check_url: http://{{ printf "%s-%d.%s.%s.svc.%s" $fullname $i $headless $ns $cluster }}:{{ $.Values.containerPorts.http }}
+{{- end }}
+
+    groups:
+      - &peer-group
+{{- range $i, $e := until (int .Values.replicaCount) }}
+        - *peer-{{ $i }}
+{{- end }}
+
+    strategies:
+      - strategy: "ats-cluster"
+        policy: {{ .Values.clusterMode.policy | default "consistent_hash" | quote }}
+        hash_key: {{ .Values.clusterMode.hashKey | default "cache_key" | quote }}
+        hash_url: {{ .Values.clusterMode.hashUrl | default "cache" | quote }}
+        go_direct: true
+        parent_is_proxy: true
+        ignore_self_detect: true
+        cache_peer_result: false
+        scheme: http
+        failover:
+          ring_mode: "peering_ring"
+          self: "__SELF_HOST__"
+          max_simple_retries: 2
+          response_codes:
+            - 404
+            - 503
+        groups:
+          - *peer-group
+    {{- end }}
+    {{- if .Values.strategiesConfig }}
     {{- .Values.strategiesConfig | nindent 4 }}
+    {{- end }}
 {{- end }}

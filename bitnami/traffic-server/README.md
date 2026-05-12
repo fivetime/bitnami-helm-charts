@@ -300,63 +300,44 @@ existingJsonrpcConfigmap: my-jsonrpc-config
 
 ### 启用持久化
 
-使用 `persistence` 值启用缓存数据持久化：
+使用 `persistence` 值启用缓存数据持久化。ATS cache.db 用 O_DIRECT + 单进程独占设计，**必须用 RBD 块存储，不能用 CephFS**：
 
 ```yaml
 persistence:
   enabled: true
-  storageClass: "general-fs"
+  storageClass: "hdd-rep3-rbd-pool"
   accessModes:
-    - ReadWriteMany
-  size: 2Ti
+    - ReadWriteOnce
+  size: 100Gi
 ```
 
-### 高可用部署
+StatefulSet 通过 `volumeClaimTemplates` 给每个 pod 独立 PVC。
 
-要部署高可用配置：
+### 高可用部署（一致性哈希集群）
+
+3 副本一致性哈希分片（peering_ring 模式）：
 
 ```yaml
 replicaCount: 3
-
-autoscaling:
-  hpa:
-    enabled: true
-    minReplicas: 3
-    maxReplicas: 10
-    targetCPU: 70
-    targetMemory: 80
-
+clusterMode:
+  enabled: true
+  policy: consistent_hash
+  hashKey: cache_key
 podAntiAffinityPreset: hard
-
 persistence:
   enabled: true
-  accessModes:
-    - ReadWriteMany
+  storageClass: "hdd-rep3-rbd-pool"
+  accessModes: [ReadWriteOnce]
+  size: 100Gi
 ```
 
-### 垂直自动伸缩 (VPA)
+启用 `clusterMode.enabled` 后 chart 自动生成 `strategies.yaml` peer 列表（每个 pod 启动时按 `POD_NAME` 渲染 `failover.self`）。客户端打到任意 pod → URL hash 决定 owner peer → 若 owner 是 self 直接回源，否则 forward 给 owner。
 
-启用 Vertical Pod Autoscaler 自动调整资源：
+remap 规则需引用 strategy：
 
-```yaml
-autoscaling:
-  vpa:
-    enabled: true
-    minAllowed:
-      cpu: 100m
-      memory: 128Mi
-    maxAllowed:
-      cpu: 4
-      memory: 8Gi
-    controlledResources:
-      - cpu
-      - memory
-    controlledValues: RequestsAndLimits
-    updatePolicy:
-      updateMode: Auto
 ```
-
-> **注意**: VPA 需要在集群中预先安装 [Vertical Pod Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)。`controlledResources` 默认为 `["cpu", "memory"]`，如果设置为空数组会显示验证警告。
+map http://archive.ubuntu.com/ http://archive.ubuntu.com/ @strategy=ats-cluster
+```
 
 ### Prometheus 监控
 
@@ -545,23 +526,6 @@ metrics:
 | `customStartupProbe`                  | 自定义启动探针                                                                         | `{}`             |
 | `customLivenessProbe`                 | 自定义存活探针                                                                         | `{}`             |
 | `customReadinessProbe`                | 自定义就绪探针                                                                         | `{}`             |
-
-### 自动伸缩参数
-
-| 名称                                      | 描述                                                                                   | 值               |
-| ----------------------------------------- | -------------------------------------------------------------------------------------- | ---------------- |
-| `autoscaling.hpa.enabled`                 | 启用 HPA 水平自动伸缩                                                                  | `false`          |
-| `autoscaling.hpa.minReplicas`             | HPA 最小副本数                                                                         | `3`              |
-| `autoscaling.hpa.maxReplicas`             | HPA 最大副本数                                                                         | `10`             |
-| `autoscaling.hpa.targetCPU`               | HPA 目标 CPU 使用率百分比                                                              | `70`             |
-| `autoscaling.hpa.targetMemory`            | HPA 目标内存使用率百分比                                                               | `80`             |
-| `autoscaling.vpa.enabled`                 | 启用 VPA 垂直自动伸缩                                                                  | `false`          |
-| `autoscaling.vpa.annotations`             | VPA 资源注解                                                                           | `{}`             |
-| `autoscaling.vpa.controlledResources`     | VPA 控制的资源类型 (cpu, memory)                                                       | `["cpu", "memory"]` |
-| `autoscaling.vpa.maxAllowed`              | VPA 最大资源限制                                                                       | `{}`             |
-| `autoscaling.vpa.minAllowed`              | VPA 最小资源限制                                                                       | `{}`             |
-| `autoscaling.vpa.controlledValues`        | VPA 控制值类型 (RequestsAndLimits, RequestsOnly)                                       | `""`             |
-| `autoscaling.vpa.updatePolicy.updateMode` | VPA 更新策略 (Off, Initial, Recreate, Auto)                                            | `Auto`           |
 
 ### 服务参数
 

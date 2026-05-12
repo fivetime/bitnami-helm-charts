@@ -1,0 +1,31 @@
+{{- /*
+Headless Service required by StatefulSet for stable pod DNS
+(<podname>.<svc>.<ns>.svc.cluster.local) — used by strategies.yaml peer list.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "common.names.fullname" . }}-headless
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+    {{- if .Values.containerPorts.http }}
+    - name: http
+      port: {{ .Values.containerPorts.http }}
+      targetPort: http
+    {{- end }}
+    {{- if .Values.containerPorts.https }}
+    - name: https
+      port: {{ .Values.containerPorts.https }}
+      targetPort: https
+    {{- end }}
+  {{- $podLabels := include "common.tplvalues.merge" ( dict "values" ( list .Values.podLabels .Values.commonLabels ) "context" . ) }}
+  selector: {{- include "common.labels.matchLabels" ( dict "customLabels" $podLabels "context" $ ) | nindent 4 }}

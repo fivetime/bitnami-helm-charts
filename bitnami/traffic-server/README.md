@@ -22,7 +22,7 @@ helm install my-release oci://registry-1.docker.io/bitnamicharts/trafficserver
 
 - Kubernetes 1.23+
 - Helm 3.8.0+
-- 支持 ReadWriteMany 访问模式的存储类（如 CephFS，用于高可用部署）
+- **块存储类**（如 Ceph RBD），支持 `ReadWriteOnce`。chart 使用 StatefulSet `volumeClaimTemplates` 为每个 pod 创建独立 PVC，**不要用 CephFS / NFS / 其他文件存储** —— ATS cache.db 用 `O_DIRECT + pwritev`，在文件存储上性能极差
 
 ## 安装 Chart
 
@@ -85,6 +85,29 @@ remapConfig: |
   # CentOS 镜像
   map http://centos.mirrors.example.local/ http://mirror.centos.org/centos/
 ```
+
+#### 在线热更新 remap 规则（无需 helm upgrade）
+
+remap.config 的 ConfigMap 采用**目录挂载**（无 subPath），且 chart 未对它加 `checksum/` 注解。因此可以直接编辑 ConfigMap 并热加载，不需要 `helm upgrade`、不需要重启 pod：
+
+```bash
+# 1. 编辑 ConfigMap
+kubectl edit cm <release>-trafficserver-remap -n <namespace>
+
+# 2. 等 kubelet 同步（默认最多 ~60s）。可以验证：
+kubectl exec -n <namespace> <release>-trafficserver-0 -- \
+  cat /opt/etc/trafficserver/remap.d/remap.config | grep <新域名>
+
+# 3. 对所有 pod 执行 traffic_ctl config reload（热加载，不中断业务）
+for i in 0 1 2; do
+  kubectl exec -n <namespace> <release>-trafficserver-$i -- \
+    /opt/bin/traffic_ctl config reload
+done
+```
+
+> ⚠️ **注意**：下次 `helm upgrade` 会用 values.yaml 里的 `remapConfig` 覆盖 ConfigMap。要么始终通过 values.yaml 管理（每次 upgrade 触发滚动重启），要么始终通过 `kubectl edit` 管理（热加载，但需手动 sync 回 values.yaml）。**不要混用**。
+>
+> 其他配置文件（records.yaml、cache.config 等）仍是 subPath 挂载，修改后必须 helm upgrade 才能生效。只有 remap.config 享有热加载特权。
 
 ### 配置缓存存储
 
@@ -479,7 +502,7 @@ metrics:
 | `resourcesPreset`                         | 资源预设 (none, nano, micro, small, medium, large, xlarge, 2xlarge)                    | `small`          |
 | `resources`                               | 容器资源请求和限制                                                                     | `{}`             |
 | `containerPorts.http`                     | HTTP 容器端口                                                                          | `8080`           |
-| `containerPorts.https`                    | HTTPS 容器端口                                                                         | `8443`           |
+| `containerPorts.https`                    | HTTPS 容器端口（`""` 表示禁用 HTTPS 暴露；启用需同时配 `server_ports` 加 `:ssl` 和 `sslMulticertConfig`） | `""`           |
 | `extraContainerPorts`                     | 额外的容器端口                                                                         | `[]`             |
 
 ### 安全上下文参数
@@ -566,7 +589,7 @@ metrics:
 | ---------------------------- | -------------------------------------------------------------------------------------- | ---------------- |
 | `persistence.enabled`        | 使用 PVC 启用 Apache Traffic Server 数据持久化                                         | `true`           |
 | `persistence.storageClass`   | Apache Traffic Server 数据卷的 PVC 存储类                                              | `""`             |
-| `persistence.accessModes`    | Apache Traffic Server 数据卷的 PVC 访问模式                                            | `["ReadWriteMany"]` |
+| `persistence.accessModes`    | Apache Traffic Server 数据卷的 PVC 访问模式（StatefulSet 每 pod 独立 PVC，固定 RWO）       | `["ReadWriteOnce"]` |
 | `persistence.size`           | Apache Traffic Server 数据卷的 PVC 存储请求                                            | `100Gi`          |
 | `persistence.annotations`    | PVC 的注释                                                                             | `{}`             |
 | `persistence.selector`       | 匹配现有持久卷的选择器                                                                 | `{}`             |
@@ -675,24 +698,28 @@ remapConfig: |
 ### 高可用生产配置
 
 ```yaml
+# 真 HA：一致性哈希集群模式。一个 pod 挂只导致 1/N 冷 miss，不是全量丢失。
 replicaCount: 3
 
-autoscaling:
-  hpa:
-    enabled: true
-    minReplicas: 3
-    maxReplicas: 10
-    targetCPU: 70
-    targetMemory: 80
+clusterMode:
+  enabled: true
+  policy: consistent_hash
+  hashKey: cache_key
 
 podAntiAffinityPreset: hard
 
+pdb:
+  create: true
+  minAvailable: 2
+
+# StatefulSet 每 pod 独立 PVC（volumeClaimTemplates），必须用 RBD 块存储。
+# 不支持 HPA：扩容需手动改 replicaCount 并 helm upgrade，chart 会自动重算 strategies.yaml peer list。
 persistence:
   enabled: true
-  storageClass: "general-fs"
+  storageClass: "nvme-rep3-rbd-pool"   # 或其他 RBD 块存储类
   accessModes:
-    - ReadWriteMany
-  size: 2Ti
+    - ReadWriteOnce
+  size: 2Ti                            # 每 pod 独立缓存大小
 
 resources:
   requests:
@@ -794,7 +821,7 @@ kubectl exec -it <pod-name> -n <namespace> -- /bin/bash
 
 # 检查配置
 cat /opt/etc/trafficserver/records.yaml
-cat /opt/etc/trafficserver/remap.config
+cat /opt/etc/trafficserver/remap.d/remap.config  # 注意：remap 改为目录挂载
 
 # 重载配置
 /opt/bin/traffic_ctl config reload

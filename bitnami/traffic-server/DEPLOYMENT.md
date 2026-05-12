@@ -272,15 +272,14 @@ sslMulticertConfig: |
 ### 持久化配置
 
 ```yaml
+# StatefulSet 用 volumeClaimTemplates，每个 pod 独立 PVC，固定 ReadWriteOnce。
+# 必须用块存储（如 Ceph RBD），不要用 CephFS/NFS —— ATS cache.db 用 O_DIRECT 在文件存储上性能极差。
 persistence:
   enabled: true
-  storageClass: "fast-ssd"  # 使用 SSD 存储类
+  storageClass: "nvme-rep3-rbd-pool"  # 块存储类
   accessModes:
-    - ReadWriteMany  # 多副本共享存储
-  size: 500Gi
-  
-  # 或使用现有 PVC
-  # existingClaim: "my-existing-pvc"
+    - ReadWriteOnce
+  size: 500Gi                          # 每 pod 缓存大小（不是集群总量）
 ```
 
 ### 网络配置
@@ -378,10 +377,7 @@ resources:
 persistence:
   enabled: true
   size: 10Gi
-
-autoscaling:
-  hpa:
-    enabled: false
+  # 开发环境用 storageClass: ""（用集群默认）即可
 
 networkPolicy:
   enabled: false
@@ -395,10 +391,16 @@ helm install ats-dev ./trafficserver -n dev -f dev-values.yaml
 
 ```yaml
 # prod-values.yaml
+# 一致性哈希集群：一个 pod 挂只丢 1/N 缓存命中（短暂冷 miss），真 HA。
 replicaCount: 3
 
+clusterMode:
+  enabled: true
+  policy: consistent_hash
+  hashKey: cache_key
+
 image:
-  tag: "10.0.0"
+  tag: "10.1.2"
 
 resources:
   requests:
@@ -408,22 +410,16 @@ resources:
     cpu: 8
     memory: 16Gi
 
+# StatefulSet 每 pod 独立 PVC，固定 RWO。必须用 RBD 块存储。
+# 不支持自动伸缩 —— 扩容需手动改 replicaCount 并 helm upgrade，chart 会自动重新生成 strategies.yaml peer list。
 persistence:
   enabled: true
-  storageClass: "fast-ssd"
-  size: 1Ti
+  storageClass: "nvme-rep3-rbd-pool"
+  size: 1Ti                            # 每 pod 缓存（集群总量 = replicaCount × size）
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
 
-autoscaling:
-  hpa:
-    enabled: true
-    minReplicas: 3
-    maxReplicas: 10
-    targetCPU: 70
-    targetMemory: 80
-
-podAntiAffinityPreset: hard
+podAntiAffinityPreset: hard            # 强制每 pod 散到不同 node
 
 pdb:
   create: true
@@ -764,10 +760,10 @@ kubectl run -it --rm debug --image=curlimages/curl -- curl http://ats-trafficser
 
 ```bash
 # 进入容器检查配置
-kubectl exec -it -n trafficserver deploy/ats-trafficserver -- cat /opt/etc/trafficserver/remap.config
+kubectl exec -it -n trafficserver ats-trafficserver-0 -- cat /opt/etc/trafficserver/remap.d/remap.config
 
 # 检查缓存状态
-kubectl exec -it -n trafficserver deploy/ats-trafficserver -- ls -la /opt/var/cache/trafficserver/
+kubectl exec -it -n trafficserver ats-trafficserver-0 -- ls -la /opt/var/cache/trafficserver/
 
 # 查看统计信息
 curl http://<service-ip>/_stats
@@ -790,7 +786,7 @@ kubectl logs -n trafficserver -l app.kubernetes.io/name=trafficserver --all-cont
 
 ```bash
 # 进入运行中的容器
-kubectl exec -it -n trafficserver deploy/ats-trafficserver -- /bin/bash
+kubectl exec -it -n trafficserver ats-trafficserver-0 -- /bin/bash
 
 # 常用调试命令
 ls -la /opt/etc/trafficserver/  # 查看配置文件

@@ -1,9 +1,26 @@
 {
   "permissions": {
     "allow": [
-      "Bash(helm dependency:*)",
-      "Bash(helm template:*)",
-      "Bash(.yml$ \")"
+      "Bash(*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "MultiEdit(*)",
+      "NotebookEdit(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "LS(*)",
+      "Task(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "TodoWrite(*)",
+      "BashOutput(*)",
+      "KillShell(*)",
+      "PowerShell(*)",
+      "ExitPlanMode(*)",
+      "SlashCommand(*)",
+      "Monitor(*)",
+      "mcp__*"
     ]
   }
 }

@@ -93,16 +93,22 @@ helm upgrade ats . -n trafficserver --reuse-values
 helm upgrade ats . -n trafficserver -f my-values.yaml
 ```
 
-### remap.config 热加载（特殊架构）
+### remap.config 解耦挂载（支持运行时热加载）
 
-**所有配置都是 subPath 挂载，唯独 remap.config 是目录挂载 + 无 checksum 注解** —— 这是有意为之，不要"修复"它：
+**所有配置文件都是 subPath 挂载，唯独 remap.config 是目录挂载** —— 这是有意为之，不要"修复"回 subPath：
 - `templates/statefulset.yaml`：remap-config 挂到 `/opt/etc/trafficserver/remap.d/`（目录，无 subPath）
 - `recordsConfig.records.url_remap.filename: "remap.d/remap.config"` 指引 ATS 去读这个路径
-- 故意不加 `checksum/remap-config` 注解 → 改 ConfigMap 不触发 rolling restart
 
-**目的**：让运维可以 `kubectl edit cm <release>-remap` 改完后用 `traffic_ctl config reload` 热加载，业务零中断。subPath 挂载不会自动 sync ConfigMap 更新，所以只能用目录挂载。
+**目的**：K8s 已知行为是 **subPath 挂载不会自动 sync ConfigMap 更新**。改成目录挂载后，kubelet 会在 ~60s 内把 ConfigMap data 变更 sync 到 pod 内文件，配合 `traffic_ctl config reload` 实现零中断热加载。
 
-**代价**：用户必须知道不能混用 `helm upgrade` 和 `kubectl edit`，否则 upgrade 会覆盖手改的内容。README/DEPLOYMENT.md 都有警告。
+**两种工作流共存**：
+1. `remapConfig: |` 模式（chart 自管）：改 values.yaml + `helm upgrade` → `checksum/remap-config` 注解触发 rolling restart → 新规则自动加载。chart 的标准行为，没有特殊性。
+2. `existingRemapConfigmap: <name>` 模式（外置管理）：chart 完全不创建 ConfigMap，用户自己 `kubectl create cm` 提供。`kubectl edit cm` 改完后 `traffic_ctl config reload` 热加载，helm upgrade 永远不动这个 ConfigMap（template `{{- if not .Values.existingRemapConfigmap }}` 守卫）。这是给"运行时频繁改 remap、不想每次 helm upgrade"的运维场景设计的。
+
+**`checksum/remap-config` 注解必须保留**：
+- 模式 1：值随 remap 内容变化，触发 rollout
+- 模式 2：模板渲染为空，哈希恒定，永不触发 rollout
+- 自动按两种模式给出正确行为。**不要删这个注解** —— 之前删过一次，错了。
 
 ### 默认 HTTPS 容器端口为空字符串
 

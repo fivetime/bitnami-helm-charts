@@ -86,28 +86,44 @@ remapConfig: |
   map http://centos.mirrors.example.local/ http://mirror.centos.org/centos/
 ```
 
-#### 在线热更新 remap 规则（无需 helm upgrade）
+#### 运行时热更新 remap 规则（推荐：`existingRemapConfigmap`）
 
-remap.config 的 ConfigMap 采用**目录挂载**（无 subPath），且 chart 未对它加 `checksum/` 注解。因此可以直接编辑 ConfigMap 并热加载，不需要 `helm upgrade`、不需要重启 pod：
+如果你的运维场景需要**频繁修改 remap 规则**且**不想每次都 helm upgrade**（每次都触发滚动重启），推荐用 `existingRemapConfigmap` 把 ConfigMap 完全外置管理，chart 不创建也不修改它。
+
+**部署前**先创建一个空的 ConfigMap：
 
 ```bash
-# 1. 编辑 ConfigMap
-kubectl edit cm <release>-trafficserver-remap -n <namespace>
+kubectl create cm ats-remap-runtime -n <namespace> \
+  --from-literal=remap.config=""
+```
 
-# 2. 等 kubelet 同步（默认最多 ~60s）。可以验证：
+然后 values.yaml 里这样设：
+
+```yaml
+remapConfig: ""                              # 留空不用
+existingRemapConfigmap: "ats-remap-runtime"  # 引用外置 CM
+```
+
+部署后想改规则时：
+
+```bash
+# 1. 编辑 ConfigMap（chart 永远不会动它）
+kubectl edit cm ats-remap-runtime -n <namespace>
+
+# 2. 等 kubelet 同步 ConfigMap 变更到 pod（最多 ~60s）
 kubectl exec -n <namespace> <release>-trafficserver-0 -- \
   cat /opt/etc/trafficserver/remap.d/remap.config | grep <新域名>
 
-# 3. 对所有 pod 执行 traffic_ctl config reload（热加载，不中断业务）
+# 3. 对所有 pod 执行 traffic_ctl config reload（热加载，业务零中断）
 for i in 0 1 2; do
   kubectl exec -n <namespace> <release>-trafficserver-$i -- \
     /opt/bin/traffic_ctl config reload
 done
 ```
 
-> ⚠️ **注意**：下次 `helm upgrade` 会用 values.yaml 里的 `remapConfig` 覆盖 ConfigMap。要么始终通过 values.yaml 管理（每次 upgrade 触发滚动重启），要么始终通过 `kubectl edit` 管理（热加载，但需手动 sync 回 values.yaml）。**不要混用**。
->
-> 其他配置文件（records.yaml、cache.config 等）仍是 subPath 挂载，修改后必须 helm upgrade 才能生效。只有 remap.config 享有热加载特权。
+remap.config 的挂载方式是**目录挂载**（无 subPath），这是 ConfigMap 变更能被 kubelet 自动 sync 到 pod 的必要条件。其他配置文件（records.yaml、cache.config 等）仍是 subPath 挂载，必须 helm upgrade 才能生效。
+
+> 💡 直接用 `remapConfig:` 也支持目录挂载，但 chart 自管的 ConfigMap 会在每次 `helm upgrade` 时被 values.yaml 内容覆盖。如果你 `kubectl edit cm <release>-trafficserver-remap` 改过规则又跑 `helm upgrade`，手改的内容会全部丢失。所以**频繁改 remap 时一定要用 `existingRemapConfigmap`**。
 
 ### 配置缓存存储
 

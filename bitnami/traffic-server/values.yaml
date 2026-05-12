@@ -619,10 +619,13 @@ recordsConfig:
 
 ## @param remapConfig Apache Traffic Server remap.config configuration
 ## 挂载到 /opt/etc/trafficserver/remap.d/remap.config （目录挂载，无 subPath）
-## 此处的值仅作为初始内容；上线后推荐直接 `kubectl edit cm <release>-remap` 修改，
-## 然后对所有 pod 执行 `traffic_ctl config reload` 热加载（不重启 pod）。
-##   注意：再次 `helm upgrade` 会用 values.yaml 里的内容覆盖 ConfigMap —— 要么始终
-##   通过 values.yaml 管理，要么始终通过 kubectl edit 管理，不要混用。
+##
+## 两种使用模式：
+##   1. 在此填值（chart 自管模式）：改 values.yaml + helm upgrade 触发 rolling restart 加载新规则
+##   2. 留空 + 设置 existingRemapConfigmap（运维外管模式）：chart 不创建 ConfigMap，
+##      用户自己 kubectl create cm 提供。改完 ConfigMap 后 `traffic_ctl config reload` 热加载，
+##      helm upgrade 永不覆盖。**频繁改 remap 时推荐此模式。**
+##
 ## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/remap.config.en.html
 ##
 remapConfig: |
@@ -981,6 +984,9 @@ bodyFactory:
 existingRecordsConfigmap: ""
 ## @param existingRemapConfigmap Name of existing ConfigMap with remap.config configuration
 ## NOTE: This will override remapConfig
+## 设置此值后 chart 不创建 ConfigMap，由用户自己 kubectl create cm 提供。
+## 适合"频繁改 remap、不想 helm upgrade"的场景：kubectl edit cm 改完后
+## `kubectl exec ats-N -- traffic_ctl config reload` 热加载，业务零中断。
 ##
 existingRemapConfigmap: ""
 ## @param existingPluginConfigmap Name of existing ConfigMap with plugin.config configuration

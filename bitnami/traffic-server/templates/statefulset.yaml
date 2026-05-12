@@ -34,7 +34,7 @@ spec:
         {{- include "common.tplvalues.render" ( dict "value" .Values.metrics.podAnnotations "context" $) | nindent 8 }}
         {{- end }}
         checksum/records-config: {{ include (print $.Template.BasePath "/records-configmap.yaml") . | sha256sum }}
-        {{- /* remap-config 故意不加 checksum：解耦挂载后改 ConfigMap 不应触发 pod 重启，运维需手动 traffic_ctl config reload */}}
+        checksum/remap-config: {{ include (print $.Template.BasePath "/remap-configmap.yaml") . | sha256sum }}
         checksum/plugin-config: {{ include (print $.Template.BasePath "/plugin-configmap.yaml") . | sha256sum }}
         checksum/storage-config: {{ include (print $.Template.BasePath "/storage-configmap.yaml") . | sha256sum }}
         checksum/ip-allow-config: {{ include (print $.Template.BasePath "/ip-allow-configmap.yaml") . | sha256sum }}

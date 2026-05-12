@@ -309,13 +309,19 @@ containerSecurityContext:
   seccompProfile:
     type: "RuntimeDefault"
 
-## Configures the ports Apache Traffic Server listens on
+## Configures the ports Apache Traffic Server listens on.
+## 默认 chart 的 recordsConfig.records.http.server_ports 只配了 HTTP（"8080 8080:ipv6"）。
+## 如需启用 ATS 自身的 HTTPS 监听：
+##   1. 把 containerPorts.https 设回 8443（取消注释）
+##   2. recordsConfig 里把 server_ports 改成 "8080 8080:ipv6 8443:ssl"
+##   3. 配置 sslMulticertConfig 提供证书
+## 大多数部署用前置 Ingress / LB 做 TLS 终结，ATS 不需要监听 HTTPS。
 ## @param containerPorts.http Sets http port inside Apache Traffic Server container
-## @param containerPorts.https Sets https port inside Apache Traffic Server container
+## @param containerPorts.https Sets https port inside Apache Traffic Server container ("" disables exposure)
 ##
 containerPorts:
   http: 8080
-  https: 8443
+  https: ""
 
 ## @param extraContainerPorts Array of additional container ports for the Apache Traffic Server container
 ## e.g:
@@ -357,7 +363,10 @@ lifecycleHooks: {}
 
 ## Apache Traffic Server containers' startup probe.
 ## ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
+## 默认走 HTTP GET /_stats，依赖 plugin.config 加载了 stats_over_http.so（chart 默认已加载）。
+## 如果你禁用了该插件，请改 path 或用 customStartupProbe 走 tcpSocket。
 ## @param startupProbe.enabled Enable startupProbe
+## @param startupProbe.path HTTP GET path for startupProbe
 ## @param startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
 ## @param startupProbe.periodSeconds Period seconds for startupProbe
 ## @param startupProbe.timeoutSeconds Timeout seconds for startupProbe
@@ -366,6 +375,7 @@ lifecycleHooks: {}
 ##
 startupProbe:
   enabled: false
+  path: /_stats
   initialDelaySeconds: 30
   timeoutSeconds: 5
   periodSeconds: 10
@@ -375,6 +385,7 @@ startupProbe:
 ## Apache Traffic Server containers' liveness probe.
 ## ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
 ## @param livenessProbe.enabled Enable livenessProbe
+## @param livenessProbe.path HTTP GET path for livenessProbe (requires stats_over_http.so plugin)
 ## @param livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
 ## @param livenessProbe.periodSeconds Period seconds for livenessProbe
 ## @param livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
@@ -383,6 +394,7 @@ startupProbe:
 ##
 livenessProbe:
   enabled: true
+  path: /_stats
   initialDelaySeconds: 30
   timeoutSeconds: 5
   periodSeconds: 10
@@ -392,6 +404,7 @@ livenessProbe:
 ## Apache Traffic Server containers' readiness probe.
 ## ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
 ## @param readinessProbe.enabled Enable readinessProbe
+## @param readinessProbe.path HTTP GET path for readinessProbe (requires stats_over_http.so plugin)
 ## @param readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
 ## @param readinessProbe.periodSeconds Period seconds for readinessProbe
 ## @param readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
@@ -400,6 +413,7 @@ livenessProbe:
 ##
 readinessProbe:
   enabled: true
+  path: /_stats
   initialDelaySeconds: 5
   timeoutSeconds: 3
   periodSeconds: 5
@@ -594,13 +608,21 @@ recordsConfig:
       origin_server:
         max_retry: 3
     ## URL remap
+    ## filename 指向 remap.d/ 目录里的 remap.config（chart 把 remap ConfigMap 改成目录挂载，
+    ## 让 kubectl edit cm 后内容能自动 sync 进容器，无需 helm upgrade）。
+    ## 路径相对于 /opt/etc/trafficserver/，所以最终是 /opt/etc/trafficserver/remap.d/remap.config
     url_remap:
+      filename: "remap.d/remap.config"
       pristine_host_hdr: 0
       remap_required: 1
       acl_behavior_policy: 0
 
 ## @param remapConfig Apache Traffic Server remap.config configuration
-## This will be used for /opt/etc/trafficserver/remap.config
+## 挂载到 /opt/etc/trafficserver/remap.d/remap.config （目录挂载，无 subPath）
+## 此处的值仅作为初始内容；上线后推荐直接 `kubectl edit cm <release>-remap` 修改，
+## 然后对所有 pod 执行 `traffic_ctl config reload` 热加载（不重启 pod）。
+##   注意：再次 `helm upgrade` 会用 values.yaml 里的内容覆盖 ConfigMap —— 要么始终
+##   通过 values.yaml 管理，要么始终通过 kubectl edit 管理，不要混用。
 ## ref: https://docs.trafficserver.apache.org/en/latest/admin-guide/files/remap.config.en.html
 ##
 remapConfig: |
@@ -1055,20 +1077,23 @@ startupScript: |
   # Check critical config files
   echo ""
   echo "Checking configuration files..."
-  for cfg in records.yaml remap.config; do
-    if [ -f "/opt/etc/trafficserver/$cfg" ]; then
-      echo "  ✓ $cfg exists"
-    else
-      echo "  ✗ $cfg missing!"
-      exit 1
-    fi
-  done
+  if [ ! -f /opt/etc/trafficserver/records.yaml ]; then
+    echo "  ✗ records.yaml missing!"
+    exit 1
+  fi
+  echo "  ✓ records.yaml exists"
+  # remap.config 现在挂在 remap.d/ 目录里（解耦挂载，支持热加载）
+  if [ ! -f /opt/etc/trafficserver/remap.d/remap.config ]; then
+    echo "  ✗ remap.d/remap.config missing!"
+    exit 1
+  fi
+  echo "  ✓ remap.d/remap.config exists"
 
   # Render strategies.yaml.tpl with per-pod SELF_HOST when cluster mode enabled
   if [ -f /opt/etc/trafficserver/strategies.yaml.tpl ]; then
     SELF_HOST="${POD_NAME}.${HEADLESS_SERVICE_NAME}.${POD_NAMESPACE}.svc.${CLUSTER_DOMAIN:-cluster.local}"
     echo "Rendering strategies.yaml with SELF_HOST=${SELF_HOST}"
-    sed "s|__SELF_HOST__|${SELF_HOST}|g" /opt/etc/trafficserver/strategies.yaml.tpl > /tmp/strategies-rendered.yaml
+    sed "s|__SELF_HOST__|${SELF_HOST}|g" /opt/etc/trafficserver/strategies.yaml.tpl > /opt/var/trafficserver/strategies.yaml
   fi
 
   echo ""
@@ -1105,20 +1130,23 @@ startupScriptWithLogForwarding: |
   # Check critical config files
   echo ""
   echo "Checking configuration files..."
-  for cfg in records.yaml remap.config; do
-    if [ -f "/opt/etc/trafficserver/$cfg" ]; then
-      echo "  ✓ $cfg exists"
-    else
-      echo "  ✗ $cfg missing!"
-      exit 1
-    fi
-  done
+  if [ ! -f /opt/etc/trafficserver/records.yaml ]; then
+    echo "  ✗ records.yaml missing!"
+    exit 1
+  fi
+  echo "  ✓ records.yaml exists"
+  # remap.config 现在挂在 remap.d/ 目录里（解耦挂载，支持热加载）
+  if [ ! -f /opt/etc/trafficserver/remap.d/remap.config ]; then
+    echo "  ✗ remap.d/remap.config missing!"
+    exit 1
+  fi
+  echo "  ✓ remap.d/remap.config exists"
 
   # Render strategies.yaml.tpl with per-pod SELF_HOST when cluster mode enabled
   if [ -f /opt/etc/trafficserver/strategies.yaml.tpl ]; then
     SELF_HOST="${POD_NAME}.${HEADLESS_SERVICE_NAME}.${POD_NAMESPACE}.svc.${CLUSTER_DOMAIN:-cluster.local}"
     echo "Rendering strategies.yaml with SELF_HOST=${SELF_HOST}"
-    sed "s|__SELF_HOST__|${SELF_HOST}|g" /opt/etc/trafficserver/strategies.yaml.tpl > /tmp/strategies-rendered.yaml
+    sed "s|__SELF_HOST__|${SELF_HOST}|g" /opt/etc/trafficserver/strategies.yaml.tpl > /opt/var/trafficserver/strategies.yaml
   fi
 
   # Start traffic_server in background

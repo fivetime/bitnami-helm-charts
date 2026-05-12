@@ -34,7 +34,7 @@ spec:
         {{- include "common.tplvalues.render" ( dict "value" .Values.metrics.podAnnotations "context" $) | nindent 8 }}
         {{- end }}
         checksum/records-config: {{ include (print $.Template.BasePath "/records-configmap.yaml") . | sha256sum }}
-        checksum/remap-config: {{ include (print $.Template.BasePath "/remap-configmap.yaml") . | sha256sum }}
+        {{- /* remap-config 故意不加 checksum：解耦挂载后改 ConfigMap 不应触发 pod 重启，运维需手动 traffic_ctl config reload */}}
         checksum/plugin-config: {{ include (print $.Template.BasePath "/plugin-configmap.yaml") . | sha256sum }}
         checksum/storage-config: {{ include (print $.Template.BasePath "/storage-configmap.yaml") . | sha256sum }}
         checksum/ip-allow-config: {{ include (print $.Template.BasePath "/ip-allow-configmap.yaml") . | sha256sum }}
@@ -193,27 +193,27 @@ spec:
           {{- if .Values.customLivenessProbe }}
           livenessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customLivenessProbe "context" $) | nindent 12 }}
           {{- else if .Values.livenessProbe.enabled }}
-          livenessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.livenessProbe "enabled") "context" $) | nindent 12 }}
+          livenessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.livenessProbe "enabled" "path") "context" $) | nindent 12 }}
             httpGet:
-              path: /_stats
+              path: {{ .Values.livenessProbe.path | default "/_stats" }}
               port: http
               scheme: HTTP
           {{- end }}
           {{- if .Values.customReadinessProbe }}
           readinessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customReadinessProbe "context" $) | nindent 12 }}
           {{- else if .Values.readinessProbe.enabled }}
-          readinessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.readinessProbe "enabled") "context" $) | nindent 12 }}
+          readinessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.readinessProbe "enabled" "path") "context" $) | nindent 12 }}
             httpGet:
-              path: /_stats
+              path: {{ .Values.readinessProbe.path | default "/_stats" }}
               port: http
               scheme: HTTP
           {{- end }}
           {{- if .Values.customStartupProbe }}
           startupProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customStartupProbe "context" $) | nindent 12 }}
           {{- else if .Values.startupProbe.enabled }}
-          startupProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.startupProbe "enabled") "context" $) | nindent 12 }}
+          startupProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.startupProbe "enabled" "path") "context" $) | nindent 12 }}
             httpGet:
-              path: /_stats
+              path: {{ .Values.startupProbe.path | default "/_stats" }}
               port: http
               scheme: HTTP
           {{- end }}
@@ -233,9 +233,11 @@ spec:
             - name: records-config
               mountPath: /opt/etc/trafficserver/records.yaml
               subPath: records.yaml
+            {{- /* remap-config 改为目录挂载（不用 subPath），让 ConfigMap 变更能被 kubelet 自动 sync 进容器（~60s）。
+                   ATS 的 records.yaml 里 url_remap.filename 已指向 remap.d/remap.config。
+                   修改 ConfigMap 后需手动: kubectl exec <pod> -- /opt/bin/traffic_ctl config reload */}}
             - name: remap-config
-              mountPath: /opt/etc/trafficserver/remap.config
-              subPath: remap.config
+              mountPath: /opt/etc/trafficserver/remap.d
             - name: plugin-config
               mountPath: /opt/etc/trafficserver/plugin.config
               subPath: plugin.config

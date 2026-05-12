@@ -5600,6 +5600,45 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 10.1.2
+    created: "2026-05-12T12:17:53.175708483Z"
+    dependencies:
+    - name: common
+      repository: file://../common
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: Apache Traffic Server (ATS) is a high-performance HTTP proxy and
+      caching server that can be used as a forward proxy, reverse proxy, and CDN.
+      Ideal for building enterprise-grade caching infrastructure and mirror services.
+    digest: 422776befec728a590175ed58a4bea6ccfa0f3da86ce08bf7f1fdddb77e33af7
+    home: https://trafficserver.apache.org
+    icon: https://trafficserver.apache.org/images/ts_logo.svg
+    keywords:
+    - trafficserver
+    - ats
+    - http
+    - proxy
+    - cache
+    - cdn
+    - reverse proxy
+    - mirror
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: trafficserver
+    sources:
+    - https://github.com/apache/trafficserver
+    - https://trafficserver.apache.org/docs/
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/trafficserver-1.0.2/trafficserver-1.0.2.tgz
+    version: 1.0.2
+  - annotations:
+      images: |
+        - name: trafficserver
+          image: docker.io/trafficserver/trafficserver:latest
+      licenses: Apache-2.0
+    apiVersion: v2
+    appVersion: 10.1.2
     created: "2026-05-12T11:14:20.648754695Z"
     dependencies:
     - name: common
@@ -6086,4 +6125,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-05-12T11:39:52.432822439Z"
+generated: "2026-05-12T12:17:53.175796786Z"

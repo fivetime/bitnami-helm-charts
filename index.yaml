@@ -642,6 +642,43 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 25.7.5
+    created: "2026-05-12T11:39:48.537952158Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: ClickHouse is an open-source column-oriented OLAP database management
+      system. Use it to boost your database performance while providing linear scalability
+      and hardware efficiency.
+    digest: 6a7c55248545c97aea24ede233b5fd38e4f93316bdcfb0ae018157eef5c49086
+    home: https://bitnami.com
+    icon: https://dyltqmyl993wv.cloudfront.net/assets/stacks/clickhouse/img/clickhouse-stack-220x234.png
+    keywords:
+    - database
+    - sharding
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: clickhouse
+    sources:
+    - https://github.com/bitnami/charts/tree/main/bitnami/clickhouse
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/clickhouse-9.4.7/clickhouse-9.4.7.tgz
+    version: 9.4.7
+  - annotations:
+      images: |
+        - name: clickhouse
+          image: docker.io/bitnami/clickhouse:25.7.5-debian-12-r0
+        - name: clickhouse-keeper
+          image: docker.io/bitnami/clickhouse-keeper:25.7.5-debian-12-r0
+        - name: os-shell
+          image: docker.io/bitnami/os-shell:12-debian-12-r51
+      licenses: Apache-2.0
+      tanzuCategory: service
+    apiVersion: v2
+    appVersion: 25.7.5
     created: "2026-04-03T00:24:43.889080053Z"
     dependencies:
     - name: common
@@ -2184,6 +2221,45 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 2.9.0
+    created: "2026-05-12T11:39:48.780363888Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    - condition: cassandra.enabled
+      name: cassandra
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 12.x.x
+    description: Jaeger is a distributed tracing system. It is used for monitoring
+      and troubleshooting microservices-based distributed systems.
+    digest: b6bae38f5d7e9331b54809f7fdabb957c85efaa827fe516313de7fed93fe0227
+    home: https://bitnami.com
+    icon: https://dyltqmyl993wv.cloudfront.net/assets/stacks/jaeger/img/jaeger-stack-220x234.png
+    keywords:
+    - jaeger
+    - tracing
+    - monitoring
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: jaeger
+    sources:
+    - https://github.com/bitnami/charts/tree/main/bitnami/jaeger
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/jaeger-6.0.7/jaeger-6.0.7.tgz
+    version: 6.0.7
+  - annotations:
+      images: |
+        - name: cassandra
+          image: docker.io/bitnami/cassandra:5.0.5-debian-12-r7
+        - name: jaeger
+          image: docker.io/bitnami/jaeger:2.9.0-debian-12-r1
+      licenses: Apache-2.0
+      tanzuCategory: clusterUtility
+    apiVersion: v2
+    appVersion: 2.9.0
     created: "2026-02-05T02:55:25.171422995Z"
     dependencies:
     - name: common
@@ -3417,6 +3493,51 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 8.0.13
+    created: "2026-05-12T11:39:49.763687865Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: MongoDB(R) is a relational open source NoSQL database. Easy to use,
+      it stores data in JSON-like documents. Automated scalability and high-performance.
+      Ideal for developing cloud native applications.
+    digest: 21372a98dd029252ab415a0bb68faedc3218f42c0e692dad1c76fcd976f8aef7
+    home: https://bitnami.com
+    icon: https://dyltqmyl993wv.cloudfront.net/assets/stacks/mongodb/img/mongodb-stack-220x234.png
+    keywords:
+    - mongodb
+    - database
+    - nosql
+    - cluster
+    - replicaset
+    - replication
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: mongodb
+    sources:
+    - https://github.com/bitnami/charts/tree/main/bitnami/mongodb
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/mongodb-17.0.2/mongodb-17.0.2.tgz
+    version: 17.0.2
+  - annotations:
+      images: |
+        - name: kubectl
+          image: docker.io/bitnami/kubectl:1.33.4-debian-12-r0
+        - name: mongodb
+          image: docker.io/bitnami/mongodb:8.0.13-debian-12-r0
+        - name: mongodb-exporter
+          image: docker.io/bitnami/mongodb-exporter:0.47.0-debian-12-r1
+        - name: nginx
+          image: docker.io/bitnami/nginx:1.29.1-debian-12-r0
+        - name: os-shell
+          image: docker.io/bitnami/os-shell:12-debian-12-r51
+      licenses: Apache-2.0
+      tanzuCategory: service
+    apiVersion: v2
+    appVersion: 8.0.13
     created: "2026-02-05T02:55:25.380892743Z"
     dependencies:
     - name: common
@@ -3447,6 +3568,47 @@ entries:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/mongodb-17.0.1/mongodb-17.0.1.tgz
     version: 17.0.1
   mongodb-sharded:
+  - annotations:
+      images: |
+        - name: mongodb-exporter
+          image: docker.io/bitnami/mongodb-exporter:0.47.0-debian-12-r1
+        - name: mongodb-sharded
+          image: docker.io/bitnami/mongodb-sharded:8.0.13-debian-12-r0
+        - name: os-shell
+          image: docker.io/bitnami/os-shell:12-debian-12-r51
+      licenses: Apache-2.0
+      tanzuCategory: service
+    apiVersion: v2
+    appVersion: 8.0.13
+    created: "2026-05-12T11:39:50.047435931Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: MongoDB(R) is an open source NoSQL database that uses JSON for data
+      storage. MongoDB(TM) Sharded improves scalability and reliability for large
+      datasets by distributing data across multiple machines.
+    digest: 491390c043425d316f5d58734047fba973bc895d8c62767f3404a63705e8ae1d
+    home: https://bitnami.com
+    icon: https://dyltqmyl993wv.cloudfront.net/assets/stacks/mongodb/img/mongodb-stack-220x234.png
+    keywords:
+    - mongodb
+    - database
+    - nosql
+    - cluster
+    - replicaset
+    - replication
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: mongodb-sharded
+    sources:
+    - https://github.com/bitnami/charts/tree/main/bitnami/mongodb-sharded
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/mongodb-sharded-9.4.14/mongodb-sharded-9.4.14.tgz
+    version: 9.4.14
   - annotations:
       images: |
         - name: mongodb-exporter
@@ -3852,6 +4014,43 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 1.13.1
+    created: "2026-05-12T11:39:50.606339142Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    deprecated: true
+    description: DEPRECATED NGINX Ingress Controller is an Ingress controller that
+      manages external access to HTTP services in a Kubernetes cluster using NGINX.
+    digest: 364c122b909fc7fd47ff95cca6e7125c966f6837f66a172e7c64cbbb1c2868f3
+    home: https://bitnami.com
+    icon: https://dyltqmyl993wv.cloudfront.net/assets/stacks/nginx-ingress-controller/img/nginx-ingress-controller-stack-220x234.png
+    keywords:
+    - ingress
+    - nginx
+    - http
+    - web
+    - www
+    - reverse proxy
+    kubeVersion: '>= 1.20.0-0'
+    name: nginx-ingress-controller
+    sources:
+    - https://github.com/bitnami/charts/tree/main/bitnami/nginx-ingress-controller
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/nginx-ingress-controller-12.0.9/nginx-ingress-controller-12.0.9.tgz
+    version: 12.0.9
+  - annotations:
+      images: |
+        - name: nginx
+          image: docker.io/bitnami/nginx:1.29.1-debian-12-r0
+        - name: nginx-ingress-controller
+          image: docker.io/bitnami/nginx-ingress-controller:1.13.1-debian-12-r1
+      licenses: Apache-2.0
+      tanzuCategory: clusterUtility
+    apiVersion: v2
+    appVersion: 1.13.1
     created: "2026-02-05T02:55:25.419126103Z"
     dependencies:
     - name: common
@@ -4081,6 +4280,48 @@ entries:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/parse-25.1.16/parse-25.1.16.tgz
     version: 25.1.16
   phpmyadmin:
+  - annotations:
+      images: |
+        - name: apache-exporter
+          image: docker.io/bitnami/apache-exporter:1.0.10-debian-12-r55
+        - name: phpmyadmin
+          image: docker.io/bitnami/phpmyadmin:5.2.2-debian-12-r22
+      licenses: Apache-2.0
+      tanzuCategory: application
+    apiVersion: v2
+    appVersion: 5.2.2
+    created: "2026-05-12T11:39:50.905193439Z"
+    dependencies:
+    - condition: db.bundleTestDB
+      name: mariadb
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - phpmyadmin-database
+      version: 22.x.x
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: phpMyAdmin is a free software tool written in PHP, intended to handle
+      the administration of MySQL over the Web. phpMyAdmin supports a wide range of
+      operations on MySQL and MariaDB.
+    digest: 8c69cf4f96578513530d320c9e6acd1925129b4e846558a4555a5b61b183e5d8
+    home: https://bitnami.com
+    icon: https://dyltqmyl993wv.cloudfront.net/assets/stacks/phpmyadmin/img/phpmyadmin-stack-220x234.png
+    keywords:
+    - mariadb
+    - mysql
+    - phpmyadmin
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: phpmyadmin
+    sources:
+    - https://github.com/bitnami/charts/tree/main/bitnami/phpmyadmin
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/phpmyadmin-20.0.2/phpmyadmin-20.0.2.tgz
+    version: 20.0.2
   - annotations:
       images: |
         - name: apache-exporter
@@ -4413,6 +4654,48 @@ entries:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/powerdns-recursor-1.4.0/powerdns-recursor-1.4.0.tgz
     version: 1.4.0
   prometheus:
+  - annotations:
+      images: |
+        - name: alertmanager
+          image: docker.io/bitnami/alertmanager:0.28.1-debian-12-r15
+        - name: os-shell
+          image: docker.io/bitnami/os-shell:12-debian-12-r50
+        - name: prometheus
+          image: docker.io/bitnami/prometheus:3.5.0-debian-12-r3
+        - name: thanos
+          image: docker.io/bitnami/thanos:0.39.2-debian-12-r2
+      licenses: Apache-2.0
+      tanzuCategory: clusterUtility
+    apiVersion: v2
+    appVersion: 3.5.0
+    created: "2026-05-12T11:39:51.56721475Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: Prometheus is an open source monitoring and alerting system. It enables
+      sysadmins to monitor their infrastructures by collecting metrics from configured
+      targets at given intervals.
+    digest: 592ebc168f20531cfb2aa647374fe36a0457f87094dc147027b077270a41a865
+    home: https://github.com/prometheus/prometheus
+    icon: https://dyltqmyl993wv.cloudfront.net/assets/stacks/prometheus/img/prometheus-stack-220x234.png
+    keywords:
+    - prometheus
+    - monitoring
+    maintainers:
+    - name: Bitnami
+      url: https://github.com/bitnami/charts
+    name: prometheus
+    sources:
+    - https://github.com/bitnami/charts/tree/main/bitnami/prometheus
+    - https://github.com/bitnami/containers/tree/main/bitnami/prometheus
+    - https://github.com/prometheus/prometheus
+    - https://github.com/prometheus-community/helm-charts
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/prometheus-2.2.2/prometheus-2.2.2.tgz
+    version: 2.2.2
   - annotations:
       images: |
         - name: alertmanager
@@ -5154,6 +5437,47 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 0.39.2
+    created: "2026-05-12T11:39:52.432752158Z"
+    dependencies:
+    - condition: minio.enabled
+      name: minio
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 17.x.x
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: Thanos is a highly available metrics system that can be added on
+      top of existing Prometheus deployments, providing a global query view across
+      all Prometheus installations.
+    digest: c120b29363b34ca22eb8e48a0bf0d3faefaca6472abb843ec39f76cf3677ed8c
+    home: https://bitnami.com
+    icon: https://dyltqmyl993wv.cloudfront.net/assets/stacks/thanos/img/thanos-stack-220x234.png
+    keywords:
+    - analytics
+    - monitoring
+    - prometheus
+    - thanos
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: thanos
+    sources:
+    - https://github.com/bitnami/charts/tree/main/bitnami/thanos
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/thanos-17.4.1/thanos-17.4.1.tgz
+    version: 17.4.1
+  - annotations:
+      images: |
+        - name: os-shell
+          image: docker.io/bitnami/os-shell:12-debian-12-r50
+        - name: thanos
+          image: docker.io/bitnami/thanos:0.39.2-debian-12-r2
+      licenses: Apache-2.0
+      tanzuCategory: application
+    apiVersion: v2
+    appVersion: 0.39.2
     created: "2026-04-03T00:24:45.154943714Z"
     dependencies:
     - condition: minio.enabled
@@ -5762,4 +6086,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-05-12T11:14:20.64880596Z"
+generated: "2026-05-12T11:39:52.432822439Z"

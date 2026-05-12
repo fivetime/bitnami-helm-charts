@@ -93,6 +93,54 @@ helm upgrade ats . -n trafficserver --reuse-values
 helm upgrade ats . -n trafficserver -f my-values.yaml
 ```
 
+### remap.config 热加载（特殊架构）
+
+**所有配置都是 subPath 挂载，唯独 remap.config 是目录挂载 + 无 checksum 注解** —— 这是有意为之，不要"修复"它：
+- `templates/statefulset.yaml`：remap-config 挂到 `/opt/etc/trafficserver/remap.d/`（目录，无 subPath）
+- `recordsConfig.records.url_remap.filename: "remap.d/remap.config"` 指引 ATS 去读这个路径
+- 故意不加 `checksum/remap-config` 注解 → 改 ConfigMap 不触发 rolling restart
+
+**目的**：让运维可以 `kubectl edit cm <release>-remap` 改完后用 `traffic_ctl config reload` 热加载，业务零中断。subPath 挂载不会自动 sync ConfigMap 更新，所以只能用目录挂载。
+
+**代价**：用户必须知道不能混用 `helm upgrade` 和 `kubectl edit`，否则 upgrade 会覆盖手改的内容。README/DEPLOYMENT.md 都有警告。
+
+### 默认 HTTPS 容器端口为空字符串
+
+`containerPorts.https: ""` 是有意的默认值，不要改回 `8443`：
+- 默认 `recordsConfig.records.http.server_ports` 只配了 HTTP（`"8080 8080:ipv6"`），ATS 实际不监听 8443
+- 如果默认 `containerPorts.https: 8443`，会导致 Service / Headless Service / NetworkPolicy 都开放 8443 端口 → LB 上 443 端口悬空、连接被 refuse
+- 大多数部署用前置 Ingress / LB 做 TLS 终结，ATS 不需要监听 HTTPS
+
+四个模板（svc / headless-svc / statefulset / networkpolicy）都用 `{{- if .Values.containerPorts.https }}` 守卫，空值时 HTTPS 相关字段完全不渲染。
+
+启用 ATS 自身 HTTPS 监听需要：
+1. `containerPorts.https: 8443`
+2. `recordsConfig.records.http.server_ports: "8080 8080:ipv6 8443:ssl"`
+3. `sslMulticertConfig` 提供证书
+
+### 健康探针路径可配置
+
+`livenessProbe.path` / `readinessProbe.path` / `startupProbe.path` 默认 `/_stats`，依赖 `pluginConfig` 里加载了 `stats_over_http.so`（chart 默认已加载）。
+
+如果用户禁用该插件：
+- 改 path 到其他可访问 URL
+- 或用 `customLivenessProbe` 走 `tcpSocket: { port: http }`
+
+statefulset.yaml 渲染时用 `omit ... "path"` 把 path 从顶层探针配置剔除，避免重复出现在 `httpGet.path` 之外。
+
+### strategies.yaml 渲染路径
+
+`clusterMode.enabled` 时：
+1. `templates/strategies-configmap.yaml` 生成 strategies.yaml 模板（`__SELF_HOST__` 占位符）
+2. subPath 挂载到 `/opt/etc/trafficserver/strategies.yaml.tpl`（只读）
+3. 启动脚本渲染 `__SELF_HOST__` → 输出到 **`/opt/var/trafficserver/strategies.yaml`**（state emptyDir 卷）
+4. `templates/records-configmap.yaml` 自动注入 `url_remap.strategies.filename: /opt/var/trafficserver/strategies.yaml` 到 records.yaml
+
+**不要把渲染产物路径改回 `/tmp/`** —— 早期版本用过 `/tmp/strategies-rendered.yaml`，已迁移到 state 卷以便：
+- 解耦 `readOnlyRootFilesystem`
+- 提高可发现性（运维进 pod 一眼能看到）
+- 跟其他临时文件分开
+
 ### 已修复问题（历史）
 1. **权限错误** `unable to access() local state dir '/opt/var/trafficserver': Permission denied`
    - 解决：添加 emptyDir 卷挂载到 `/opt/var/trafficserver`

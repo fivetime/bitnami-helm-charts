@@ -1,12 +1,14 @@
 <!--- app-name: Whereabouts -->
 
-# Bitnami Secure Images Helm chart for Whereabouts
+# Helm chart for Whereabouts (upstream image fork)
 
 Whereabouts is a CNI IPAM plugin for Kubernetes clusters. It dynamically assigns IP addresses cluster-wide. Features both IPv4 and IPv6 addressing.
 
 [Overview of Whereabouts](https://github.com/k8snetworkplumbingwg/whereabouts)
 
-Trademarks: This software listing is packaged by Bitnami. The respective trademarks mentioned in the offering are owned by the respective companies, and use of them does not imply any affiliation or endorsement.
+> **This fork swaps the bitnami-built image for the upstream `ghcr.io/k8snetworkplumbingwg/whereabouts` image and adjusts the daemonset/RBAC accordingly.** See [Upgrading](#upgrading) for migration notes.
+
+Trademarks: This software listing was originally packaged by Bitnami. The respective trademarks mentioned in the offering are owned by the respective companies, and use of them does not imply any affiliation or endorsement.
 
 ## TL;DR
 
@@ -146,7 +148,9 @@ To back up and restore Helm chart deployments on Kubernetes, you need to back up
 | `image.debug`                                       | Specify if debug logs should be enabled                                                                                                                                                                           | `false`                       |
 | `hostCNIBinDir`                                     | CNI binary dir in the host machine to mount                                                                                                                                                                       | `/opt/cni/bin`                |
 | `hostCNINetDir`                                     | CNI net.d dir in the host machine to mount                                                                                                                                                                        | `/etc/cni/net.d`              |
-| `CNIMountPath`                                      | Path inside the container to mount the CNI dirs                                                                                                                                                                   | `/bitnami/whereabouts/host`   |
+| `CNIMountPath`                                      | Path inside the container at which the host CNI dirs are bind-mounted (must be `/host` for the upstream image; lib.sh hard-codes that prefix)                                                                     | `/host`                       |
+| `cronSchedule.enabled`                              | Create a ConfigMap and mount it at `/cron-schedule` so ip-control-loop can read the reconciler cron expression at runtime                                                                                         | `true`                        |
+| `cronSchedule.expression`                           | Cron expression for the IP reservation reconciler sweep                                                                                                                                                           | `30 4 * * *`                  |
 | `command`                                           | Override default container command (useful when using custom images)                                                                                                                                              | `[]`                          |
 | `args`                                              | Override default container args (useful when using custom images)                                                                                                                                                 | `[]`                          |
 | `updateStrategy.type`                               | Update strategy - only really applicable for deployments with RWO PVs attached                                                                                                                                    | `RollingUpdate`               |
@@ -252,6 +256,25 @@ helm install my-release -f values.yaml oci://REGISTRY_NAME/REPOSITORY_NAME/where
 Find more information about how to deal with common errors related to Bitnami's Helm charts in [this troubleshooting guide](https://docs.bitnami.com/general/how-to/troubleshoot-helm-chart-issues).
 
 ## Upgrading
+
+### To 1.3.2
+
+Four upstream-parity fixes after the v1.3.0 image switch (see commit log for details):
+
+- **`CNIMountPath` default changed from `/bitnami/whereabouts/host` to `/host`.** The upstream `install-cni.sh` (`script/lib.sh`) hard-codes `/host/opt/cni/bin/` and `/host/etc/cni/net.d` as targets and strips `/host` from the kubeconfig path written into `whereabouts.conf`. Anyone overriding `CNIMountPath` in `values.yaml` must drop the override (or set it to `/host`).
+- **`ClusterRole` was missing `pods.get`, `nodes.list/watch`, `events.get`, and the entire `nodeslicepools` resource.** Without `pods.get` the `ip-control-loop` reconciler spams 403s and leaks IP reservations.
+- **`/cron-schedule` ConfigMap is now mounted by default** (`cronSchedule.enabled=true`). Without it, ip-control-loop runs the default daily 04:30 sweep with no way to retune at runtime.
+- **Drop `exec` before `/ip-control-loop` in the entrypoint args** so `/bin/sh` stays as PID 1 and reaps zombie children (e.g. if `/token-watcher.sh` ever exits).
+
+### To 1.3.1
+
+Add the upstream `/token-watcher.sh` as a background process inside the daemonset pod. Without it, the SA token embedded in the host kubeconfig at `/etc/cni/net.d/whereabouts.d/whereabouts.kubeconfig` expires after about an hour (bound ServiceAccount tokens in Kubernetes 1.22+ have a default TTL of ~1 h and kubelet rotates the in-pod token file). The CNI binary on the host keeps reading the stale kubeconfig and starts getting 401s, causing new pods to fail IPAM allocation.
+
+### To 1.3.0
+
+**Image source switched from `docker.io/bitnami/whereabouts` to `ghcr.io/k8snetworkplumbingwg/whereabouts`.** The upstream image is built from `alpine:3.23.4` and ships only POSIX `/bin/sh` (no `bash`), so the daemonset entrypoint was changed from `command: ["/bin/bash"]` + `bash /install-cni.sh && /ip-control-loop` to `command: ["/bin/sh"]` + `/install-cni.sh && /ip-control-loop`. The upstream `/install-cni.sh` is POSIX-compatible (`#!/bin/sh`, no bash-isms).
+
+This change also disables Bitnami's `common.errors.insecureImages` guard because the chart's `Chart.yaml` `annotations.images` no longer references a `docker.io/bitnami*` substring; you no longer need to set `global.security.allowInsecureImages: true`.
 
 ### To 1.2.0
 

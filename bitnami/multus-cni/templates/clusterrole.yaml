@@ -26,6 +26,10 @@ rules:
     verbs:
       - get
       - update
+      {{- if eq .Values.mode "thick" }}
+      - list
+      - watch
+      {{- end }}
   - apiGroups:
       - ""
       - events.k8s.io

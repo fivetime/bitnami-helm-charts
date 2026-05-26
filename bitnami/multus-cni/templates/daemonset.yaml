@@ -130,6 +130,12 @@ spec:
           {{- if .Values.containerSecurityContext.enabled }}
           securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.containerSecurityContext "context" $) | nindent 12 }}
           {{- end }}
+          {{- if and .Values.metrics.enabled (eq .Values.mode "thick") }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.metrics.port }}
+              protocol: TCP
+          {{- end }}
           env:
             {{- if eq .Values.mode "thick" }}
             - name: MULTUS_NODE_NAME

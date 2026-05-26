@@ -4,10 +4,18 @@ SPDX-License-Identifier: APACHE-2.0
 */}}
 
 {{/*
-Return the proper Multus CNI image name
+Return the proper Multus CNI image name.
+When `mode=thick` is selected and the configured `image.tag` does not already
+contain the substring "thick", append a `-thick` suffix so the user does not
+have to remember to switch tag families when flipping the mode.
 */}}
 {{- define "multus-cni.image" -}}
-{{- include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) -}}
+{{- $imageRoot := deepCopy .Values.image -}}
+{{- $tag := default "stable" $imageRoot.tag -}}
+{{- if and (eq .Values.mode "thick") (not (contains "thick" $tag)) (not $imageRoot.digest) -}}
+{{- $_ := set $imageRoot "tag" (printf "%s-thick" $tag) -}}
+{{- end -}}
+{{- include "common.images.image" (dict "imageRoot" $imageRoot "global" .Values.global) -}}
 {{- end -}}
 
 {{/*

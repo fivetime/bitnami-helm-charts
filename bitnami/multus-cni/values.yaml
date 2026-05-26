@@ -118,9 +118,54 @@ command: []
 ## @param args Override default container args (useful when using custom images)
 ##
 args: []
-## @param mode Multus CNI deployment mode. Allowed values: `thin`, `thick`. When set to `thick`, use an image tag whose binary ships the thick entrypoint (e.g. `image.tag=stable-thick` or `v4.2.4-thick`).
+## @param mode Multus CNI deployment mode. Allowed values: `thin`, `thick`. When `thick`, the chart auto-appends `-thick` to `image.tag` if it does not already include the substring (so `image.tag=v4.2.4` resolves to `v4.2.4-thick`). Set `image.tag=...-thick` explicitly to skip the auto-suffix.
 ##
 mode: thin
+## Prometheus metrics for the multus-daemon (`mode=thick` only). multus-daemon
+## exposes its metrics on a configurable HTTP port when `metricsPort` is set in
+## the daemon-config.json. When enabled, the chart wires the port into the
+## ConfigMap, declares a containerPort on the daemonset, and creates a headless
+## Service plus an optional ServiceMonitor.
+##
+metrics:
+  ## @param metrics.enabled Expose the multus-daemon Prometheus endpoint. Requires `mode=thick`.
+  ##
+  enabled: false
+  ## @param metrics.port Port on which multus-daemon listens for Prometheus scrape requests
+  ##
+  port: 9091
+  service:
+    ## @param metrics.service.enabled Create a Service in front of the daemonset for the metrics port
+    ##
+    enabled: true
+    ## @param metrics.service.type Metrics Service type (typically `ClusterIP`)
+    ##
+    type: ClusterIP
+    ## @param metrics.service.annotations Annotations to add to the metrics Service (e.g. for prometheus.io/scrape autoconfig)
+    ##
+    annotations: {}
+  serviceMonitor:
+    ## @param metrics.serviceMonitor.enabled Create a Prometheus-Operator ServiceMonitor for the metrics Service
+    ##
+    enabled: false
+    ## @param metrics.serviceMonitor.namespace Namespace to deploy the ServiceMonitor in (defaults to release namespace)
+    ##
+    namespace: ""
+    ## @param metrics.serviceMonitor.labels Extra labels added to the ServiceMonitor (typically required by your Prometheus selector)
+    ##
+    labels: {}
+    ## @param metrics.serviceMonitor.interval Prometheus scrape interval (e.g. `30s`); blank lets Prometheus default apply
+    ##
+    interval: ""
+    ## @param metrics.serviceMonitor.scrapeTimeout Prometheus scrape timeout (blank = default)
+    ##
+    scrapeTimeout: ""
+    ## @param metrics.serviceMonitor.relabelings Prometheus relabel rules
+    ##
+    relabelings: []
+    ## @param metrics.serviceMonitor.metricRelabelings Prometheus metric relabel rules
+    ##
+    metricRelabelings: []
 ## Thick mode configuration. Only used when `mode=thick`. Rendered into a ConfigMap (`<release>-daemon-config`) and mounted at `/etc/cni/net.d/multus.d/daemon-config.json` inside the multus-daemon container.
 ## ref: https://github.com/k8snetworkplumbingwg/multus-cni/blob/master/docs/thick-plugin.md
 ##
@@ -203,7 +248,11 @@ sidecars: []
 ## @param tolerations Tolerations for pod assignment
 ## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
 ##
-tolerations: []
+tolerations:
+  - operator: Exists
+    effect: NoSchedule
+  - operator: Exists
+    effect: NoExecute
 ## Network Policies
 ## Ref: https://kubernetes.io/docs/concepts/services-networking/network-policies/
 ##

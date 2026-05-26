@@ -4,6 +4,10 @@ SPDX-License-Identifier: APACHE-2.0
 */}}
 
 {{- if eq .Values.mode "thick" }}
+{{- $config := deepCopy .Values.thick.daemonConfig -}}
+{{- if .Values.metrics.enabled }}
+{{- $_ := set $config "metricsPort" (int .Values.metrics.port) -}}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -15,5 +19,5 @@ metadata:
   {{- end }}
 data:
   daemon-config.json: |-
-{{ .Values.thick.daemonConfig | toPrettyJson | indent 4 }}
+{{ $config | toPrettyJson | indent 4 }}
 {{- end }}

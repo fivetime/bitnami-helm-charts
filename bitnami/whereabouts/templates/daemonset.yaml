@@ -82,7 +82,10 @@ spec:
           args:
             - -ec
             - |
-              SLEEP=false /install-cni.sh && /ip-control-loop {{- if .Values.image.debug }} -log-level debug {{- end }}
+              SLEEP=false
+              . /install-cni.sh
+              /token-watcher.sh &
+              exec /ip-control-loop {{- if .Values.image.debug }} -log-level debug {{- end }}
           {{- end }}
           {{- if .Values.containerSecurityContext.enabled }}
           securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.containerSecurityContext "context" $) | nindent 12 }}

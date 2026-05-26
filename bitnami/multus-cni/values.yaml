@@ -118,6 +118,38 @@ command: []
 ## @param args Override default container args (useful when using custom images)
 ##
 args: []
+## @param mode Multus CNI deployment mode. Allowed values: `thin`, `thick`. When set to `thick`, use an image tag whose binary ships the thick entrypoint (e.g. `image.tag=stable-thick` or `v4.2.4-thick`).
+##
+mode: thin
+## Thick mode configuration. Only used when `mode=thick`. Rendered into a ConfigMap (`<release>-daemon-config`) and mounted at `/etc/cni/net.d/multus.d/daemon-config.json` inside the multus-daemon container.
+## ref: https://github.com/k8snetworkplumbingwg/multus-cni/blob/master/docs/thick-plugin.md
+##
+thick:
+  daemonConfig:
+    ## @param thick.daemonConfig.chrootDir Container path that bind-mounts the host root. multus-daemon `chroot`s here when invoking delegate CNIs so they see the real host filesystem.
+    ##
+    chrootDir: /hostroot
+    ## @param thick.daemonConfig.cniVersion CNI spec version recorded in the generated multus conflist
+    ##
+    cniVersion: "0.3.1"
+    ## @param thick.daemonConfig.logLevel multus-daemon log level (`verbose`, `debug`, `error`, `panic`)
+    ##
+    logLevel: verbose
+    ## @param thick.daemonConfig.logToStderr Log to stderr so logs reach kubelet via the container log
+    ##
+    logToStderr: true
+    ## @param thick.daemonConfig.cniConfigDir CNI config dir inside the daemon container
+    ##
+    cniConfigDir: /host/etc/cni/net.d
+    ## @param thick.daemonConfig.multusAutoconfigDir Directory the daemon watches to auto-generate the multus CNI conflist
+    ##
+    multusAutoconfigDir: /host/etc/cni/net.d
+    ## @param thick.daemonConfig.multusConfigFile `auto` to generate from the default delegate, or a path to a static conflist
+    ##
+    multusConfigFile: auto
+    ## @param thick.daemonConfig.socketDir Unix-socket dir for multus-daemon (must match the shim's compiled-in path; do not change unless you understand the implications)
+    ##
+    socketDir: /host/run/multus/
 ## @param updateStrategy.type Update strategy - only really applicable for deployments with RWO PVs attached
 ## If replicas = 1, an update can get "stuck", as the previous pod remains attached to the
 ## PV, and the "incoming" pod can never start. Changing the strategy to "Recreate" will

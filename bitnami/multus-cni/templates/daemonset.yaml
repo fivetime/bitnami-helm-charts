@@ -28,6 +28,10 @@ spec:
     spec:
       {{- include "multus-cni.imagePullSecrets" . | nindent 6 }}
       hostNetwork: true
+      {{- if eq .Values.mode "thick" }}
+      hostPID: true
+      terminationGracePeriodSeconds: 10
+      {{- end }}
       serviceAccountName: {{ include "multus-cni.serviceAccountName" . }}
       {{- if .Values.podSecurityContext.enabled }}
       securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.podSecurityContext "context" $) | nindent 8 }}
@@ -64,10 +68,20 @@ spec:
         - name: install-multus-binary
           image: {{ template "multus-cni.image" . }}
           command:
+            {{- if eq .Values.mode "thick" }}
+            - "/usr/src/multus-cni/bin/install_multus"
+            - "-d"
+            - "{{ .Values.CNIMountPath }}{{ include "multus-cni.cniBinDir" . }}"
+            - "-t"
+            - "thick"
+            {{- else }}
             - "/install_multus"
+            {{- end }}
+          {{- if eq .Values.mode "thin" }}
           args:
             - "--type"
             - "thin"
+          {{- end }}
           resources:
             requests:
               cpu: "10m"
@@ -90,13 +104,17 @@ spec:
           command: {{- include "common.tplvalues.render" (dict "value" .Values.command "context" $) | nindent 12 }}
           {{- else }}
           command:
+            {{- if eq .Values.mode "thick" }}
+            - "/usr/src/multus-cni/bin/multus-daemon"
+            {{- else }}
             - "/thin_entrypoint"
+            {{- end }}
           {{- end }}
           {{- if .Values.diagnosticMode.enabled }}
           args: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 12 }}
           {{- else if .Values.args }}
           args: {{- include "common.tplvalues.render" (dict "value" .Values.args "context" $) | nindent 12 }}
-          {{- else }}
+          {{- else if eq .Values.mode "thin" }}
           args:
             - "--multus-conf-file=auto"
             - "--multus-autoconfig-dir={{ .Values.CNIMountPath }}{{ .Values.hostCNINetDir }}"
@@ -113,6 +131,12 @@ spec:
           securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.containerSecurityContext "context" $) | nindent 12 }}
           {{- end }}
           env:
+            {{- if eq .Values.mode "thick" }}
+            - name: MULTUS_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            {{- end }}
             {{- if .Values.extraEnvVars }}
             {{- include "common.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
             {{- end }}
@@ -136,7 +160,11 @@ spec:
             exec:
               command:
                 - pgrep
+                {{- if eq .Values.mode "thick" }}
+                - multus-daemon
+                {{- else }}
                 - thin_entrypoint
+                {{- end }}
             initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.startupProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
@@ -150,7 +178,11 @@ spec:
             exec:
               command:
                 - pgrep
+                {{- if eq .Values.mode "thick" }}
+                - multus-daemon
+                {{- else }}
                 - thin_entrypoint
+                {{- end }}
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
@@ -164,7 +196,11 @@ spec:
             exec:
               command:
                 - pgrep
+                {{- if eq .Values.mode "thick" }}
+                - multus-daemon
+                {{- else }}
                 - thin_entrypoint
+                {{- end }}
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
@@ -181,12 +217,39 @@ spec:
             - name: empty-dir
               mountPath: /tmp
               subPath: tmp-dir
+            {{- if eq .Values.mode "thick" }}
+            - name: cni-net-dir
+              mountPath: /host/etc/cni/net.d
+            - name: cni-bin-dir
+              mountPath: /opt/cni/bin
+            - name: host-run
+              mountPath: /host/run
+            - name: host-var-lib-cni-multus
+              mountPath: /var/lib/cni/multus
+            - name: host-var-lib-kubelet
+              mountPath: /var/lib/kubelet
+              mountPropagation: HostToContainer
+            - name: host-run-k8s-cni-cncf-io
+              mountPath: /run/k8s.cni.cncf.io
+            - name: host-run-netns
+              mountPath: /run/netns
+              mountPropagation: HostToContainer
+            - name: multus-daemon-config
+              mountPath: /etc/cni/net.d/multus.d
+              readOnly: true
+            - name: hostroot
+              mountPath: /hostroot
+              mountPropagation: HostToContainer
+            - name: multus-conf-dir
+              mountPath: /etc/cni/multus/net.d
+            {{- else }}
             - name: cni-net-dir
               mountPath: {{ .Values.CNIMountPath }}{{ .Values.hostCNINetDir }}
             - name: cni-bin-dir
               mountPath: {{ .Values.CNIMountPath }}{{ include "multus-cni.cniBinDir" . }}
             - name: cni-multus-dir
               mountPath: {{ .Values.CNIMountPath }}/etc/cni/multus
+            {{- end }}
             {{- if .Values.extraVolumeMounts }}
             {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
             {{- end }}
@@ -202,10 +265,43 @@ spec:
         - name: cni-net-dir
           hostPath:
             path: {{ .Values.hostCNINetDir }}
+        {{- if eq .Values.mode "thick" }}
+        - name: host-run
+          hostPath:
+            path: /run
+        - name: host-var-lib-cni-multus
+          hostPath:
+            path: /var/lib/cni/multus
+            type: DirectoryOrCreate
+        - name: host-var-lib-kubelet
+          hostPath:
+            path: /var/lib/kubelet
+        - name: host-run-k8s-cni-cncf-io
+          hostPath:
+            path: /run/k8s.cni.cncf.io
+            type: DirectoryOrCreate
+        - name: host-run-netns
+          hostPath:
+            path: /run/netns
+        - name: hostroot
+          hostPath:
+            path: /
+        - name: multus-conf-dir
+          hostPath:
+            path: /etc/cni/multus/net.d
+            type: DirectoryOrCreate
+        - name: multus-daemon-config
+          configMap:
+            name: {{ include "common.names.fullname" . }}-daemon-config
+            items:
+              - key: daemon-config.json
+                path: daemon-config.json
+        {{- else }}
         - name: cni-multus-dir
           hostPath:
             path: /etc/cni/multus
             type: DirectoryOrCreate
+        {{- end }}
         {{- if .Values.extraVolumes }}
         {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumes "context" $) | nindent 8 }}
         {{- end }}

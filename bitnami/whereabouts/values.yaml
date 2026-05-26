@@ -119,6 +119,19 @@ cronSchedule:
   ## @param cronSchedule.expression Cron expression for the reconciler sweep (default: daily at 04:30)
   ##
   expression: "30 4 * * *"
+## Optional CustomResourceDefinitions managed via templates (toggleable).
+## The core CRDs `ippools.whereabouts.cni.cncf.io` and
+## `overlappingrangeipreservations.whereabouts.cni.cncf.io` are required for
+## whereabouts to function at all and live in the chart's `crds/` directory
+## (always installed, never deleted by helm). The CRDs below are optional and
+## carry `helm.sh/resource-policy: keep` so a chart uninstall never wipes
+## user-created resource instances.
+##
+crds:
+  nodeSlicePool:
+    ## @param crds.nodeSlicePool.enabled Install the `nodeslicepools.whereabouts.cni.cncf.io` CRD (upstream `doc/crds/`). Required to use the experimental Fast IPAM feature (`node_slice_size` in the IPAM config, plus a separately deployed `node-slice-controller`). Default is true so the CRD schema is available immediately if you later opt into Fast IPAM; harmless to keep installed when unused.
+    ##
+    enabled: true
 ## @param hostCNIBinDir CNI binary dir in the host machine to mount
 ## ref: https://github.com/bitnami/containers/tree/main/bitnami/whereabouts#configuration
 ##

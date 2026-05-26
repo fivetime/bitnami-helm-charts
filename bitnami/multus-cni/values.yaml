@@ -121,6 +121,24 @@ args: []
 ## @param mode Multus CNI deployment mode. Allowed values: `thin`, `thick`. When `thick`, the chart auto-appends `-thick` to `image.tag` if it does not already include the substring (so `image.tag=v4.2.4` resolves to `v4.2.4-thick`). Set `image.tag=...-thick` explicitly to skip the auto-suffix.
 ##
 mode: thin
+## Adjacent k8s.cni.cncf.io CustomResourceDefinitions co-required by typical
+## multus + OVN-Kubernetes deployments but owned by other upstream projects.
+## The chart's primary CRD (`network-attachment-definitions.k8s.cni.cncf.io`)
+## is always installed unconditionally via the `crds/` directory. The toggles
+## below let you opt out of the adjacent ones if another component already
+## manages them. All CRDs created via these toggles carry the
+## `helm.sh/resource-policy: keep` annotation so `helm uninstall` does not wipe
+## user-created MultiNetworkPolicy / IPAMClaim instances.
+##
+crds:
+  multiNetworkPolicy:
+    ## @param crds.multiNetworkPolicy.enabled Install the `multi-networkpolicies.k8s.cni.cncf.io` CRD (upstream project: k8snetworkplumbingwg/multi-networkpolicy). REQUIRED when OVN-Kubernetes is started with `OVN_MULTI_NETWORK_ENABLE=true` (see ovnkube.sh:1148) because it strictly couples `--enable-multi-network` with `--enable-multi-networkpolicy`, and the ovnkube-node informer fails NotFound without this CRD.
+    ##
+    enabled: true
+  ipamClaim:
+    ## @param crds.ipamClaim.enabled Install the `ipamclaims.k8s.cni.cncf.io` CRD (upstream project: k8snetworkplumbingwg/ipamclaims). Required for OVN-Kubernetes persistent IPs (KubeVirt VM IP retention across reboots) when `--enable-persistent-ips` is set.
+    ##
+    enabled: true
 ## Prometheus metrics for the multus-daemon (`mode=thick` only). multus-daemon
 ## exposes its metrics on a configurable HTTP port when `metricsPort` is set in
 ## the daemon-config.json. When enabled, the chart wires the port into the

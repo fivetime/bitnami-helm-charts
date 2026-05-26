@@ -106,6 +106,19 @@ image:
   ## Set to true if you would like to see extra information on logs
   ##
   debug: false
+## Reconciler cron schedule. Rendered into a ConfigMap and mounted at
+## /cron-schedule/config inside the daemonset; consumed by ip-control-loop
+## to schedule the daily IP-reservation reconciliation sweep.
+## When disabled, ip-control-loop falls back to the env-var / default
+## (`30 4 * * *`, baked into install-cni.sh).
+##
+cronSchedule:
+  ## @param cronSchedule.enabled Create a ConfigMap and mount it at /cron-schedule for runtime cron customization
+  ##
+  enabled: true
+  ## @param cronSchedule.expression Cron expression for the reconciler sweep (default: daily at 04:30)
+  ##
+  expression: "30 4 * * *"
 ## @param hostCNIBinDir CNI binary dir in the host machine to mount
 ## ref: https://github.com/bitnami/containers/tree/main/bitnami/whereabouts#configuration
 ##
@@ -114,10 +127,9 @@ hostCNIBinDir: /opt/cni/bin
 ## ref: https://github.com/bitnami/containers/tree/main/bitnami/whereabouts#configuration
 ##
 hostCNINetDir: /etc/cni/net.d
-## @param CNIMountPath Path inside the container to mount the CNI dirs
-## ref: https://github.com/bitnami/containers/tree/main/bitnami/whereabouts#configuration
+## @param CNIMountPath Path inside the container at which the host CNI dirs are bind-mounted. Upstream install-cni.sh defaults to `/host/...` so this MUST be `/host` for the official `ghcr.io/k8snetworkplumbingwg/whereabouts` image (lib.sh also strips this prefix to write the kubeconfig path into whereabouts.conf).
 ##
-CNIMountPath: /bitnami/whereabouts/host
+CNIMountPath: /host
 ## @param command Override default container command (useful when using custom images)
 ##
 command: []

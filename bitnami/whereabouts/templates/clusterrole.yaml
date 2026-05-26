@@ -18,6 +18,7 @@ rules:
     resources:
       - ippools
       - overlappingrangeipreservations
+      - nodeslicepools
     verbs:
       - get
       - list
@@ -37,6 +38,7 @@ rules:
     resources:
       - pods
     verbs:
+      - get
       - list
       - watch
   - apiGroups:
@@ -53,6 +55,7 @@ rules:
     resources:
       - events
     verbs:
+      - get
       - create
       - patch
       - update
@@ -62,4 +65,6 @@ rules:
       - nodes
     verbs:
       - get
+      - list
+      - watch
 {{- end }}

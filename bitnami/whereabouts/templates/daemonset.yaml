@@ -80,12 +80,12 @@ spec:
           args: {{- include "common.tplvalues.render" (dict "value" .Values.args "context" $) | nindent 12 }}
           {{- else }}
           args:
-            - -ec
+            - -c
             - |
               SLEEP=false
               . /install-cni.sh
               /token-watcher.sh &
-              exec /ip-control-loop {{- if .Values.image.debug }} -log-level debug {{- end }}
+              /ip-control-loop {{- if .Values.image.debug }} -log-level debug {{- end }}
           {{- end }}
           {{- if .Values.containerSecurityContext.enabled }}
           securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.containerSecurityContext "context" $) | nindent 12 }}
@@ -173,6 +173,10 @@ spec:
               mountPath: {{ .Values.CNIMountPath }}/opt/cni/bin
             - name: cni-net-dir
               mountPath: {{ .Values.CNIMountPath }}/etc/cni/net.d
+            {{- if .Values.cronSchedule.enabled }}
+            - name: cron-schedule
+              mountPath: /cron-schedule
+            {{- end }}
             {{- if .Values.extraVolumeMounts }}
             {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
             {{- end }}
@@ -188,6 +192,15 @@ spec:
         - name: cni-net-dir
           hostPath:
             path: {{ .Values.hostCNINetDir }}
+        {{- if .Values.cronSchedule.enabled }}
+        - name: cron-schedule
+          configMap:
+            name: {{ include "common.names.fullname" . }}-cron-schedule
+            defaultMode: 0744
+            items:
+              - key: cron-expression
+                path: config
+        {{- end }}
         {{- if .Values.extraVolumes }}
         {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumes "context" $) | nindent 8 }}
         {{- end }}

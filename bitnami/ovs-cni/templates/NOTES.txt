@@ -1,0 +1,55 @@
+CHART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+** Please be patient while the chart is being deployed **
+
+{{- if .Values.diagnosticMode.enabled }}
+
+The chart has been deployed in diagnostic mode. All probes have been disabled and the command has been overwritten with:
+
+  command: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 4 }}
+  args: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 4 }}
+
+Get the list of pods by executing:
+
+    kubectl get pods --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+Access the pod you want to debug by executing:
+
+    kubectl exec --namespace {{ .Release.Namespace }} -ti <NAME OF THE POD> -- bash
+{{- else }}
+
+Watch the ovs-cni DaemonSet status with:
+
+    kubectl get daemonset -w --namespace {{ include "common.names.namespace" . }} -l app.kubernetes.io/name={{ include "common.names.name" . }},app.kubernetes.io/instance={{ .Release.Name }}
+
+{{- end }}
+
+IMPORTANT — prerequisites:
+  - Open vSwitch must already be installed and running on every node where ovs-cni
+    pods are scheduled. The marker connects via {{ .Values.ovsSocket.type }}:{{ if eq .Values.ovsSocket.type "tcp" }}{{ .Values.ovsSocket.host }}:{{ .Values.ovsSocket.port }}{{ else }}{{ .Values.ovsSocket.path }}{{ end }}.
+  - Multus-CNI (or another meta-plugin) is required to invoke the `ovs` binary as a
+    secondary network attachment via NetworkAttachmentDefinition. ovs-cni is not
+    intended as a primary cluster CNI.
+
+CNI binaries installed on host:
+  - {{ include "ovs-cni.cniBinDir" . }}/ovs                  {{ if .Values.plugins.ovs           }}(enabled){{ else }}(disabled){{ end }}
+  - {{ include "ovs-cni.cniBinDir" . }}/ovs-mirror-producer  {{ if .Values.plugins.mirrorProducer }}(enabled){{ else }}(disabled){{ end }}
+  - {{ include "ovs-cni.cniBinDir" . }}/ovs-mirror-consumer  {{ if .Values.plugins.mirrorConsumer }}(enabled){{ else }}(disabled){{ end }}
+
+{{- if .Values.marker.enabled }}
+
+Bridge resources (advertised by the marker) are visible per node with:
+
+    kubectl get node -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.capacity}{"\n"}{end}' | grep ovs-cni.network.kubevirt.io
+
+Reference a bridge from a Pod with a resource request, e.g.:
+
+    resources:
+      requests:
+        ovs-cni.network.kubevirt.io/<bridge-name>: "1"
+{{- end }}
+
+{{- include "common.warnings.rollingTag" .Values.image }}
+{{- include "common.warnings.resources" (dict "sections" (list "") "context" $) }}

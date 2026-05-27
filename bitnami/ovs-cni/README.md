@@ -43,7 +43,7 @@ kubectl get node -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.ca
 
 ## 用法场景
 
-`ovnPort` 这个 CNI arg 决定了 ovs-cni 是否走 OVN 控制平面。组合 OVS 桥的两种形态（裸 OVS vs OVN 管控）以及"是否启用 OVN logical switch"，共 **5 类场景**：
+`OvnPort` 这个 CNI arg（首字母大写，匹配 ovs-cni 内部 `EnvArgs.OvnPort` 字段）决定了 ovs-cni 是否走 OVN 控制平面。组合 OVS 桥的两种形态（裸 OVS vs OVN 管控）以及"是否启用 OVN logical switch"，共 **5 类场景**：
 
 | 场景 | OVN 控制面 | OVS 桥归属 | Data plane | 多租户隔离 | IPAM | SG/ACL |
 |---|---|---|---|---|---|---|
@@ -108,6 +108,16 @@ spec:
 
 **适用**：集群本身就是 OpenStack 的一部分，希望 K8s pod 与 Nova VM **在同一张 Neutron 租户网络上互通**。这是 KubeVirt + OpenStack、Telco CNF 的典型用法。
 
+> ⚠️ **镜像要求**：上游 `ovs-cni-plugin:v0.39.0` 及更早版本有一个 [multus 集成 bug](https://github.com/k8snetworkplumbingwg/ovs-cni/pull/529) —— `cni-args.OvnPort` 经 multus 注入到 StdinData 的 `args.cni.*`，但 ovs-cni 只从 CNI_ARGS env 读 OvnPort，导致 `external_ids:iface-id` 永远不被写，OVN 永远不会绑定 LSP。
+>
+> 修复需要 PR #529 合入或使用包含此补丁的 fork 镜像：
+> ```yaml
+> image:
+>   registry: ghcr.io
+>   repository: fivetime/ovs-cni-plugin   # 含补丁
+>   tag: latest
+> ```
+
 **节点准备**（每节点必须满足）：
 1. 节点本身是 **Neutron compute / OVN chassis**（跑 `ovn-controller`，已注册到 OVN SB chassis 表）
 2. 节点的 `br-int` 就是 ovn-controller 管控的那个（**不要**有第二个 OVN 控制平面，不能有 ovnkube）
@@ -119,10 +129,13 @@ spec:
 openstack port create --network tenant-net-1 \
                       --fixed-ip ip-address=10.0.0.5 \
                       my-pod-port
-# 拿到 port UUID，例如 abc-123-def-456
+# 拿到 port UUID + MAC + IP，例如:
+#   id          = abc-123-def-456
+#   mac_address = fa:16:3e:ab:cd:ef
+#   fixed_ips   = [{subnet_id: ..., ip_address: 10.0.0.5}]
 ```
 
-**NetworkAttachmentDefinition**（不写 `bridge` —— 让 ovs-cni 自动回退到 `br-int`）：
+**NetworkAttachmentDefinition**（`bridge` 默认 `br-int`；开 multus 的 IPs/MAC capabilities，让 Neutron 分配的地址通过 annotation 流到 pod）：
 ```yaml
 apiVersion: k8s.cni.cncf.io/v1
 kind: NetworkAttachmentDefinition
@@ -133,11 +146,13 @@ spec:
   config: |
     {
       "cniVersion": "0.4.0",
-      "type": "ovs"
+      "type": "ovs",
+      "capabilities": { "ips": true, "mac": true },
+      "ipam": { "type": "static" }
     }
 ```
 
-**Pod**：
+**Pod**（用 Neutron 返回的 mac / ip / port UUID 填进 annotation）：
 ```yaml
 metadata:
   annotations:
@@ -145,8 +160,10 @@ metadata:
       [{
         "name": "neutron-tenant-net",
         "namespace": "tenant-a",
+        "mac": "fa:16:3e:ab:cd:ef",
+        "ips": ["10.0.0.5/24"],
         "cni-args": {
-          "ovnPort": "abc-123-def-456"
+          "OvnPort": "abc-123-def-456"
         }
       }]
 spec:
@@ -155,9 +172,13 @@ spec:
     image: ...
 ```
 
-**Data plane**：pod veth → `br-int` → ovn-controller 见 `iface-id=abc-123-def-456` 与 SB 中某 LSP 匹配 → **Geneve 隧道**到承载这条 LSP 的对端 chassis → 解封 → 目标 pod / Nova VM。**跨节点封装**，物理网络只见 Geneve UDP。
+> **关键**：`OvnPort` 首字母大写，对应 ovs-cni `EnvArgs.OvnPort` 字段名（`cnitypes.LoadArgs` 区分大小写）。写 `ovnPort` 会被 multus 的 `IgnoreUnknown=1` 静默忽略，veth 挂上 br-int 但 iface-id 不写，OVN 不绑定。
+>
+> **MAC/IP 必须与 Neutron port 一致**：否则 OVN port_security_enabled（默认开）会丢包。如果端口创建时显式 `--disable-port-security` 则无所谓，但生产建议保留。
 
-**IP/MAC/SG 全部 Neutron 分配**：不要在 NAD 里设 `ipam`，Neutron port 已经携带 fixed-ip 和 mac，OVN 会下发 ACL。
+**Data plane**：pod veth → `br-int`（ovs-cni 写入 `external_ids:iface-id=<OvnPort>`）→ ovn-controller 发现 LSP 匹配 → 绑定到本 chassis、下发 OF 流表 → **Geneve 隧道**到承载对端 LSP 的 chassis → 解封 → 目标 pod / Nova VM。**跨节点封装**，物理网络只见 Geneve UDP。
+
+**SG/ACL**：Neutron 给这个 port 配的 Security Group 经 OVN 翻译成 br-int 上的 ACL 流表，pod 出入都过这一层。
 
 ---
 
@@ -167,7 +188,7 @@ spec:
 
 **节点准备**：和场景 B 完全一样（chassis 注册 + bridge-mappings）。Neutron 那边 provider net 的 logical switch **已经带 localnet port**，对应 `bridge-mappings` 里的物理桥。
 
-**外部流程 + NAD + Pod**：和场景 B **完全一样**，唯一区别是 `openstack port create` 的 `--network` 指定**provider network**（如 `flat-physnet1` 或 `vlan-physnet1-100`）。
+**外部流程 + NAD + Pod**：和场景 B **完全一样**（同样的镜像要求、capabilities、`OvnPort` 大写、MAC/IP 与 Neutron port 一致），唯一区别是 `openstack port create` 的 `--network` 指定**provider network**（如 `flat-physnet1` 或 `vlan-physnet1-100`）。
 
 **Data plane**：pod veth → `br-int` → ovn-controller 见 iface-id 匹配 LSP → **沿 localnet port 出 br-int** → 经 `ovn-bridge-mappings` 到 `br-provider` → 物理 trunk（带 VLAN tag） → 物理交换机。**无 Geneve 封装**，TOR 能看到 ARP，pod IP 就是物理段。
 
@@ -197,7 +218,7 @@ ovn-nbctl lsp-set-addresses tenant-a-pod-001 "02:00:00:00:01:01 10.10.0.5"
 #    (underlay) 加 localnet port → tenant-a-ls 落到物理 VLAN
 ```
 
-**NAD + Pod**：和场景 B 完全一样（不写 bridge，`cni-args.ovnPort` 指定 lsp 名）。
+**NAD + Pod**：和场景 B 完全一样（同样的镜像要求、capabilities、`OvnPort` 大写）。`cni-args.OvnPort` 填的就是上一步建出的 LSP 的 `name`（在 OVN NB 里 `lsp-list` 看到的字符串），ovn-controller 通过它把 OVS interface 与 LSP 配对。
 
 **Data plane**：取决于 logical switch 类型（同场景 B/C）。
 
@@ -246,7 +267,7 @@ ovnkube 自动建 logical switch、自动管 IP/MAC/ACL、自动创建 NAD（`ov
 │  └─→ 【场景 A】裸 OVS bridge + trunk
 │
 ├─ 多租户隔离 + OpenStack 已经在场
-│  └─→ 【场景 B 或 C】Neutron + ovs-cni (ovnPort)
+│  └─→ 【场景 B 或 C】Neutron + ovs-cni (OvnPort)
 │      - Neutron 建 tenant net → overlay
 │      - Neutron 建 provider net → underlay
 │

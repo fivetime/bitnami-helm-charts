@@ -4396,6 +4396,47 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/opensearch-2.0.11/opensearch-2.0.11.tgz
     version: 2.0.11
+  ovs-cni:
+  - annotations:
+      images: |
+        - name: ovs-cni-plugin
+          image: ghcr.io/k8snetworkplumbingwg/ovs-cni-plugin:latest
+      licenses: Apache-2.0
+      tanzuCategory: clusterUtility
+    apiVersion: v2
+    appVersion: 0.39.0
+    created: "2026-05-27T02:42:13.918785969Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: ovs-cni is a Kubernetes CNI plugin that attaches Pod/VM network interfaces
+      to host-side Open vSwitch bridges. It ships a CNI binary (plus traffic-mirror
+      siblings) and a marker DaemonSet that advertises each node's available OVS bridges
+      as schedulable resources.
+    digest: 52973029578d76933aa5a3ddee399fc8f98ff3069382269dec97fd54c0033907
+    home: https://github.com/k8snetworkplumbingwg/ovs-cni
+    icon: https://upload.wikimedia.org/wikipedia/commons/3/35/Kubernetes_logo.svg
+    keywords:
+    - ovs-cni
+    - ovs
+    - openvswitch
+    - cni
+    - kubernetes
+    - networking
+    - kubevirt
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: ovs-cni
+    sources:
+    - https://github.com/k8snetworkplumbingwg/ovs-cni
+    - https://github.com/bitnami/charts/tree/main/bitnami/ovs-cni
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/ovs-cni-1.0.0/ovs-cni-1.0.0.tgz
+    version: 1.0.0
   parse:
   - annotations:
       images: |
@@ -6505,4 +6546,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-05-26T17:56:02.409096243Z"
+generated: "2026-05-27T02:42:13.918926882Z"

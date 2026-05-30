@@ -1,0 +1,30 @@
+annotations:
+  category: Infrastructure
+  images: |
+    - name: envoy
+      image: docker.io/envoyproxy/envoy:distroless-v1.38.0
+  licenses: Apache-2.0
+apiVersion: v2
+appVersion: 1.38.0
+dependencies:
+  - name: common
+    repository: file://../common
+    version: 2.x.x
+description: Envoy is a high-performance L7 proxy and communication bus. This chart deploys a bare Envoy data plane whose dynamic configuration (LDS/CDS/RDS/EDS/SDS) is served by an external xDS control plane over gRPC ADS, e.g. a java-control-plane based control plane.
+home: https://www.envoyproxy.io
+icon: https://raw.githubusercontent.com/cncf/artwork/master/projects/envoy/icon/color/envoy-icon-color.svg
+keywords:
+  - envoy
+  - proxy
+  - xds
+  - ads
+  - data-plane
+  - cdn
+  - ingress
+maintainers:
+  - name: envoy-xds4j
+name: envoy
+sources:
+  - https://github.com/envoyproxy/envoy
+  - https://www.envoyproxy.io/docs/envoy/latest/configuration/overview/xds_api
+version: 1.0.0

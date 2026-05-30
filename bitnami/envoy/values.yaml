@@ -1,0 +1,426 @@
+# Copyright Broadcom, Inc. All Rights Reserved.
+# SPDX-License-Identifier: APACHE-2.0
+
+## @section Global parameters
+##
+global:
+  ## @param global.imageRegistry Global Docker image registry
+  imageRegistry: ""
+  ## @param global.imagePullSecrets Global Docker registry secret names as an array
+  imagePullSecrets: []
+  ## @param global.defaultStorageClass Global default StorageClass for Persistent Volume(s)
+  defaultStorageClass: ""
+  ## Compatibility adaptations for Kubernetes platforms
+  ##
+  compatibility:
+    ## Compatibility adaptations for Openshift
+    ##
+    openshift:
+      ## @param global.compatibility.openshift.adaptSecurityContext Adapt the securityContext sections of the deployment to make them compatible with Openshift restricted-v2 SCC: remove runAsUser, runAsGroup and fsGroup and let the platform use their allowed default IDs. Possible values: auto (apply if the detected running cluster is Openshift), force (perform the adaptation always), disabled (do not perform adaptation)
+      adaptSecurityContext: auto
+
+## @section Common parameters
+##
+## @param kubeVersion Override Kubernetes version
+kubeVersion: ""
+## @param nameOverride String to partially override common.names.fullname
+nameOverride: ""
+## @param fullnameOverride String to fully override common.names.fullname
+fullnameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+namespaceOverride: ""
+## @param commonLabels Labels to add to all deployed objects
+commonLabels: {}
+## @param commonAnnotations Annotations to add to all deployed objects
+commonAnnotations: {}
+## @param clusterDomain Kubernetes cluster domain name
+clusterDomain: cluster.local
+## @param extraDeploy Array of extra objects to deploy with the release
+extraDeploy: []
+## Enable diagnostic mode in the deployment
+##
+diagnosticMode:
+  ## @param diagnosticMode.enabled Enable diagnostic mode (all probes will be disabled and the command will be overridden)
+  enabled: false
+  ## @param diagnosticMode.command Command to override all containers in the deployment
+  command:
+    - sleep
+  ## @param diagnosticMode.args Args to override all containers in the deployment
+  args:
+    - infinity
+
+## @section Envoy data-plane parameters
+##
+## Bitnami Envoy image (official upstream envoyproxy/envoy)
+## ref: https://hub.docker.com/r/envoyproxy/envoy/tags/
+## Recommended tags for v1.38.0:
+##   distroless-v1.38.0          standard extensions + distroless (slimmest, production) -- DEFAULT
+##   v1.38.0                     standard extensions + Ubuntu base (has a shell)
+##   contrib-distroless-v1.38.0  all (contrib) extensions + distroless
+##   contrib-v1.38.0             all (contrib) extensions + Ubuntu base
+## @param image.registry [default: docker.io] Envoy image registry
+## @param image.repository Envoy image repository
+## @param image.tag Envoy image tag
+## @param image.digest Envoy image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+## @param image.pullPolicy Envoy image pull policy
+## @param image.pullSecrets Envoy image pull secrets
+## @param image.debug Enable Envoy image debug mode
+##
+image:
+  registry: docker.io
+  repository: envoyproxy/envoy
+  tag: distroless-v1.38.0
+  digest: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+  debug: false
+
+## xDS control plane the Envoy data plane connects to over gRPC ADS.
+## This is your external control plane (e.g. a java-control-plane based one), NOT bundled.
+##
+controlPlane:
+  ## @param controlPlane.host Hostname/Service of the xDS control plane gRPC endpoint (required)
+  host: xds-control-plane
+  ## @param controlPlane.port Port of the xDS control plane gRPC endpoint
+  port: 18000
+  ## @param controlPlane.apiType ADS transport. One of GRPC (SOTW) or DELTA_GRPC (incremental, recommended)
+  apiType: DELTA_GRPC
+  ## @param controlPlane.clusterType DNS discovery type for the control plane cluster. STRICT_DNS or LOGICAL_DNS
+  clusterType: STRICT_DNS
+  ## @param controlPlane.connectTimeout Connect timeout to the control plane cluster
+  connectTimeout: 5s
+  ## HTTP/2 + TCP keepalive on the xDS connection so Envoy detects a dead control plane and reconnects.
+  ## Recommended by upstream (see Envoy configs/ads.yaml).
+  ## @param controlPlane.keepalive.interval HTTP/2 keepalive ping interval to the control plane
+  ## @param controlPlane.keepalive.timeout HTTP/2 keepalive timeout before the connection is considered dead
+  keepalive:
+    interval: 30s
+    timeout: 5s
+  ## @param controlPlane.tcpKeepalive Also enable L4 TCP keepalive on the xDS connection. Redundant when the
+  ## HTTP/2 keepalive above is enabled (upstream recommends *either* HTTP/2 *or* TCP keepalive), and an empty
+  ## config falls back to the OS defaults (often ~2h), so it is off by default.
+  tcpKeepalive: false
+
+## Envoy node identity sent on the xDS stream. For a control plane that serves one shared config to the whole
+## fleet (node-agnostic), these can be static. Override per-pod via --service-node/--service-cluster if needed.
+##
+node:
+  ## @param node.id Envoy node id. Defaults to the release fullname when empty
+  id: ""
+  ## @param node.cluster Envoy node cluster. Defaults to the release name when empty
+  cluster: ""
+
+## @param logLevel Envoy log level (trace, debug, info, warning, error, critical, off)
+logLevel: info
+## @param drainTimeSeconds Envoy drain time on shutdown (passed as --drain-time-s); should be < terminationGracePeriodSeconds
+drainTimeSeconds: 30
+
+## Provide your own full bootstrap instead of the generated one.
+## @param existingConfigMap Name of an existing ConfigMap with an `envoy.yaml` bootstrap key. Disables the generated bootstrap
+existingConfigMap: ""
+## @param overrideConfiguration [object] Deep-merged on top of the generated bootstrap (e.g. add static listeners, tracing, stats sinks)
+overrideConfiguration: {}
+
+## @param replicaCount Number of Envoy replicas to deploy
+replicaCount: 2
+## @param revisionHistoryLimit The number of old history to retain to allow rollback
+revisionHistoryLimit: 10
+## @param updateStrategy.type Envoy deployment strategy type
+## @param updateStrategy.rollingUpdate [object,nullable] Envoy deployment rolling update configuration parameters
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate: {}
+
+## @param containerPorts.http Envoy main proxy listener container port. MUST match the port the LDS listener binds
+## @param containerPorts.admin Envoy admin interface container port
+containerPorts:
+  http: 10000
+  admin: 9901
+## @param extraContainerPorts Optional extra listener ports (e.g. an https listener). Must match LDS-bound ports
+## E.g.
+## extraContainerPorts:
+##   - name: https
+##     containerPort: 10443
+extraContainerPorts: []
+## @param exposeAdmin Publish the admin interface on the Service. The admin always binds 0.0.0.0 inside the pod
+## (so kubelet probes work); this flag only controls Service publication. Keep false in production.
+exposeAdmin: false
+
+## @param command Override default container command (useful when using custom images)
+command: []
+## @param args Override default container args (useful when using custom images)
+args: []
+## @param automountServiceAccountToken Mount Service Account token in pod
+automountServiceAccountToken: false
+## @param hostAliases Envoy pods host aliases
+hostAliases: []
+## @param extraEnvVars Array with extra environment variables to add to Envoy nodes
+extraEnvVars: []
+## @param extraEnvVarsCM Name of existing ConfigMap containing extra env vars for Envoy nodes
+extraEnvVarsCM: ""
+## @param extraEnvVarsSecret Name of existing Secret containing extra env vars for Envoy nodes
+extraEnvVarsSecret: ""
+## @param extraVolumes Optionally specify extra list of additional volumes for the Envoy pod(s)
+extraVolumes: []
+## @param extraVolumeMounts Optionally specify extra list of additional volumeMounts for the Envoy container(s)
+extraVolumeMounts: []
+## @param sidecars Add additional sidecar containers to the Envoy pod(s)
+sidecars: []
+## @param initContainers Add additional init containers to the Envoy pod(s)
+initContainers: []
+
+## Envoy resource requests and limits
+## ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+## @param resourcesPreset Set container resources according to one common preset (allowed values: none, nano, micro, small, medium, large, xlarge, 2xlarge). This is ignored if resources is set
+## @param resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+##
+resourcesPreset: small
+resources: {}
+
+## Configure Pod Security Context
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+## @param podSecurityContext.enabled Enabled Envoy pods' Security Context
+## @param podSecurityContext.fsGroupChangePolicy Set filesystem group change policy
+## @param podSecurityContext.supplementalGroups Set filesystem extra groups
+## @param podSecurityContext.fsGroup Set Envoy pod's Security Context fsGroup
+##
+podSecurityContext:
+  enabled: true
+  fsGroupChangePolicy: Always
+  supplementalGroups: []
+  fsGroup: 101
+
+## Configure Container Security Context
+## NOTE on runAsUser: the standard envoyproxy/envoy image's "envoy" user is uid 101 (verified in the image).
+## The distroless variants run as their base "nonroot" user (uid 65532); uid 101 also works there (the envoy
+## binary does not require the user to exist in /etc/passwd). Set runAsUser: 65532 if you prefer the distroless
+## native user. To bind privileged ports (80/443) inside the pod add the NET_BIND_SERVICE capability, or front
+## Envoy with a Service/LoadBalancer and keep high container ports.
+## @param containerSecurityContext.enabled Enabled containers' Security Context
+## @param containerSecurityContext.seLinuxOptions [object,nullable] Set SELinux options in container
+## @param containerSecurityContext.runAsUser Set containers' Security Context runAsUser
+## @param containerSecurityContext.runAsGroup Set containers' Security Context runAsGroup
+## @param containerSecurityContext.runAsNonRoot Set container's Security Context runAsNonRoot
+## @param containerSecurityContext.privileged Set container's Security Context privileged
+## @param containerSecurityContext.readOnlyRootFilesystem Set container's Security Context readOnlyRootFilesystem
+## @param containerSecurityContext.allowPrivilegeEscalation Set container's Security Context allowPrivilegeEscalation
+## @param containerSecurityContext.capabilities.drop List of capabilities to be dropped
+## @param containerSecurityContext.capabilities.add List of capabilities to be added (e.g. NET_BIND_SERVICE for ports 80/443)
+## @param containerSecurityContext.seccompProfile.type Set container's Security Context seccomp profile
+##
+containerSecurityContext:
+  enabled: true
+  seLinuxOptions: {}
+  runAsUser: 101
+  runAsGroup: 101
+  runAsNonRoot: true
+  privileged: false
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+    add: []
+  seccompProfile:
+    type: RuntimeDefault
+
+## Envoy readiness/liveness/startup probes via the admin /ready endpoint
+## ref: https://www.envoyproxy.io/docs/envoy/latest/operations/admin#get--ready
+## @param livenessProbe.enabled Enable livenessProbe on Envoy containers
+## @param livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+## @param livenessProbe.periodSeconds Period seconds for livenessProbe
+## @param livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+## @param livenessProbe.failureThreshold Failure threshold for livenessProbe
+## @param livenessProbe.successThreshold Success threshold for livenessProbe
+##
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+  successThreshold: 1
+## @param readinessProbe.enabled Enable readinessProbe on Envoy containers
+## @param readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+## @param readinessProbe.periodSeconds Period seconds for readinessProbe
+## @param readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+## @param readinessProbe.failureThreshold Failure threshold for readinessProbe
+## @param readinessProbe.successThreshold Success threshold for readinessProbe
+##
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+  successThreshold: 1
+## @param startupProbe.enabled Enable startupProbe on Envoy containers
+## @param startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
+## @param startupProbe.periodSeconds Period seconds for startupProbe
+## @param startupProbe.timeoutSeconds Timeout seconds for startupProbe
+## @param startupProbe.failureThreshold Failure threshold for startupProbe
+## @param startupProbe.successThreshold Success threshold for startupProbe
+##
+startupProbe:
+  enabled: false
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30
+  successThreshold: 1
+## @param customLivenessProbe Custom livenessProbe that overrides the default one
+customLivenessProbe: {}
+## @param customReadinessProbe Custom readinessProbe that overrides the default one
+customReadinessProbe: {}
+## @param customStartupProbe Custom startupProbe that overrides the default one
+customStartupProbe: {}
+## @param lifecycleHooks lifecycleHooks for the Envoy container(s) to automate configuration before or after startup
+lifecycleHooks: {}
+
+## @param podLabels Extra labels for Envoy pods
+podLabels: {}
+## @param podAnnotations Annotations for Envoy pods
+podAnnotations: {}
+## @param podAffinityPreset Pod affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+podAffinityPreset: ""
+## @param podAntiAffinityPreset Pod anti-affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+podAntiAffinityPreset: soft
+## Node affinity preset
+## @param nodeAffinityPreset.type Node affinity preset type. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+## @param nodeAffinityPreset.key Node label key to match. Ignored if `affinity` is set
+## @param nodeAffinityPreset.values Node label values to match. Ignored if `affinity` is set
+##
+nodeAffinityPreset:
+  type: ""
+  key: ""
+  values: []
+## @param affinity Affinity for Envoy pods assignment
+affinity: {}
+## @param nodeSelector Node labels for Envoy pods assignment
+nodeSelector: {}
+## @param tolerations Tolerations for Envoy pods assignment
+tolerations: []
+## @param topologySpreadConstraints Topology Spread Constraints for Envoy pod assignment spread across your cluster among failure-domains
+topologySpreadConstraints: []
+## @param priorityClassName Envoy pods' priorityClassName
+priorityClassName: ""
+## @param schedulerName Name of the k8s scheduler (other than default)
+schedulerName: ""
+## @param terminationGracePeriodSeconds Seconds Envoy pod needs to terminate gracefully
+terminationGracePeriodSeconds: 60
+
+## @section Traffic Exposure parameters
+##
+service:
+  ## @param service.type Envoy service type
+  type: ClusterIP
+  ## @param service.ports.http Envoy service HTTP port (data-plane listener)
+  ## @param service.ports.admin Envoy service admin port (only published when exposeAdmin=true)
+  ports:
+    http: 80
+    admin: 9901
+  ## @param service.nodePorts.http Node port for HTTP
+  ## @param service.nodePorts.admin Node port for admin
+  nodePorts:
+    http: ""
+    admin: ""
+  ## @param service.clusterIP Envoy service Cluster IP
+  clusterIP: ""
+  ## @param service.loadBalancerIP Envoy service Load Balancer IP
+  loadBalancerIP: ""
+  ## @param service.loadBalancerClass Envoy service Load Balancer class (if type is LoadBalancer)
+  loadBalancerClass: ""
+  ## @param service.loadBalancerSourceRanges Envoy service Load Balancer sources
+  loadBalancerSourceRanges: []
+  ## @param service.externalTrafficPolicy Envoy service external traffic policy
+  externalTrafficPolicy: Cluster
+  ## @param service.sessionAffinity Control where client requests go, to the same pod or round-robin
+  sessionAffinity: None
+  ## @param service.sessionAffinityConfig Additional settings for the sessionAffinity
+  sessionAffinityConfig: {}
+  ## @param service.annotations Additional custom annotations for Envoy service
+  annotations: {}
+  ## @param service.labels Additional custom labels for Envoy service
+  labels: {}
+  ## @param service.extraPorts Extra ports to expose in the Envoy service (normally used with extraContainerPorts)
+  extraPorts: []
+
+## @section ServiceAccount parameters
+##
+serviceAccount:
+  ## @param serviceAccount.create Specifies whether a ServiceAccount should be created
+  create: true
+  ## @param serviceAccount.name The name of the ServiceAccount to use
+  name: ""
+  ## @param serviceAccount.annotations Additional Service Account annotations
+  annotations: {}
+  ## @param serviceAccount.automountServiceAccountToken Automount service account token for the server service account
+  automountServiceAccountToken: false
+
+## @section Autoscaling and disruption parameters
+##
+autoscaling:
+  ## Horizontal Pod Autoscaler
+  hpa:
+    ## @param autoscaling.hpa.enabled Enable HPA for Envoy
+    enabled: false
+    ## @param autoscaling.hpa.minReplicas Minimum number of Envoy replicas
+    minReplicas: 2
+    ## @param autoscaling.hpa.maxReplicas Maximum number of Envoy replicas
+    maxReplicas: 10
+    ## @param autoscaling.hpa.targetCPU Target CPU utilization percentage
+    targetCPU: 80
+    ## @param autoscaling.hpa.targetMemory Target Memory utilization percentage
+    targetMemory: ""
+## Pod Disruption Budget
+## @param pdb.create Enable/disable a Pod Disruption Budget creation
+## @param pdb.minAvailable Minimum number/percentage of pods that should remain scheduled
+## @param pdb.maxUnavailable Maximum number/percentage of pods that may be made unavailable. Defaults to `1` if both `pdb.minAvailable` and `pdb.maxUnavailable` are empty
+##
+pdb:
+  create: true
+  minAvailable: ""
+  maxUnavailable: ""
+
+## @section NetworkPolicy parameters
+##
+networkPolicy:
+  ## @param networkPolicy.enabled Specifies whether a NetworkPolicy should be created
+  enabled: true
+  ## @param networkPolicy.allowExternal Don't require server label for connections
+  allowExternal: true
+  ## @param networkPolicy.allowExternalEgress Allow the pod to access any range of port and all destinations
+  allowExternalEgress: true
+  ## @param networkPolicy.extraIngress Add extra ingress rules to the NetworkPolicy
+  extraIngress: []
+  ## @param networkPolicy.extraEgress Add extra egress rules to the NetworkPolicy
+  extraEgress: []
+  ## @param networkPolicy.ingressNSMatchLabels Labels to match to allow traffic from other namespaces
+  ingressNSMatchLabels: {}
+  ## @param networkPolicy.ingressNSPodMatchLabels Pod labels to match to allow traffic from other namespaces
+  ingressNSPodMatchLabels: {}
+
+## @section Metrics parameters
+##
+metrics:
+  ## @param metrics.enabled Enable scraping of Envoy admin Prometheus stats (/stats/prometheus on the admin port)
+  enabled: false
+  ## @param metrics.annotations Annotations for the Prometheus pod/service scrape
+  annotations: {}
+  ## Prometheus Operator ServiceMonitor configuration
+  serviceMonitor:
+    ## @param metrics.serviceMonitor.enabled Create a ServiceMonitor for Envoy admin stats
+    enabled: false
+    ## @param metrics.serviceMonitor.namespace Namespace in which the ServiceMonitor is created
+    namespace: ""
+    ## @param metrics.serviceMonitor.path Stats path to scrape
+    path: /stats/prometheus
+    ## @param metrics.serviceMonitor.interval Scrape interval
+    interval: ""
+    ## @param metrics.serviceMonitor.scrapeTimeout Scrape timeout
+    scrapeTimeout: ""
+    ## @param metrics.serviceMonitor.labels Extra labels for the ServiceMonitor
+    labels: {}
+    ## @param metrics.serviceMonitor.relabelings RelabelConfigs to apply to samples before scraping
+    relabelings: []
+    ## @param metrics.serviceMonitor.metricRelabelings MetricRelabelConfigs to apply to samples before ingestion
+    metricRelabelings: []

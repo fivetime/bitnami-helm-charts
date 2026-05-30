@@ -1,0 +1,61 @@
+CHART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+** Please be patient while the Envoy data plane is being deployed **
+
+This chart deploys a BARE Envoy data plane. Its dynamic configuration (listeners, clusters, routes,
+secrets) is served by your EXTERNAL xDS control plane over gRPC ADS — it is NOT bundled.
+
+Control plane endpoint (from values):
+    {{ .Values.controlPlane.host }}:{{ .Values.controlPlane.port }}  (api_type: {{ .Values.controlPlane.apiType }})
+
+{{- if not .Values.existingConfigMap }}
+{{- if not .Values.controlPlane.host }}
+
+############################################################################################
+# ERROR: controlPlane.host is empty. Set it to your xDS control plane gRPC service, e.g.:  #
+#   --set controlPlane.host=my-control-plane.my-ns.svc.cluster.local --set controlPlane.port=18000
+############################################################################################
+{{- end }}
+{{- end }}
+
+1. Envoy serves its main listener on container port {{ .Values.containerPorts.http }} (Service port {{ .Values.service.ports.http }}).
+   NOTE: this MUST match the port your LDS listener binds. If your control plane sends a listener on a
+   different port, set containerPorts.http / extraContainerPorts (and service.ports / service.extraPorts) to match.
+
+2. Reach the proxy:
+{{- if contains "ClusterIP" .Values.service.type }}
+
+   kubectl port-forward --namespace {{ include "common.names.namespace" . }} svc/{{ include "common.names.fullname" . }} 8080:{{ .Values.service.ports.http }}
+   curl http://127.0.0.1:8080/
+{{- else if contains "NodePort" .Values.service.type }}
+
+   export NODE_IP=$(kubectl get nodes --namespace {{ include "common.names.namespace" . }} -o jsonpath="{.items[0].status.addresses[0].address}")
+   export NODE_PORT=$(kubectl get svc --namespace {{ include "common.names.namespace" . }} {{ include "common.names.fullname" . }} -o jsonpath="{.spec.ports[0].nodePort}")
+   curl http://$NODE_IP:$NODE_PORT/
+{{- else if contains "LoadBalancer" .Values.service.type }}
+
+   export SERVICE_IP=$(kubectl get svc --namespace {{ include "common.names.namespace" . }} {{ include "common.names.fullname" . }} --template "{{ "{{ range (index .status.loadBalancer.ingress 0) }}{{ . }}{{ end }}" }}")
+   curl http://$SERVICE_IP:{{ .Values.service.ports.http }}/
+{{- end }}
+
+3. Check xDS sync (admin interface):
+{{- if .Values.exposeAdmin }}
+   kubectl port-forward --namespace {{ include "common.names.namespace" . }} svc/{{ include "common.names.fullname" . }} 9901:{{ .Values.service.ports.admin }}
+{{- else }}
+   POD=$(kubectl get pods --namespace {{ include "common.names.namespace" . }} -l "app.kubernetes.io/name={{ include "common.names.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+   kubectl port-forward --namespace {{ include "common.names.namespace" . }} $POD 9901:{{ .Values.containerPorts.admin }}
+{{- end }}
+   curl http://127.0.0.1:9901/ready          # readiness
+   curl http://127.0.0.1:9901/config_dump     # what the control plane has pushed
+   curl http://127.0.0.1:9901/clusters
+
+{{- if .Values.exposeAdmin }}
+
+WARNING: exposeAdmin=true publishes the Envoy admin interface on the Service. The admin interface has
+mutating endpoints (e.g. /quitquitquit). Do not expose it outside a trusted network in production.
+{{- end }}
+
+{{- include "common.warnings.rollingTag" .Values.image }}
+{{- include "common.warnings.resources" (dict "sections" (list "") "context" $) }}

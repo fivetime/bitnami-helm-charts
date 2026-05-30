@@ -1,0 +1,81 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{/* Generated Envoy bootstrap: admin + node + dynamic_resources (ADS) + the control-plane xds_cluster */}}
+{{- define "envoy.defaultBootstrap" -}}
+admin:
+  access_log_path: /dev/null
+  address:
+    socket_address:
+      # Bind to 0.0.0.0 so the kubelet readiness/liveness httpGet probes (which target the pod IP, not
+      # localhost) can reach /ready. The admin port is NOT published on the Service unless exposeAdmin=true,
+      # and the default NetworkPolicy only allows ingress to the proxy port, so the admin stays private.
+      address: 0.0.0.0
+      port_value: {{ .Values.containerPorts.admin }}
+node:
+  id: {{ include "envoy.node.id" . | quote }}
+  cluster: {{ include "envoy.node.cluster" . | quote }}
+dynamic_resources:
+  ads_config:
+    api_type: {{ .Values.controlPlane.apiType }}
+    transport_api_version: V3
+    set_node_on_first_message_only: true
+    grpc_services:
+      - envoy_grpc:
+          cluster_name: xds_cluster
+  cds_config:
+    resource_api_version: V3
+    ads: {}
+  lds_config:
+    resource_api_version: V3
+    ads: {}
+static_resources:
+  clusters:
+    - name: xds_cluster
+      type: {{ .Values.controlPlane.clusterType }}
+      connect_timeout: {{ .Values.controlPlane.connectTimeout }}
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options:
+              connection_keepalive:
+                interval: {{ .Values.controlPlane.keepalive.interval }}
+                timeout: {{ .Values.controlPlane.keepalive.timeout }}
+      {{- if .Values.controlPlane.tcpKeepalive }}
+      upstream_connection_options:
+        tcp_keepalive: {}
+      {{- end }}
+      load_assignment:
+        cluster_name: xds_cluster
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: {{ .Values.controlPlane.host | quote }}
+                      port_value: {{ .Values.controlPlane.port }}
+{{- end -}}
+
+{{- if not .Values.existingConfigMap }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "common.names.fullname" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: envoy
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+  {{- $bootstrap := include "envoy.defaultBootstrap" . | fromYaml -}}
+  {{- if .Values.overrideConfiguration }}
+  {{- $override := include "common.tplvalues.render" (dict "value" .Values.overrideConfiguration "context" .) | fromYaml }}
+  {{- $bootstrap = mustMergeOverwrite $bootstrap $override }}
+  {{- end }}
+data:
+  envoy.yaml: |
+    {{- $bootstrap | toYaml | nindent 4 }}
+{{- end }}

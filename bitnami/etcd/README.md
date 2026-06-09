@@ -1,39 +1,31 @@
 <!--- app-name: Etcd -->
 
-# Bitnami Secure Images Helm chart for Etcd
+# Helm chart for Etcd
 
 etcd is a distributed key-value store designed to securely store data across a cluster. etcd is widely used in production on account of its reliability, fault-tolerance and ease of use.
 
 [Overview of Etcd](https://etcd.io/)
 
-Trademarks: This software listing is packaged by Bitnami. The respective trademarks mentioned in the offering are owned by the respective companies, and use of them does not imply any affiliation or endorsement.
+Trademarks: The respective trademarks mentioned in the offering are owned by the respective companies, and use of them does not imply any affiliation or endorsement.
 
 ## TL;DR
 
 ```console
-helm install my-release oci://registry-1.docker.io/bitnamicharts/etcd
+helm install my-release ./bitnami/etcd
 ```
 
-## Why use Bitnami Secure Images?
+## About the container image
 
-Those are hardened, minimal CVE images built and maintained by Bitnami. Bitnami Secure Images are based on the cloud-optimized, security-hardened enterprise [OS Photon Linux](https://vmware.github.io/photon/). Why choose BSI images?
+This chart uses [`ghcr.io/fivetime/etcd`](https://github.com/fivetime/etcd/pkgs/container/etcd), a self-maintained image fully decoupled from Bitnami's distribution:
 
-- Hardened secure images of popular open source software with Near-Zero Vulnerabilities
-- Vulnerability Triage & Prioritization with VEX Statements, KEV and EPSS Scores
-- Compliance focus with FIPS, STIG, and air-gap options, including secure bill of materials (SBOM)
-- Software supply chain provenance attestation through in-toto
-- First class support for the internet’s favorite Helm charts
-
-Each image comes with valuable security metadata. You can view the metadata in [our public catalog here](https://app-catalog.vmware.com/bitnami/apps). Note: Some data is only available with [commercial subscriptions to BSI](https://bitnami.com/).
-
-![Alt text](https://github.com/bitnami/containers/blob/main/BSI%20UI%201.png?raw=true "Application details")
-![Alt text](https://github.com/bitnami/containers/blob/main/BSI%20UI%202.png?raw=true "Packaging report")
-
-If you are looking for our previous generation of images based on Debian Linux, please see the [Bitnami Legacy registry](https://hub.docker.com/u/bitnamilegacy).
+- `etcd`/`etcdctl`/`etcdutl` compiled from source (release tags synced weekly from [etcd-io/etcd](https://github.com/etcd-io/etcd))
+- Packaged on Alpine with the Bitnami (Apache-2.0) script layer vendored in [fivetime/etcd `docker/`](https://github.com/fivetime/etcd/tree/main/docker) — all chart automation (cluster bootstrap, scale up/down member management, snapshots, disaster recovery, RBAC, TLS) works unchanged
+- Multi-arch (linux/amd64 + linux/arm64), public — no pull secrets needed
+- Tags: `latest` and rolling `3` track the newest stable release; pin an exact version (e.g. `3.6.12`) via `image.tag` for reproducible deployments
 
 ## Introduction
 
-This chart bootstraps a [etcd](https://github.com/bitnami/containers/tree/main/bitnami/etcd) deployment on a [Kubernetes](https://kubernetes.io) cluster using the [Helm](https://helm.sh) package manager.
+This chart bootstraps a [etcd](https://github.com/fivetime/etcd) deployment on a [Kubernetes](https://kubernetes.io) cluster using the [Helm](https://helm.sh) package manager.
 
 ## Prerequisites
 
@@ -49,7 +41,7 @@ To install the chart with the release name `my-release`:
 helm install my-release oci://REGISTRY_NAME/REPOSITORY_NAME/etcd
 ```
 
-> Note: You need to substitute the placeholders `REGISTRY_NAME` and `REPOSITORY_NAME` with a reference to your Helm chart registry and repository. For example, in the case of Bitnami, you need to use `REGISTRY_NAME=registry-1.docker.io` and `REPOSITORY_NAME=bitnamicharts`.
+> Note: Substitute `oci://REGISTRY_NAME/REPOSITORY_NAME/etcd` with your own chart registry, or install straight from a local checkout: `helm install my-release ./bitnami/etcd`.
 
 These commands deploy etcd on the Kubernetes cluster in the default configuration. The [Parameters](#parameters) section lists the parameters that can be configured during installation.
 
@@ -385,8 +377,8 @@ If you encounter errors when working with persistent volumes, refer to our [trou
 
 | Name                                   | Description                                                                                                          | Value                  |
 | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| `image.registry`                       | etcd image registry                                                                                                  | `REGISTRY_NAME`        |
-| `image.repository`                     | etcd image name                                                                                                      | `REPOSITORY_NAME/etcd` |
+| `image.registry`                       | etcd image registry                                                                                                  | `ghcr.io`              |
+| `image.repository`                     | etcd image name                                                                                                      | `fivetime/etcd`        |
 | `image.digest`                         | etcd image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag                 | `""`                   |
 | `image.pullPolicy`                     | etcd image pull policy                                                                                               | `IfNotPresent`         |
 | `image.pullSecrets`                    | etcd image pull secrets                                                                                              | `[]`                   |
@@ -549,8 +541,8 @@ If you encounter errors when working with persistent volumes, refer to our [trou
 | Name                                  | Description                                                                                                                                                                                                                                           | Value                      |
 | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
 | `volumePermissions.enabled`           | Enable init container that changes the owner and group of the persistent volume(s) mountpoint to `runAsUser:fsGroup`                                                                                                                                  | `false`                    |
-| `volumePermissions.image.registry`    | Init container volume-permissions image registry                                                                                                                                                                                                      | `REGISTRY_NAME`            |
-| `volumePermissions.image.repository`  | Init container volume-permissions image name                                                                                                                                                                                                          | `REPOSITORY_NAME/os-shell` |
+| `volumePermissions.image.registry`    | Init container volume-permissions image registry                                                                                                                                                                                                      | `ghcr.io`                  |
+| `volumePermissions.image.repository`  | Init container volume-permissions image name                                                                                                                                                                                                          | `fivetime/etcd`            |
 | `volumePermissions.image.digest`      | Init container volume-permissions image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag                                                                                                                     | `""`                       |
 | `volumePermissions.image.pullPolicy`  | Init container volume-permissions image pull policy                                                                                                                                                                                                   | `IfNotPresent`             |
 | `volumePermissions.image.pullSecrets` | Specify docker-registry secret names as an array                                                                                                                                                                                                      | `[]`                       |
@@ -733,7 +725,7 @@ helm install my-release \
   --set auth.rbac.rootPassword=secretpassword oci://REGISTRY_NAME/REPOSITORY_NAME/etcd
 ```
 
-> Note: You need to substitute the placeholders `REGISTRY_NAME` and `REPOSITORY_NAME` with a reference to your Helm chart registry and repository. For example, in the case of Bitnami, you need to use `REGISTRY_NAME=registry-1.docker.io` and `REPOSITORY_NAME=bitnamicharts`.
+> Note: Substitute `oci://REGISTRY_NAME/REPOSITORY_NAME/etcd` with your own chart registry, or install straight from a local checkout: `helm install my-release ./bitnami/etcd`.
 
 The above command sets the etcd `root` account password to `secretpassword`.
 
@@ -745,7 +737,7 @@ Alternatively, a YAML file that specifies the values for the parameters can be p
 helm install my-release -f values.yaml oci://REGISTRY_NAME/REPOSITORY_NAME/etcd
 ```
 
-> Note: You need to substitute the placeholders `REGISTRY_NAME` and `REPOSITORY_NAME` with a reference to your Helm chart registry and repository. For example, in the case of Bitnami, you need to use `REGISTRY_NAME=registry-1.docker.io` and `REPOSITORY_NAME=bitnamicharts`.
+> Note: Substitute `oci://REGISTRY_NAME/REPOSITORY_NAME/etcd` with your own chart registry, or install straight from a local checkout: `helm install my-release ./bitnami/etcd`.
 > **Tip**: You can use the default [values.yaml](https://github.com/bitnami/charts/tree/main/bitnami/etcd/values.yaml)
 
 ## Troubleshooting
@@ -800,7 +792,7 @@ This version adds a new label `app.kubernetes.io/component=etcd` to the Stateful
     helm upgrade my-release oci://REGISTRY_NAME/REPOSITORY_NAME/etcd --set auth.rbac.rootPassword=$ETCD_ROOT_PASSWORD
     ```
 
-    > Note: You need to substitute the placeholders `REGISTRY_NAME` and `REPOSITORY_NAME` with a reference to your Helm chart registry and repository. For example, in the case of Bitnami, you need to use `REGISTRY_NAME=registry-1.docker.io` and `REPOSITORY_NAME=bitnamicharts`.
+    > Note: Substitute `oci://REGISTRY_NAME/REPOSITORY_NAME/etcd` with your own chart registry, or install straight from a local checkout: `helm install my-release ./bitnami/etcd`.
 
 ### To 8.0.0
 
@@ -871,7 +863,7 @@ helm install new-release oci://REGISTRY_NAME/REPOSITORY_NAME/etcd \
   --set startFromSnapshot.snapshotFilename=my-snapshot.db
 ```
 
-> Note: You need to substitute the placeholders `REGISTRY_NAME` and `REPOSITORY_NAME` with a reference to your Helm chart registry and repository. For example, in the case of Bitnami, you need to use `REGISTRY_NAME=registry-1.docker.io` and `REPOSITORY_NAME=bitnamicharts`.
+> Note: Substitute `oci://REGISTRY_NAME/REPOSITORY_NAME/etcd` with your own chart registry, or install straight from a local checkout: `helm install my-release ./bitnami/etcd`.
 
 ### To 1.0.0
 

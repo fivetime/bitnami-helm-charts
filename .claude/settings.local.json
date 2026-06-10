@@ -20,7 +20,7 @@
       "ExitPlanMode(*)",
       "SlashCommand(*)",
       "Monitor(*)",
-      "mcp__*"
+      "mcp__chrome-devtools__*"
     ]
   }
 }

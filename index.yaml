@@ -1370,6 +1370,42 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 3.6.12
+    created: "2026-06-10T00:14:08.818371592Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: etcd is a distributed key-value store designed to securely store
+      data across a cluster. etcd is widely used in production on account of its reliability,
+      fault-tolerance and ease of use.
+    digest: ed318a4b48bfaf220ffed06b4bf76c57c465ae309d4d2d2096f1d9a63792d75d
+    home: https://bitnami.com
+    icon: https://dyltqmyl993wv.cloudfront.net/assets/stacks/etcd/img/etcd-stack-220x234.png
+    keywords:
+    - etcd
+    - cluster
+    - database
+    - cache
+    - key-value
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: etcd
+    sources:
+    - https://github.com/bitnami/charts/tree/main/bitnami/etcd
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/etcd-12.1.1/etcd-12.1.1.tgz
+    version: 12.1.1
+  - annotations:
+      images: |
+        - name: etcd
+          image: ghcr.io/fivetime/etcd:latest
+      licenses: Apache-2.0
+      tanzuCategory: service
+    apiVersion: v2
+    appVersion: 3.6.12
     created: "2026-06-09T23:50:34.444559932Z"
     dependencies:
     - name: common
@@ -6661,4 +6697,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-06-09T23:55:52.900736183Z"
+generated: "2026-06-10T00:14:08.818466059Z"

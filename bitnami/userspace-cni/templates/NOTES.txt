@@ -1,0 +1,45 @@
+CHART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+** Please be patient while the chart is being deployed **
+
+{{- if .Values.diagnosticMode.enabled }}
+
+The chart has been deployed in diagnostic mode. The command has been overwritten with:
+
+  command: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 4 }}
+  args: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 4 }}
+
+Get the list of pods by executing:
+
+    kubectl get pods --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+Access the pod you want to debug by executing:
+
+    kubectl exec --namespace {{ .Release.Namespace }} -ti <NAME OF THE POD> -- sh
+{{- else }}
+
+Watch the userspace-cni DaemonSet status with:
+
+    kubectl get daemonset -w --namespace {{ include "common.names.namespace" . }} -l app.kubernetes.io/name={{ include "common.names.name" . }},app.kubernetes.io/instance={{ .Release.Name }}
+
+{{- end }}
+
+IMPORTANT — prerequisites:
+  - A userspace switch (OVS-DPDK or VPP) must already be installed and running on
+    every node where userspace-cni pods are scheduled. This chart only installs the
+    CNI binary; it does not deploy or manage OVS/VPP.
+  - Multus-CNI (or another meta-plugin) is required to invoke the `userspace` binary
+    as a secondary network attachment via NetworkAttachmentDefinition. userspace-cni
+    is not a primary cluster CNI.
+
+CNI binary installed on host:
+  - {{ include "userspace-cni.cniBinDir" . }}/userspace
+
+Define a NetworkAttachmentDefinition that references this CNI ("type": "userspace")
+and attach it to Pods via the `k8s.v1.cni.cncf.io/networks` annotation. See the
+upstream examples: https://github.com/fivetime/userspace-cni/tree/main/examples
+
+{{- include "common.warnings.rollingTag" .Values.image }}
+{{- include "common.warnings.resources" (dict "sections" (list "") "context" $) }}

@@ -1,0 +1,64 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if .Values.kubeconfig.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-scripts" (include "common.names.fullname" .) }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  # Generates a kubeconfig for the on-host userspace CNI binary from this pod's
+  # ServiceAccount token + cluster CA, then refreshes it periodically (the
+  # projected token is short-lived). Runs as the steady-state container's main
+  # process, so it also keeps the DaemonSet pod Running. Params come from env:
+  # KUBECONFIG_DIR, KUBECONFIG_FILE, REFRESH_INTERVAL.
+  gen-kubeconfig.sh: |
+    #!/bin/sh
+    set -u
+    SA=/var/run/secrets/kubernetes.io/serviceaccount
+    KCFG="${KUBECONFIG_DIR}/${KUBECONFIG_FILE}"
+    host="${KUBERNETES_SERVICE_HOST}"
+    case "$host" in *:*) host="[${host}]" ;; esac
+    server="https://${host}:${KUBERNETES_SERVICE_PORT}"
+
+    write_kubeconfig() {
+      ca=$(base64 < "${SA}/ca.crt" | tr -d '\n')
+      tok=$(cat "${SA}/token")
+      mkdir -p "${KUBECONFIG_DIR}"
+      {
+        echo "apiVersion: v1"
+        echo "kind: Config"
+        echo "clusters:"
+        echo "- name: local"
+        echo "  cluster:"
+        echo "    server: ${server}"
+        echo "    certificate-authority-data: ${ca}"
+        echo "users:"
+        echo "- name: userspace-cni"
+        echo "  user:"
+        echo "    token: ${tok}"
+        echo "contexts:"
+        echo "- name: default"
+        echo "  context:"
+        echo "    cluster: local"
+        echo "    user: userspace-cni"
+        echo "current-context: default"
+      } > "${KCFG}.tmp"
+      chmod 600 "${KCFG}.tmp"
+      mv -f "${KCFG}.tmp" "${KCFG}"
+    }
+
+    trap 'exit 0' TERM INT
+    write_kubeconfig && echo "userspace-cni: wrote ${KCFG}"
+    while true; do
+      sleep "${REFRESH_INTERVAL:-300}" & wait $!
+      write_kubeconfig || echo "userspace-cni: WARN kubeconfig refresh failed"
+    done
+{{- end }}

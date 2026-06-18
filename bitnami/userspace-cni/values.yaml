@@ -1,0 +1,372 @@
+# Copyright Broadcom, Inc. All Rights Reserved.
+# SPDX-License-Identifier: APACHE-2.0
+
+## @section Global parameters
+## Global Docker image parameters
+## Please, note that this will override the image parameters, including dependencies, configured to use the global value
+## Current available global Docker image parameters: imageRegistry, imagePullSecrets and storageClass
+##
+
+## @param global.imageRegistry Global Docker image registry
+## @param global.imagePullSecrets Global Docker registry secret names as an array
+## @param global.defaultStorageClass Global default StorageClass for Persistent Volume(s)
+## @param global.storageClass DEPRECATED: use global.defaultStorageClass instead
+##
+global:
+  imageRegistry: ""
+  ## E.g.
+  ## imagePullSecrets:
+  ##   - myRegistryKeySecretName
+  ##
+  imagePullSecrets: []
+  defaultStorageClass: ""
+  storageClass: ""
+  ## Compatibility adaptations for Kubernetes platforms
+  ##
+  compatibility:
+    ## Compatibility adaptations for Openshift
+    ##
+    openshift:
+      ## @param global.compatibility.openshift.adaptSecurityContext Adapt the securityContext sections of the deployment to make them compatible with Openshift restricted-v2 SCC: remove runAsUser, runAsGroup and fsGroup and let the platform use their allowed default IDs. Possible values: auto (apply if the detected running cluster is Openshift), force (perform the adaptation always), disabled (do not perform adaptation)
+      ##
+      adaptSecurityContext: auto
+## @section Common parameters
+##
+
+## @param kubeVersion Force target Kubernetes version (using Helm capabilities if not set)
+##
+kubeVersion: ""
+## @param nameOverride String to partially override userspace-cni.fullname template (will maintain the release name)
+##
+nameOverride: ""
+## @param fullnameOverride String to fully override userspace-cni.fullname template
+##
+fullnameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+##
+namespaceOverride: ""
+## @param commonAnnotations Common annotations to add to all userspace-cni resources (sub-charts are not considered). Evaluated as a template
+##
+commonAnnotations: {}
+## @param commonLabels Common labels to add to all userspace-cni resources (sub-charts are not considered). Evaluated as a template
+##
+commonLabels: {}
+## @param extraDeploy Array of extra objects to deploy with the release (evaluated as a template).
+##
+extraDeploy: []
+## Enable diagnostic mode in the deployment
+##
+diagnosticMode:
+  ## @param diagnosticMode.enabled Enable diagnostic mode (the command will be overridden)
+  ##
+  enabled: false
+  ## @param diagnosticMode.command Command to override all containers in the deployment
+  ##
+  command:
+    - sleep
+  ## @param diagnosticMode.args Args to override all containers in the deployment
+  ##
+  args:
+    - infinity
+## @section userspace-cni parameters
+##
+
+## userspace-cni image version
+## ref: https://github.com/fivetime/userspace-cni/pkgs/container/userspace-cni
+## The image bundles a single binary `userspace` (the CNI plugin) at /userspace.
+## @param image.registry [default: REGISTRY_NAME] userspace-cni image registry
+## @param image.repository [default: REPOSITORY_NAME/userspace-cni] userspace-cni Image name
+## @skip image.tag userspace-cni Image tag
+## @param image.digest userspace-cni image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+## @param image.pullPolicy userspace-cni image pull policy
+## @param image.pullSecrets Specify docker-registry secret names as an array
+##
+image:
+  registry: ghcr.io
+  repository: fivetime/userspace-cni
+  ## The fork publishes a rolling `main` tag plus per-commit `<8-char-sha>` tags.
+  ## Pin a sha tag or set image.digest for reproducible deployments.
+  ##
+  tag: main
+  digest: ""
+  ## Specify a imagePullPolicy
+  ## ref: https://kubernetes.io/docs/concepts/containers/images/#pre-pulled-images
+  ##
+  pullPolicy: IfNotPresent
+  ## Optionally specify an array of imagePullSecrets.
+  ## Secrets must be manually created in the namespace.
+  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+  ## e.g:
+  ## pullSecrets:
+  ##   - myRegistryKeySecretName
+  ##
+  pullSecrets: []
+## @param hostCNIBinDir CNI binary dir in the host machine
+## Note: Both containerd and CRI-O use /opt/cni/bin as the default CNI plugin directory
+##
+hostCNIBinDir: /opt/cni/bin
+## @param CNIMountPath Path inside the container to mount the host CNI bin dir under
+## The init container copies the binary to `${CNIMountPath}${hostCNIBinDir}`.
+##
+CNIMountPath: /host
+## @param updateStrategy.type userspace-cni DaemonSet update strategy
+##
+updateStrategy:
+  type: RollingUpdate
+## @param priorityClassName userspace-cni pods' priorityClassName
+##
+priorityClassName: "system-node-critical"
+## @param schedulerName Name of the k8s scheduler (other than default)
+## ref: https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/
+##
+schedulerName: ""
+## @param topologySpreadConstraints Topology Spread Constraints for pod assignment
+## https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+## The value is evaluated as a template
+##
+topologySpreadConstraints: []
+## @param automountServiceAccountToken Mount Service Account token in pod
+## The pod only installs the CNI binary and idles; it does not call the K8s API,
+## so the token is not mounted by default.
+##
+automountServiceAccountToken: false
+## @param hostAliases [array] Add deployment host aliases
+## https://kubernetes.io/docs/concepts/services-networking/add-entries-to-pod-etc-hosts-with-host-aliases/
+##
+hostAliases: []
+## @param command Override default steady-state container command (useful when using custom images)
+##
+command: []
+## @param args Override default steady-state container args (useful when using custom images)
+##
+args: []
+## @param extraEnvVars Extra environment variables to add to the steady-state container
+##
+extraEnvVars: []
+## @param extraEnvVarsCM ConfigMap containing extra env vars
+##
+extraEnvVarsCM: ""
+## @param extraEnvVarsSecret Secret containing extra env vars (in case of sensitive data)
+##
+extraEnvVarsSecret: ""
+## @param extraVolumes Array of extra volumes to be added to the deployment (evaluated as template). Requires setting `extraVolumeMounts`
+##
+extraVolumes: []
+## @param extraVolumeMounts Array of extra volume mounts to be added to the container (evaluated as template). Normally used with `extraVolumes`.
+##
+extraVolumeMounts: []
+## @param initContainers Add additional init containers to the pod (evaluated as a template)
+##
+initContainers: []
+## @param sidecars Attach additional containers to the pod (evaluated as a template)
+##
+sidecars: []
+## @param tolerations Tolerations for pod assignment
+## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+## Default tolerates control-plane taints so the DaemonSet covers every node.
+##
+tolerations:
+  - operator: Exists
+    effect: NoSchedule
+  - operator: Exists
+    effect: NoExecute
+## Network Policies
+## Ref: https://kubernetes.io/docs/concepts/services-networking/network-policies/
+##
+networkPolicy:
+  ## @param networkPolicy.enabled Specifies whether a NetworkPolicy should be created
+  ##
+  enabled: true
+  ## @param networkPolicy.kubeAPIServerPorts [array] List of possible endpoints to kube-apiserver (limit to your cluster settings to increase security)
+  ##
+  kubeAPIServerPorts: [443, 6443, 8443]
+  ## @param networkPolicy.allowExternal Don't require server label for connections
+  ## The Policy model to apply. When set to false, only pods with the correct
+  ## server label will have network access to the ports server is listening
+  ## on. When true, server will accept connections from any source
+  ## (with the correct destination port).
+  ##
+  allowExternal: true
+  ## @param networkPolicy.allowExternalEgress Allow the pod to access any range of port and all destinations.
+  ##
+  allowExternalEgress: true
+  ## @param networkPolicy.extraIngress [array] Add extra ingress rules to the NetworkPolicy
+  ##
+  extraIngress: []
+  ## @param networkPolicy.extraEgress [array] Add extra egress rules to the NetworkPolicy
+  ##
+  extraEgress: []
+  ## @param networkPolicy.ingressNSMatchLabels [object] Labels to match to allow traffic from other namespaces
+  ## @param networkPolicy.ingressNSPodMatchLabels [object] Pod labels to match to allow traffic from other namespaces
+  ##
+  ingressNSMatchLabels: {}
+  ingressNSPodMatchLabels: {}
+## @param podAffinityPreset Pod affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
+##
+podAffinityPreset: ""
+## @param podAntiAffinityPreset Pod anti-affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+## Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
+##
+podAntiAffinityPreset: soft
+## Node affinity preset
+## Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity
+## @param nodeAffinityPreset.type Node affinity preset type. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+## @param nodeAffinityPreset.key Node label key to match Ignored if `affinity` is set.
+## @param nodeAffinityPreset.values Node label values to match. Ignored if `affinity` is set.
+##
+nodeAffinityPreset:
+  type: ""
+  ## E.g.
+  ## key: "kubernetes.io/e2e-az-name"
+  ##
+  key: ""
+  ## E.g.
+  ## values:
+  ##   - e2e-az1
+  ##   - e2e-az2
+  ##
+  values: []
+## @param affinity Affinity for pod assignment
+## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+## Note: podAffinityPreset, podAntiAffinityPreset, and nodeAffinityPreset will be ignored when it's set
+##
+affinity: {}
+## @param nodeSelector Node labels for pod assignment. Evaluated as a template.
+## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+## Defaults to Linux only; OVS-DPDK / VPP userspace dataplanes are Linux-specific.
+##
+nodeSelector:
+  kubernetes.io/os: linux
+## userspace-cni container's resource requests and limits
+## ref: http://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+## @param resourcesPreset Set container resources according to one common preset (allowed values: none, nano, micro, small, medium, large, xlarge, 2xlarge). This is ignored if resources is set (resources is recommended for production).
+## More information: https://github.com/bitnami/charts/blob/main/bitnami/common/templates/_resources.tpl#L15
+##
+resourcesPreset: "nano"
+## @param resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+## Example:
+## resources:
+##   requests:
+##     cpu: 10m
+##     memory: 10Mi
+##   limits:
+##     cpu: 100m
+##     memory: 50Mi
+##
+resources: {}
+## Configure Pods Security Context
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+## @param podSecurityContext.enabled Enable userspace-cni pods' Security Context
+## @param podSecurityContext.fsGroupChangePolicy Set filesystem group change policy
+## @param podSecurityContext.sysctls Set kernel settings using the sysctl interface
+## @param podSecurityContext.supplementalGroups Set filesystem extra groups
+## @param podSecurityContext.fsGroup userspace-cni pods' group ID
+##
+podSecurityContext:
+  enabled: true
+  fsGroupChangePolicy: Always
+  sysctls: []
+  supplementalGroups: []
+  fsGroup: 0
+## Configure Container Security Context
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
+## Unlike kernel-network CNIs, userspace-cni only copies a binary to the host CNI
+## dir and then idles, so it does NOT need privileged. It runs as root to write
+## to /opt/cni/bin.
+## @param containerSecurityContext.enabled Enable userspace-cni containers' Security Context
+## @param containerSecurityContext.seLinuxOptions [object,nullable] Set SELinux options in container
+## @param containerSecurityContext.runAsUser userspace-cni containers' Security Context
+## @param containerSecurityContext.runAsGroup userspace-cni containers' Security Context
+## @param containerSecurityContext.runAsNonRoot Set userspace-cni container's Security Context runAsNonRoot
+## @param containerSecurityContext.privileged Set userspace-cni container's Security Context privileged
+## @param containerSecurityContext.allowPrivilegeEscalation Set container's Security Context allowPrivilegeEscalation
+## @param containerSecurityContext.readOnlyRootFilesystem Set container's Security Context readOnlyRootFilesystem
+## @param containerSecurityContext.capabilities.drop List of capabilities to be dropped
+## @param containerSecurityContext.seccompProfile.type Set container's Security Context seccomp profile
+##
+containerSecurityContext:
+  enabled: true
+  seLinuxOptions: {}
+  runAsUser: 0
+  runAsGroup: 0
+  runAsNonRoot: false
+  privileged: false
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+  seccompProfile:
+    type: "RuntimeDefault"
+## @param lifecycleHooks LifecycleHook to set additional configuration at startup Evaluated as a template
+##
+lifecycleHooks: {}
+## @param podAnnotations Pod annotations
+## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+##
+podAnnotations: {}
+## @param podLabels Add additional labels to the pod (evaluated as a template)
+## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+##
+podLabels: {}
+## @section Other Parameters
+##
+
+## Service account for userspace-cni to use.
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+##
+serviceAccount:
+  ## @param serviceAccount.create Enable creation of ServiceAccount for userspace-cni pod
+  ##
+  create: true
+  ## @param serviceAccount.name The name of the ServiceAccount to use.
+  ## If not set and create is true, a name is generated using the common.names.fullname template
+  ##
+  name: ""
+  ## @param serviceAccount.automountServiceAccountToken Allows auto mount of ServiceAccountToken on the serviceAccount created
+  ## The pod does not call the K8s API, so this defaults to false.
+  ##
+  automountServiceAccountToken: false
+  ## @param serviceAccount.annotations Additional custom annotations for the ServiceAccount
+  ##
+  annotations: {}
+## RBAC configuration
+## The userspace CNI binary (invoked on the host by the kubelet) reads the workload
+## pod and writes the provisioned interface config back via the pods/status
+## subresource. Only created when kubeconfig.enabled.
+##
+rbac:
+  ## @param rbac.create Create the ClusterRole/ClusterRoleBinding the CNI binary's API access needs
+  ##
+  create: true
+  ## @param rbac.rules Custom ClusterRole rules (if set, replaces the default minimal rules)
+  ##
+  rules: []
+## @section Kubeconfig provisioning
+##
+## Thick Multus no longer ships /etc/cni/net.d/multus.d/multus.kubeconfig, and the
+## userspace CNI binary runs on the host (kubelet CNI context) where there is no
+## in-cluster token. When enabled, the DaemonSet generates a kubeconfig on every
+## node from its own ServiceAccount token + cluster CA and refreshes it periodically.
+## Point each NetworkAttachmentDefinition's "kubeconfig" at the host path:
+##   <hostCNIConfDir>/<subDir>/<fileName>  (default /etc/cni/net.d/userspace.d/userspace.kubeconfig)
+##
+kubeconfig:
+  ## @param kubeconfig.enabled Generate a kubeconfig on each node for the userspace CNI binary
+  ##
+  enabled: true
+  ## @param kubeconfig.hostCNIConfDir CNI config dir on the host (CNI confs + the generated kubeconfig)
+  ##
+  hostCNIConfDir: /etc/cni/net.d
+  ## @param kubeconfig.subDir Subdirectory under the CNI config dir for the kubeconfig
+  ##
+  subDir: userspace.d
+  ## @param kubeconfig.fileName Generated kubeconfig file name
+  ##
+  fileName: userspace.kubeconfig
+  ## @param kubeconfig.refreshInterval Seconds between kubeconfig token refreshes (the SA token is short-lived)
+  ##
+  refreshInterval: 300
+  ## @param kubeconfig.tokenExpirationSeconds Requested ServiceAccount token lifetime for the projected volume
+  ##
+  tokenExpirationSeconds: 3600

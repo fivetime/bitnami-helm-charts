@@ -6146,6 +6146,49 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/trafficserver-1.0.0/trafficserver-1.0.0.tgz
     version: 1.0.0
+  userspace-cni:
+  - annotations:
+      images: |
+        - name: userspace-cni
+          image: ghcr.io/fivetime/userspace-cni:main
+      licenses: Apache-2.0
+      tanzuCategory: clusterUtility
+    apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-06-18T15:27:00.60382509Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: Userspace CNI is a Kubernetes CNI plugin that provisions high-performance
+      userspace dataplane interfaces (memif / vhost-user) on host-side OVS-DPDK or
+      VPP switches for DPDK-based workloads. It ships a single CNI binary via a DaemonSet
+      that installs it into each node's CNI binary directory.
+    digest: be297b5b477d833910ef0628fc6727412b4aa6e1ad39a6e741a02198594ff67a
+    home: https://github.com/fivetime/userspace-cni
+    icon: https://upload.wikimedia.org/wikipedia/commons/3/35/Kubernetes_logo.svg
+    keywords:
+    - userspace-cni
+    - ovs-dpdk
+    - vpp
+    - dpdk
+    - memif
+    - vhostuser
+    - cni
+    - kubernetes
+    - networking
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: userspace-cni
+    sources:
+    - https://github.com/fivetime/userspace-cni
+    - https://github.com/bitnami/charts/tree/main/bitnami/userspace-cni
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/userspace-cni-1.0.0/userspace-cni-1.0.0.tgz
+    version: 1.0.0
   valkey:
   - annotations:
       images: |
@@ -6697,4 +6740,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-06-10T00:14:08.818466059Z"
+generated: "2026-06-18T15:27:00.603966735Z"

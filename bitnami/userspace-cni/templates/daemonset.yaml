@@ -164,6 +164,54 @@ spec:
             {{- if .Values.extraVolumeMounts }}
             {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
             {{- end }}
+        {{- if .Values.restoreDaemon.enabled }}
+        # Per-node restore daemon: watches the node VPP and re-asserts this node's
+        # memif masters on (re)connect (VPP's runtime state is non-persistent, so a
+        # VPP restart drops them). Uses the in-cluster ServiceAccount. VPP only.
+        - name: restore-daemon
+          image: {{ template "userspace-cni.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          command:
+            - /userspace-daemon
+            - --vpp-api-socket={{ .Values.restoreDaemon.vppApiSocket }}
+            - --socket-prefix={{ .Values.restoreDaemon.socketPrefix }}
+            - --metrics-addr=:{{ .Values.restoreDaemon.metricsPort }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.containerSecurityContext "context" $) | nindent 12 }}
+          {{- end }}
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          ports:
+            - name: http-metrics
+              containerPort: {{ .Values.restoreDaemon.metricsPort }}
+              protocol: TCP
+          # Liveness only checks the process is responsive (/healthz is always 200).
+          # Deliberately NO readiness gate on VPP connectivity: the daemon must
+          # tolerate the dataplane being down — or absent on a node (e.g. a network
+          # node with no VPP) — and simply wait to reconnect. Gating readiness on the
+          # VPP connection would couple userspace-cni's rollout to VPP's lifecycle and
+          # deadlock the DaemonSet on any VPP-less node. The live connection state is
+          # still exposed via /readyz and /metrics for monitoring.
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.restoreDaemon.metricsPort }}
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          {{- if .Values.restoreDaemon.resources }}
+          resources: {{- toYaml .Values.restoreDaemon.resources | nindent 12 }}
+          {{- end }}
+          terminationMessagePolicy: FallbackToLogsOnError
+          volumeMounts:
+            - name: vpp-run
+              mountPath: /run/vpp
+            - name: kube-api-access
+              mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+              readOnly: true
+        {{- end }}
         {{- if .Values.sidecars }}
         {{- include "common.tplvalues.render" (dict "value" .Values.sidecars "context" $) | nindent 8 }}
         {{- end }}
@@ -183,6 +231,10 @@ spec:
           hostPath:
             path: {{ .Values.kubeconfig.hostCNIConfDir | quote }}
             type: DirectoryOrCreate
+        {{- end }}
+        {{- if or .Values.kubeconfig.enabled .Values.restoreDaemon.enabled }}
+        # SA token + CA for the on-host CNI binary's kubeconfig and/or the
+        # restore daemon's in-cluster client.
         - name: kube-api-access
           projected:
             defaultMode: 0444
@@ -200,6 +252,12 @@ spec:
                     - path: namespace
                       fieldRef:
                         fieldPath: metadata.namespace
+        {{- end }}
+        {{- if .Values.restoreDaemon.enabled }}
+        - name: vpp-run
+          hostPath:
+            path: {{ .Values.restoreDaemon.hostVppRunDir | quote }}
+            type: DirectoryOrCreate
         {{- end }}
         {{- if .Values.extraVolumes }}
         {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumes "context" $) | nindent 8 }}

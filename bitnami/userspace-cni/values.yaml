@@ -370,3 +370,30 @@ kubeconfig:
   ## @param kubeconfig.tokenExpirationSeconds Requested ServiceAccount token lifetime for the projected volume
   ##
   tokenExpirationSeconds: 3600
+## @section Restore daemon (VPP memif restore after a VPP restart)
+##
+## A per-node daemon (a second DaemonSet container) that watches the node VPP
+## connection and, on (re)connect, re-asserts the memif masters userspace-cni
+## owns. VPP's runtime state is non-persistent, so a VPP restart drops them and no
+## pod-lifecycle event re-triggers the CNI. VPP-engine only (OVS-DPDK persists via
+## ovsdb). See the userspace-cni docs/proposals/vpp-memif-restore-daemon.md.
+##
+restoreDaemon:
+  ## @param restoreDaemon.enabled Run the per-node memif restore daemon (VPP engine; shared-VPP setups)
+  ##
+  enabled: false
+  ## @param restoreDaemon.vppApiSocket VPP binary API socket (empty = govpp default /run/vpp/api.sock)
+  ##
+  vppApiSocket: ""
+  ## @param restoreDaemon.socketPrefix Comma-separated shared-dir roots; the daemon only manages memifs whose socket is under one of them — scopes it to memifs userspace-cni created (empty = all memifs)
+  ##
+  socketPrefix: "/run/vpp,/var/run/vpp"
+  ## @param restoreDaemon.hostVppRunDir Host VPP runtime dir (api.sock + memif sockets) mounted into the daemon
+  ##
+  hostVppRunDir: /run/vpp
+  ## @param restoreDaemon.metricsPort Port for the daemon's /healthz, /readyz and /metrics endpoints
+  ##
+  metricsPort: 9101
+  ## @param restoreDaemon.resources Set container requests/limits for the restore daemon
+  ##
+  resources: {}

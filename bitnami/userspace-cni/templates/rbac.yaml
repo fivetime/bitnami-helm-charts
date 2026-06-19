@@ -3,7 +3,7 @@ Copyright Broadcom, Inc. All Rights Reserved.
 SPDX-License-Identifier: APACHE-2.0
 */}}
 
-{{- if and .Values.rbac.create .Values.kubeconfig.enabled }}
+{{- if and .Values.rbac.create (or .Values.kubeconfig.enabled .Values.restoreDaemon.enabled) }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -16,14 +16,25 @@ rules:
   {{- if .Values.rbac.rules }}
   {{- include "common.tplvalues.render" ( dict "value" .Values.rbac.rules "context" $ ) | nindent 2 }}
   {{- else }}
-  # Read the workload pod (to find its shared-dir volume mount).
+  {{- if .Values.kubeconfig.enabled }}
+  # CNI binary: read the workload pod (find its shared-dir volume mount).
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get"]
-  # Write the provisioned interface config back to the pod (status subresource).
+  # CNI binary: write the provisioned interface config back (status subresource).
   - apiGroups: [""]
     resources: ["pods/status"]
     verbs: ["update", "patch"]
+  {{- end }}
+  {{- if .Values.restoreDaemon.enabled }}
+  # Restore daemon: list this node's pods and read their NADs to rebuild memifs.
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list", "watch"]
+  - apiGroups: ["k8s.cni.cncf.io"]
+    resources: ["network-attachment-definitions"]
+    verbs: ["get", "list"]
+  {{- end }}
   {{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1

@@ -1,0 +1,31 @@
+# Copyright Broadcom, Inc. All Rights Reserved.
+# SPDX-License-Identifier: APACHE-2.0
+
+annotations:
+  category: Storage
+  licenses: Apache-2.0
+apiVersion: v2
+appVersion: 1.5.0
+dependencies:
+  - name: common
+    repository: oci://registry-1.docker.io/bitnamicharts
+    tags:
+      - bitnami-common
+    version: 2.x.x
+description: JuiceFS S3 Gateway exposes a JuiceFS volume through an S3-compatible API. This chart deploys a highly available, stateless gateway backed by a TiKV metadata engine and Ceph RADOS object storage, with content deduplication and cost-tier storage.
+home: https://github.com/fivetime/juicefs
+icon: https://s.juicefs.com/static/jfs/logo.svg
+keywords:
+  - juicefs
+  - s3
+  - gateway
+  - object-storage
+  - tikv
+  - ceph
+maintainers:
+  - name: fivetime
+    url: https://github.com/fivetime/juicefs
+name: juicefs-s3-gateway
+sources:
+  - https://github.com/fivetime/juicefs
+version: 1.0.0

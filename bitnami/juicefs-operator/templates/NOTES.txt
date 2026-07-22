@@ -1,0 +1,29 @@
+CHART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+** The JuiceFS Operator is being deployed with {{ .Values.replicaCount }} replica(s). **
+
+{{- if .Values.leaderElection.enabled }}
+Leader election is enabled: one replica is active and the rest stand by for
+failover.
+{{- else }}
+WARNING: leader election is disabled. Run a single replica to avoid multiple
+active controllers reconciling the same resources.
+{{- end }}
+
+The operator reconciles these custom resources in the juicefs.io API group:
+
+  CacheGroup (cg), Warmup, Sync, CronSync
+
+Create one, for example a cache group, and the operator will manage the
+corresponding JuiceFS mount pods. Cache-group mount pods use the JuiceFS
+client image; point them at your fork's image in the CacheGroup spec when you
+need the ceph + TiKV build.
+
+{{- if .Values.metrics.enabled }}
+
+Metrics are exposed on service {{ printf "%s-metrics" (include "common.names.fullname" .) }}:{{ .Values.metrics.port }}.
+{{- end }}
+
+{{ include "common.warnings.rollingTag" .Values.image }}

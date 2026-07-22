@@ -1,0 +1,613 @@
+# Copyright Broadcom, Inc. All Rights Reserved.
+# SPDX-License-Identifier: APACHE-2.0
+
+## @section Global parameters
+## Global Docker image parameters
+## Please, note that this will override the image parameters, including dependencies, configured to use the global value
+## Current available global Docker image parameters: imageRegistry, imagePullSecrets and storageClass
+
+## @param global.imageRegistry Global Docker image registry
+## @param global.imagePullSecrets Global Docker registry secret names as an array
+## @param global.defaultStorageClass Global default StorageClass for Persistent Volume(s)
+##
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  defaultStorageClass: ""
+  security:
+    ## @param global.security.allowInsecureImages Allows skipping image verification
+    allowInsecureImages: false
+  compatibility:
+    openshift:
+      ## @param global.compatibility.openshift.adaptSecurityContext Adapt the securityContext sections of the deployment to make them compatible with Openshift restricted-v2 SCC: remove runAsUser, runAsGroup and fsGroup and let the platform use their allowed default IDs. Possible values: auto (apply if the detected running cluster is Openshift), force (perform the adaptation always), disabled (do not perform adaptation)
+      ##
+      adaptSecurityContext: auto
+
+## @section Common parameters
+
+## @param nameOverride String to partially override common.names.fullname template (will maintain the release name)
+##
+nameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+##
+namespaceOverride: ""
+## @param fullnameOverride String to fully override common.names.fullname template
+##
+fullnameOverride: ""
+## @param commonLabels Labels to add to all deployed objects
+##
+commonLabels: {}
+## @param commonAnnotations Annotations to add to all deployed objects
+##
+commonAnnotations: {}
+## @param clusterDomain Default Kubernetes cluster domain
+##
+clusterDomain: cluster.local
+## @param extraDeploy Array of extra objects to deploy with the release
+##
+extraDeploy: []
+## @param kubeVersion Force target Kubernetes version (using Helm capabilities if not set)
+##
+kubeVersion: ""
+
+## @section JuiceFS S3 Gateway image parameters
+
+## JuiceFS gateway image (the ceph + TiKV enabled build, see docker/Dockerfile in the fork)
+## @param image.registry [default: REGISTRY_NAME] JuiceFS gateway image registry
+## @param image.repository [default: REPOSITORY_NAME] JuiceFS gateway image repository
+## @param image.tag JuiceFS gateway image tag
+## @param image.digest JuiceFS gateway image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+## @param image.pullPolicy Image pull policy
+## @param image.pullSecrets Specify docker-registry secret names as an array
+##
+image:
+  registry: ghcr.io
+  repository: fivetime/juicefs
+  tag: main
+  digest: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+## @section Authentication and volume parameters
+
+auth:
+  ## @param auth.rootUser S3 root access key (MINIO_ROOT_USER). Auto-generated when empty and no existingSecret is set
+  ##
+  rootUser: admin
+  ## @param auth.rootPassword S3 root secret key (MINIO_ROOT_PASSWORD), at least 8 characters. Auto-generated when empty
+  ##
+  rootPassword: ""
+  ## @param auth.metaUrl Metadata engine URL, e.g. "tikv://pd-host:2379/myjfs". Required unless auth.existingSecret is set
+  ##
+  metaUrl: ""
+  ## @param auth.existingSecret Existing secret holding credentials and meta URL (keys: root-user, root-password, meta-url; overridable below)
+  ##
+  existingSecret: ""
+  ## @param auth.rootUserSecretKey Key in auth.existingSecret holding the S3 root access key
+  ##
+  rootUserSecretKey: ""
+  ## @param auth.rootPasswordSecretKey Key in auth.existingSecret holding the S3 root secret key
+  ##
+  rootPasswordSecretKey: ""
+  ## @param auth.metaUrlSecretKey Key in auth.existingSecret holding the metadata engine URL
+  ##
+  metaUrlSecretKey: ""
+
+## @section Gateway deployment parameters
+
+## @param replicaCount Number of gateway replicas. For production, run at least 3 behind a consistent-hash load balancer
+##
+replicaCount: 3
+## @param volumeName JuiceFS volume name to serve. Defaults to the volume's own name when empty
+##
+volumeName: ""
+## @param multiBuckets Expose top-level directories as separate S3 buckets (multi-tenant layout)
+##
+multiBuckets: true
+## @param atimeMode When to update atime: noatime, relatime (recommended for tier aging), strictatime
+##
+atimeMode: relatime
+## @param extraArgs Additional raw arguments appended to the `juicefs gateway` command
+##
+extraArgs: []
+## @param command Override the container command (advanced; bypasses the generated startup script)
+##
+command: []
+## @param containerPorts.api S3 API container port
+## @param containerPorts.metrics Prometheus metrics container port
+## @param containerPorts.admin Bucket-provisioning admin API container port
+##
+containerPorts:
+  api: 9000
+  metrics: 9567
+  admin: 9568
+
+## @param extraEnvVars Array of extra environment variables for the gateway container
+##
+extraEnvVars: []
+## @param extraEnvVarsCM Name of a ConfigMap with extra environment variables
+##
+extraEnvVarsCM: ""
+## @param extraEnvVarsSecret Name of a Secret with extra environment variables
+##
+extraEnvVarsSecret: ""
+
+## @param command Custom command override
+## @param lifecycleHooks lifecycleHooks for the gateway container to automate configuration before or after startup
+##
+lifecycleHooks: {}
+## @param automountServiceAccountToken Mount Service Account token in pod
+##
+automountServiceAccountToken: false
+## @param hostAliases Deployment pod host aliases
+##
+hostAliases: []
+## @param podLabels Extra labels for gateway pods
+##
+podLabels: {}
+## @param podAnnotations Annotations for gateway pods
+##
+podAnnotations: {}
+## @param podAffinityPreset Pod affinity preset. Ignored if `affinity` is set. Allowed values: soft, hard
+##
+podAffinityPreset: ""
+## @param podAntiAffinityPreset Pod anti-affinity preset. Spreads replicas across nodes for HA. Allowed values: soft, hard
+##
+podAntiAffinityPreset: soft
+## Node affinity preset
+## @param nodeAffinityPreset.type Node affinity preset type. Ignored if `affinity` is set. Allowed values: soft, hard
+## @param nodeAffinityPreset.key Node label key to match. Ignored if `affinity` is set
+## @param nodeAffinityPreset.values Node label values to match. Ignored if `affinity` is set
+##
+nodeAffinityPreset:
+  type: ""
+  key: ""
+  values: []
+## @param affinity Affinity for pod assignment. Overrides podAffinityPreset/podAntiAffinityPreset/nodeAffinityPreset
+##
+affinity: {}
+## @param nodeSelector Node labels for pod assignment (e.g. pin gateways to NVMe cache nodes)
+##
+nodeSelector: {}
+## @param tolerations Tolerations for pod assignment
+##
+tolerations: []
+## @param topologySpreadConstraints Topology spread constraints for pod assignment
+##
+topologySpreadConstraints: []
+## @param priorityClassName Gateway pods priority class name
+##
+priorityClassName: ""
+## @param schedulerName Name of the k8s scheduler (other than default)
+##
+schedulerName: ""
+## @param terminationGracePeriodSeconds Seconds the pod needs to terminate gracefully
+##
+terminationGracePeriodSeconds: ""
+## @param updateStrategy.type Gateway deployment strategy type
+## @param updateStrategy.rollingUpdate Gateway deployment rolling update configuration parameters
+##
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate: {}
+## @param podSecurityContext.enabled Enable pod Security Context
+## @param podSecurityContext.fsGroup Group ID for the pod
+##
+podSecurityContext:
+  enabled: true
+  fsGroup: 1001
+## @param containerSecurityContext.enabled Enable container Security Context
+## @param containerSecurityContext.runAsUser User ID for the container
+## @param containerSecurityContext.runAsNonRoot Force the container to run as a non root user
+## @param containerSecurityContext.readOnlyRootFilesystem Mount the container root filesystem as read only
+## @param containerSecurityContext.privileged Run the container as privileged
+## @param containerSecurityContext.allowPrivilegeEscalation Allow privilege escalation
+## @param containerSecurityContext.capabilities.add Linux capabilities to add (SYS_ADMIN required if FUSE mountpoint symlink following is used)
+## @param containerSecurityContext.capabilities.drop Linux capabilities to drop
+##
+containerSecurityContext:
+  enabled: true
+  runAsUser: 1001
+  runAsNonRoot: true
+  readOnlyRootFilesystem: false
+  privileged: false
+  allowPrivilegeEscalation: false
+  capabilities:
+    add: []
+    drop: ["ALL"]
+## @param resourcesPreset Set container resources according to one common preset (allowed values: none, nano, micro, small, medium, large, xlarge, 2xlarge). Ignored if resources is set
+##
+resourcesPreset: large
+## @param resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+##
+resources: {}
+## @param livenessProbe.enabled Enable livenessProbe on the gateway container
+## @param livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+## @param livenessProbe.periodSeconds Period seconds for livenessProbe
+## @param livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+## @param livenessProbe.failureThreshold Failure threshold for livenessProbe
+## @param livenessProbe.successThreshold Success threshold for livenessProbe
+##
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+  successThreshold: 1
+## @param readinessProbe.enabled Enable readinessProbe on the gateway container
+## @param readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+## @param readinessProbe.periodSeconds Period seconds for readinessProbe
+## @param readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+## @param readinessProbe.failureThreshold Failure threshold for readinessProbe
+## @param readinessProbe.successThreshold Success threshold for readinessProbe
+##
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+  successThreshold: 1
+## @param startupProbe.enabled Enable startupProbe on the gateway container
+## @param startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
+## @param startupProbe.periodSeconds Period seconds for startupProbe
+## @param startupProbe.timeoutSeconds Timeout seconds for startupProbe
+## @param startupProbe.failureThreshold Failure threshold for startupProbe
+## @param startupProbe.successThreshold Success threshold for startupProbe
+##
+startupProbe:
+  enabled: false
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30
+  successThreshold: 1
+## @param customLivenessProbe Custom livenessProbe that overrides the default one
+##
+customLivenessProbe: {}
+## @param customReadinessProbe Custom readinessProbe that overrides the default one
+##
+customReadinessProbe: {}
+## @param customStartupProbe Custom startupProbe that overrides the default one
+##
+customStartupProbe: {}
+## @param extraVolumes Optionally specify extra list of additional volumes for the gateway pod (e.g. NVMe hostPath cache, ceph config)
+##
+extraVolumes: []
+## @param extraVolumeMounts Optionally specify extra list of additional volumeMounts for the gateway container
+##
+extraVolumeMounts: []
+## @param initContainers Add additional init containers to the gateway pod
+##
+initContainers: []
+## @param sidecars Add additional sidecar containers to the gateway pod
+##
+sidecars: []
+
+## @section Local cache parameters
+
+## JuiceFS local read/write cache. Point cache.dir at fast local storage (NVMe) via extraVolumes for best results.
+## ref: https://juicefs.com/docs/community/cache
+cache:
+  ## @param cache.enabled Enable local cache flags (--cache-dir/--cache-size). Provide the actual storage via extraVolumes/extraVolumeMounts
+  ##
+  enabled: false
+  ## @param cache.dir Local cache directory (colon-separated for multiple paths). Should map to an NVMe-backed volume mount
+  ##
+  dir: /var/jfsCache
+  ## @param cache.size Read cache size limit in MiB
+  ##
+  size: 102400
+  ## @param cache.writeback Enable write-back cache (stage writes locally, upload asynchronously). No RGW equivalent
+  ##
+  writeback: false
+  ## @param cache.extraArgs Extra cache-related raw arguments (e.g. --upload-delay, --free-space-ratio)
+  ##
+  extraArgs: []
+
+## @section Ceph RADOS parameters
+
+## Mount ceph client config (ceph.conf + keyring) so the ceph storage backend can reach the cluster.
+ceph:
+  ## @param ceph.enabled Mount a Ceph client config secret at /etc/ceph
+  ##
+  enabled: false
+  ## @param ceph.existingSecret Name of an existing secret containing ceph.conf and the cephx keyring
+  ##
+  existingSecret: ""
+  ## @param ceph.mountPath Path where the ceph config secret is mounted
+  ##
+  mountPath: /etc/ceph
+
+## @section Tier aging parameters
+
+## Access-driven automatic tiering (demote idle files to a cold tier, promote on read).
+## Requires the volume to have tiers configured (see the provisioning job) and a non-noatime atimeMode.
+tierAging:
+  ## @param tierAging.enabled Enable tier aging (demotion scan + read-triggered promotion)
+  ##
+  enabled: false
+  ## @param tierAging.demoteAfter Demote files not accessed for this duration (e.g. 720h). 0 disables demotion
+  ##
+  demoteAfter: 720h
+  ## @param tierAging.scanInterval How often the incremental demotion scan runs
+  ##
+  scanInterval: 1h
+  ## @param tierAging.coldTier Tier id files are demoted to (must be configured with a storage class)
+  ##
+  coldTier: 3
+  ## @param tierAging.promote Promote a demoted file back to its bucket tier on S3 read access
+  ##
+  promote: true
+  ## @param tierAging.scanRate Per-instance ceiling on scan metadata lookups per second (global load = this x scanning replicas)
+  ##
+  scanRate: 3000
+  ## @param tierAging.fullScanInterval Interval of the full tree-walk audit behind the incremental mode. 0 disables it
+  ##
+  fullScanInterval: 168h
+
+## @section Bucket-provisioning admin API parameters
+
+## HTTP admin API for creating buckets pre-assigned to a cost tier. Must stay internal (BSS/control plane only), never exposed to tenants.
+bucketAdmin:
+  ## @param bucketAdmin.enabled Expose the bucket-provisioning admin API on containerPorts.admin
+  ##
+  enabled: false
+  ## @param bucketAdmin.token Bearer token required to call the admin API. Auto-nothing: required when enabled
+  ##
+  token: ""
+  ## @param bucketAdmin.existingSecret Existing secret holding the admin token (key: admin-token, overridable)
+  ##
+  existingSecret: ""
+  ## @param bucketAdmin.tokenSecretKey Key in bucketAdmin.existingSecret holding the token
+  ##
+  tokenSecretKey: "admin-token"
+  ## @param bucketAdmin.service.type Kubernetes service type for the admin API (keep ClusterIP; do not expose externally)
+  ## @param bucketAdmin.service.port Admin API service port
+  ##
+  service:
+    type: ClusterIP
+    port: 9568
+
+## @section Volume provisioning parameters
+
+## Post-install/upgrade Helm hook Job that formats the volume (if needed) and applies volume-level configuration
+## (tiers, changelog). This is metadata-engine state, kept independent from the gateway Deployment lifecycle.
+provisioning:
+  ## @param provisioning.enabled Run the provisioning Job on install/upgrade
+  ##
+  enabled: false
+  ## @param provisioning.format.enabled Run `juicefs format` (skipped automatically if the volume already exists)
+  ##
+  format:
+    ## @param provisioning.format.enabled Attempt to format the volume when it does not exist yet
+    enabled: true
+    ## @param provisioning.format.storage Object storage backend (e.g. ceph)
+    storage: ceph
+    ## @param provisioning.format.bucket Default tier (tier 0) bucket/pool, e.g. ceph://juicefs-nvme
+    bucket: ""
+    ## @param provisioning.format.accessKey Object storage access key (for ceph: the cephx user name, e.g. ceph)
+    accessKey: ""
+    ## @param provisioning.format.secretKey Object storage secret key (for ceph: the cephx client id, e.g. client.juicefs)
+    secretKey: ""
+    ## @param provisioning.format.dedupTiKV PD addresses for the deduplication index (immutable once set). Empty disables dedup
+    dedupTiKV: ""
+    ## @param provisioning.format.extraArgs Extra raw arguments for `juicefs format`
+    extraArgs: []
+  ## @param provisioning.tiers Tier-to-storage-class mappings applied via `juicefs config --tier`. Safe to re-run and to change over time
+  ## e.g.
+  ## tiers:
+  ##   - id: 1
+  ##     storageClass: juicefs-nvme
+  ##   - id: 2
+  ##     storageClass: juicefs-ssd
+  ##   - id: 3
+  ##     storageClass: juicefs-hdd
+  ##
+  tiers: []
+  ## @param provisioning.changelog.enabled Enable the metadata changelog (required for incremental tier aging)
+  ## @param provisioning.changelog.maxAge Changelog retention window
+  ##
+  changelog:
+    enabled: false
+    maxAge: 2h
+  ## @param provisioning.extraCommands Extra `juicefs` commands (one per array item) run after format/config
+  ##
+  extraCommands: []
+  ## @param provisioning.resourcesPreset Provisioning job resources preset
+  ##
+  resourcesPreset: small
+  ## @param provisioning.resources Explicit provisioning job resources (overrides preset)
+  ##
+  resources: {}
+  ## @param provisioning.podSecurityContext.enabled Enable provisioning pod Security Context
+  ## @param provisioning.podSecurityContext.fsGroup Provisioning pod fsGroup
+  ##
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1001
+  ## @param provisioning.containerSecurityContext.enabled Enable provisioning container Security Context
+  ## @param provisioning.containerSecurityContext.runAsUser Provisioning container user ID
+  ## @param provisioning.containerSecurityContext.runAsNonRoot Provisioning container run as non root
+  ##
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 1001
+    runAsNonRoot: true
+  ## @param provisioning.nodeSelector Node selector for the provisioning job
+  ##
+  nodeSelector: {}
+  ## @param provisioning.tolerations Tolerations for the provisioning job
+  ##
+  tolerations: []
+  ## @param provisioning.cleanupAfterFinished.enabled Clean up the provisioning Job after it finishes
+  ## @param provisioning.cleanupAfterFinished.seconds TTL seconds after the Job finishes
+  ##
+  cleanupAfterFinished:
+    enabled: false
+    seconds: 600
+
+## @section Traffic exposure parameters
+
+service:
+  ## @param service.type S3 API Kubernetes service type
+  ##
+  type: ClusterIP
+  ## @param service.ports.api S3 API service port
+  ## @param service.ports.metrics Metrics service port
+  ##
+  ports:
+    api: 9000
+    metrics: 9567
+  ## @param service.nodePorts.api Node port for the S3 API (when type is NodePort/LoadBalancer)
+  ##
+  nodePorts:
+    api: ""
+  ## @param service.clusterIP S3 API service cluster IP
+  ##
+  clusterIP: ""
+  ## @param service.loadBalancerIP S3 API service Load Balancer IP
+  ##
+  loadBalancerIP: ""
+  ## @param service.loadBalancerSourceRanges S3 API service Load Balancer sources
+  ##
+  loadBalancerSourceRanges: []
+  ## @param service.externalTrafficPolicy S3 API service external traffic policy
+  ##
+  externalTrafficPolicy: Cluster
+  ## @param service.annotations Additional custom annotations for the S3 API service
+  ##
+  annotations: {}
+  ## @param service.extraPorts Extra ports to expose in the S3 API service
+  ##
+  extraPorts: []
+  ## @param service.sessionAffinity Session Affinity for Kubernetes service, can be "None" or "ClientIP"
+  ##
+  sessionAffinity: None
+
+## Headless service used when a per-pod stable identity is needed (e.g. external consistent-hash LB targeting pods)
+headless:
+  ## @param headless.annotations Annotations for the headless service
+  ##
+  annotations: {}
+
+ingress:
+  ## @param ingress.enabled Enable ingress record generation for the S3 API
+  ##
+  enabled: false
+  ## @param ingress.pathType Ingress path type
+  ##
+  pathType: ImplementationSpecific
+  ## @param ingress.hostname Default host for the ingress record
+  ##
+  hostname: s3.local
+  ## @param ingress.ingressClassName IngressClass that will be used to implement the Ingress
+  ##
+  ingressClassName: ""
+  ## @param ingress.path Default path for the ingress record
+  ##
+  path: /
+  ## @param ingress.annotations Additional annotations for the Ingress resource. For per-object-key consistent-hash routing with the NGINX Ingress Controller, set nginx.ingress.kubernetes.io/upstream-hash-by: "$request_uri"
+  ##
+  annotations: {}
+  ## @param ingress.tls Enable TLS configuration for the host defined at ingress.hostname
+  ##
+  tls: false
+  ## @param ingress.selfSigned Create a TLS secret for this ingress record using self-signed certificates generated by Helm
+  ##
+  selfSigned: false
+  ## @param ingress.extraHosts An array with additional hostname(s) to be covered with the ingress record
+  ##
+  extraHosts: []
+  ## @param ingress.extraTls The tls configuration for additional hostnames to be covered with this ingress record
+  ##
+  extraTls: []
+  ## @param ingress.secrets Custom TLS certificates as secrets
+  ##
+  secrets: []
+  ## @param ingress.extraRules Additional rules to be covered with this ingress record
+  ##
+  extraRules: []
+
+## @section Other parameters
+
+## @param pdb.create Enable a Pod Disruption Budget so rolling upgrades keep the gateway available
+## @param pdb.minAvailable Minimum number/percentage of pods that must be available
+## @param pdb.maxUnavailable Maximum number/percentage of pods that may be unavailable (defaults to 1 when minAvailable is unset)
+##
+pdb:
+  create: true
+  minAvailable: ""
+  maxUnavailable: ""
+
+## Horizontal Pod Autoscaler
+## @param autoscaling.enabled Enable Horizontal POD autoscaling for the gateway
+## @param autoscaling.minReplicas Minimum number of gateway replicas
+## @param autoscaling.maxReplicas Maximum number of gateway replicas
+## @param autoscaling.targetCPU Target CPU utilization percentage
+## @param autoscaling.targetMemory Target Memory utilization percentage
+##
+autoscaling:
+  enabled: false
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPU: 70
+  targetMemory: ""
+
+serviceAccount:
+  ## @param serviceAccount.create Enable creation of a ServiceAccount for the gateway pods
+  ##
+  create: true
+  ## @param serviceAccount.name Name of the created ServiceAccount. Generated when empty and create is true
+  ##
+  name: ""
+  ## @param serviceAccount.annotations Additional custom annotations for the ServiceAccount
+  ##
+  annotations: {}
+  ## @param serviceAccount.automountServiceAccountToken Auto-mount the ServiceAccount token
+  ##
+  automountServiceAccountToken: false
+
+networkPolicy:
+  ## @param networkPolicy.enabled Enable creation of NetworkPolicy resources
+  ##
+  enabled: true
+  ## @param networkPolicy.allowExternal The Policy model to apply. When false, only pods with the correct client label can reach the S3 port
+  ##
+  allowExternal: true
+  ## @param networkPolicy.allowExternalEgress Allow the pods to access any range of ports and hosts for egress
+  ##
+  allowExternalEgress: true
+  ## @param networkPolicy.extraIngress Add extra ingress rules to the NetworkPolicy
+  ##
+  extraIngress: []
+  ## @param networkPolicy.extraEgress Add extra egress rules to the NetworkPolicy
+  ##
+  extraEgress: []
+
+## @section Metrics parameters
+
+metrics:
+  serviceMonitor:
+    ## @param metrics.serviceMonitor.enabled Create a Prometheus Operator ServiceMonitor for the gateway metrics endpoint
+    ##
+    enabled: false
+    ## @param metrics.serviceMonitor.namespace Namespace for the ServiceMonitor (defaults to the release namespace)
+    ##
+    namespace: ""
+    ## @param metrics.serviceMonitor.interval Scrape interval
+    ##
+    interval: ""
+    ## @param metrics.serviceMonitor.scrapeTimeout Scrape timeout
+    ##
+    scrapeTimeout: ""
+    ## @param metrics.serviceMonitor.labels Extra labels for the ServiceMonitor
+    ##
+    labels: {}
+    ## @param metrics.serviceMonitor.relabelings RelabelConfigs to apply to samples before scraping
+    ##
+    relabelings: []
+    ## @param metrics.serviceMonitor.metricRelabelings MetricRelabelConfigs to apply to samples before ingestion
+    ##
+    metricRelabelings: []

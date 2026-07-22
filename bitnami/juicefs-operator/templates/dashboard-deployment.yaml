@@ -1,0 +1,78 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if .Values.dashboard.enabled }}
+{{- $secretName := ternary (tpl .Values.dashboard.auth.existingSecret .) (printf "%s-dashboard" (include "common.names.fullname" .)) (not (empty .Values.dashboard.auth.existingSecret)) }}
+apiVersion: {{ include "common.capabilities.deployment.apiVersion" . }}
+kind: Deployment
+metadata:
+  name: {{ include "juicefs-operator.dashboard.fullname" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" (dict "customLabels" .Values.commonLabels "context" .) | nindent 4 }}
+    app.kubernetes.io/component: dashboard
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" (dict "value" .Values.commonAnnotations "context" .) | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.dashboard.replicaCount }}
+  {{- $podLabels := include "common.tplvalues.merge" (dict "values" (list .Values.podLabels .Values.commonLabels) "context" .) }}
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" (dict "customLabels" $podLabels "context" .) | nindent 6 }}
+      app.kubernetes.io/component: dashboard
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" (dict "customLabels" $podLabels "context" .) | nindent 8 }}
+        app.kubernetes.io/component: dashboard
+    spec:
+      {{- include "juicefs-operator.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "juicefs-operator.serviceAccountName" . }}
+      containers:
+        - name: dashboard
+          image: {{ include "juicefs-operator.dashboard.image" . }}
+          imagePullPolicy: {{ .Values.dashboard.image.pullPolicy | quote }}
+          args:
+            - --static-dir=/dist
+            {{- if .Values.dashboard.leaderElection.enabled }}
+            - --leader-election
+            {{- if .Values.dashboard.leaderElection.namespace }}
+            - --leader-election-namespace={{ .Values.dashboard.leaderElection.namespace }}
+            {{- end }}
+            {{- if .Values.dashboard.leaderElection.leaseDuration }}
+            - --leader-election-lease-duration={{ .Values.dashboard.leaderElection.leaseDuration }}
+            {{- end }}
+            {{- end }}
+            {{- if or (eq "nightly" .Values.dashboard.image.tag) (hasPrefix "dev" .Values.dashboard.image.tag) (semverCompare ">0.26.0" .Values.dashboard.image.tag) }}
+            - --enable-manager={{ .Values.dashboard.enableManager }}
+            {{- end }}
+          env:
+            - name: SYS_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            {{- if .Values.dashboard.auth.enabled }}
+            - name: USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: username
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: password
+            {{- end }}
+            {{- if .Values.dashboard.extraEnvVars }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.dashboard.extraEnvVars "context" .) | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: 8088
+              protocol: TCP
+          {{- if .Values.dashboard.resources }}
+          resources: {{- toYaml .Values.dashboard.resources | nindent 12 }}
+          {{- else if ne .Values.dashboard.resourcesPreset "none" }}
+          resources: {{- include "common.resources.preset" (dict "type" .Values.dashboard.resourcesPreset) | nindent 12 }}
+          {{- end }}
+{{- end }}

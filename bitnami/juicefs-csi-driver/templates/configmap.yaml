@@ -1,0 +1,22 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if .Values.globalConfig.enabled }}
+{{- if or .Values.globalConfig.manageByHelm .Release.IsInstall }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-config" (include "common.names.fullname" .) }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" (dict "customLabels" .Values.commonLabels "context" .) | nindent 4 }}
+    app.kubernetes.io/component: config
+  annotations:
+    helm.sh/resource-policy: keep
+data:
+  config.yaml: |-
+    {{- $val := omit .Values.globalConfig "enabled" "manageByHelm" }}
+    {{- toYaml $val | nindent 4 }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,234 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+
+Controller StatefulSet for mountpod/process mode. The juicefs-plugin container
+and its privileged host access, socket dir, and bidirectional mount
+propagation are reproduced faithfully from upstream; only naming/labels and
+image helpers are adapted to the Bitnami framework.
+*/}}
+
+{{- if .Values.controller.enabled }}
+apiVersion: {{ include "common.capabilities.statefulset.apiVersion" . }}
+kind: StatefulSet
+metadata:
+  name: {{ printf "%s-controller" (include "common.names.fullname" .) }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" (dict "customLabels" .Values.commonLabels "context" .) | nindent 4 }}
+    app.kubernetes.io/component: controller
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" (dict "value" .Values.commonAnnotations "context" .) | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.controller.replicas }}
+  serviceName: {{ printf "%s-controller" (include "common.names.fullname" .) }}
+  {{- $podLabels := include "common.tplvalues.merge" (dict "values" (list .Values.controller.podLabels .Values.commonLabels) "context" .) }}
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" (dict "customLabels" $podLabels "context" .) | nindent 6 }}
+      app.kubernetes.io/component: controller
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" (dict "customLabels" $podLabels "context" .) | nindent 8 }}
+        app.kubernetes.io/component: controller
+      {{- if .Values.controller.podAnnotations }}
+      annotations: {{- include "common.tplvalues.render" (dict "value" .Values.controller.podAnnotations "context" .) | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- include "juicefs-csi.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "juicefs-csi.controller.serviceAccountName" . }}
+      priorityClassName: {{ .Values.controller.priorityClassName }}
+      {{- if .Values.hostAliases }}
+      hostAliases: {{- include "common.tplvalues.render" (dict "value" .Values.hostAliases "context" .) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.controller.affinity }}
+      affinity: {{- include "common.tplvalues.render" (dict "value" .Values.controller.affinity "context" .) | nindent 8 }}
+      {{- else }}
+      affinity:
+        podAntiAffinity: {{- include "common.affinities.pods" (dict "type" .Values.controller.podAntiAffinityPreset "component" "controller" "customLabels" $podLabels "context" .) | nindent 10 }}
+      {{- end }}
+      {{- if .Values.controller.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.controller.nodeSelector "context" .) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.controller.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.controller.tolerations "context" .) | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.controller.terminationGracePeriodSeconds }}
+      containers:
+        - name: juicefs-plugin
+          image: {{ include "juicefs-csi.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          args:
+            - --endpoint=$(CSI_ENDPOINT)
+            - --logtostderr
+            - --nodeid=$(NODE_NAME)
+            {{- if .Values.controller.debug }}
+            - --v=1
+            {{- end }}
+            {{- if .Values.controller.leaderElection.enabled }}
+            - --leader-election
+            {{- if .Values.controller.leaderElection.leaderElectionNamespace }}
+            - --leader-election-namespace={{ .Values.controller.leaderElection.leaderElectionNamespace }}
+            {{- end }}
+            {{- if .Values.controller.leaderElection.leaseDuration }}
+            - --leader-election-lease-duration={{ .Values.controller.leaderElection.leaseDuration }}
+            {{- end }}
+            {{- end }}
+            {{- if and .Values.controller.provisioner (ne .Values.mountMode "process") }}
+            - --provisioner=true
+            {{- end }}
+            - --cache-client-conf={{ .Values.controller.cacheClientConf }}
+            {{- if eq .Values.mountMode "process" }}
+            - --by-process=true
+            {{- end }}
+            {{- if .Values.globalConfig.enabled }}
+            - --config=/etc/config/config.yaml
+            {{- end }}
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///var/lib/csi/sockets/pluginproxy/csi.sock
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            {{- if ne .Values.mountMode "process" }}
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: JUICEFS_MOUNT_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: JUICEFS_MOUNT_PATH
+              value: {{ .Values.jfsMountDir }}
+            - name: JUICEFS_CONFIG_PATH
+              value: {{ .Values.jfsConfigDir }}
+            {{- if .Values.defaultMountImage.ce }}
+            - name: JUICEFS_CE_MOUNT_IMAGE
+              value: {{ .Values.defaultMountImage.ce | quote }}
+            {{- end }}
+            {{- if .Values.defaultMountImage.ee }}
+            - name: JUICEFS_EE_MOUNT_IMAGE
+              value: {{ .Values.defaultMountImage.ee | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.controller.metricsPort }}
+            - name: JUICEFS_CSI_WEB_PORT
+              value: {{ .Values.controller.metricsPort | quote }}
+            {{- end }}
+            - name: DRIVER_NAME
+              value: {{ include "juicefs-csi.driverName" . | quote }}
+            - name: PROVISION_WORKER_THREADS
+              value: {{ .Values.controller.provisionWorkerThreads | quote }}
+            {{- if .Values.controller.extraEnvVars }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.controller.extraEnvVars "context" .) | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: healthz
+              containerPort: 9909
+              protocol: TCP
+            - name: metrics
+              containerPort: {{ .Values.controller.metricsPort }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 5
+          # CSI node/controller plugins need privileged host access to manage
+          # mount points; this cannot be a restricted Bitnami securityContext.
+          securityContext:
+            capabilities:
+              add: [SYS_ADMIN]
+            privileged: true
+            allowPrivilegeEscalation: true
+            runAsNonRoot: false
+          {{- if .Values.controller.resources }}
+          resources: {{- toYaml .Values.controller.resources | nindent 12 }}
+          {{- else if ne .Values.controller.resourcesPreset "none" }}
+          resources: {{- include "common.resources.preset" (dict "type" .Values.controller.resourcesPreset) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+            {{- if ne .Values.mountMode "process" }}
+            - name: jfs-dir
+              mountPath: /jfs
+              mountPropagation: Bidirectional
+            - name: jfs-root-dir
+              mountPath: /root/.juicefs
+              mountPropagation: Bidirectional
+            {{- end }}
+            {{- if .Values.globalConfig.enabled }}
+            - name: juicefs-config
+              mountPath: /etc/config
+            {{- end }}
+        {{- if or (not .Values.controller.provisioner) (eq .Values.mountMode "process") }}
+        - name: csi-provisioner
+          image: {{ include "juicefs-csi.sidecarImage" (dict "root" .Values.sidecars.csiProvisionerImage "global" .Values.global) }}
+          args:
+            - --csi-address=$(ADDRESS)
+            - --timeout=60s
+            - --v=5
+            {{- if .Values.controller.leaderElection.enabled }}
+            - --leader-election
+            {{- end }}
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        {{- end }}
+        - name: csi-resizer
+          image: {{ include "juicefs-csi.sidecarImage" (dict "root" .Values.sidecars.csiResizerImage "global" .Values.global) }}
+          args:
+            - --csi-address=$(ADDRESS)
+            - --timeout=20s
+            - --leader-election
+            - --v=2
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          securityContext:
+            runAsNonRoot: false
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: liveness-probe
+          image: {{ include "juicefs-csi.sidecarImage" (dict "root" .Values.sidecars.livenessProbeImage "global" .Values.global) }}
+          args:
+            - --csi-address=$(ADDRESS)
+            - --health-port=$(HEALTH_PORT)
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+            - name: HEALTH_PORT
+              value: "9909"
+          securityContext:
+            runAsNonRoot: false
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+      volumes:
+        - name: socket-dir
+          emptyDir: {}
+        {{- if ne .Values.mountMode "process" }}
+        - name: jfs-dir
+          hostPath:
+            path: {{ .Values.jfsMountDir }}
+            type: DirectoryOrCreate
+        - name: jfs-root-dir
+          hostPath:
+            path: {{ .Values.jfsConfigDir }}
+            type: DirectoryOrCreate
+        {{- end }}
+        {{- if .Values.globalConfig.enabled }}
+        - name: juicefs-config
+          configMap:
+            name: {{ printf "%s-config" (include "common.names.fullname" .) }}
+        {{- end }}
+{{- end }}

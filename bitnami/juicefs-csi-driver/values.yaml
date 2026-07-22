@@ -1,0 +1,351 @@
+# Copyright Broadcom, Inc. All Rights Reserved.
+# SPDX-License-Identifier: APACHE-2.0
+
+## @section Global parameters
+
+## @param global.imageRegistry Global Docker image registry
+## @param global.imagePullSecrets Global Docker registry secret names as an array
+##
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  security:
+    ## @param global.security.allowInsecureImages Allows skipping image verification
+    allowInsecureImages: false
+  compatibility:
+    openshift:
+      ## @param global.compatibility.openshift.adaptSecurityContext Adapt securityContext for Openshift. Possible values: auto, force, disabled
+      ##
+      adaptSecurityContext: auto
+
+## @section Common parameters
+
+## @param nameOverride String to partially override common.names.fullname
+##
+nameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+##
+namespaceOverride: ""
+## @param fullnameOverride String to fully override common.names.fullname
+##
+fullnameOverride: ""
+## @param commonLabels Labels to add to all deployed objects
+##
+commonLabels: {}
+## @param commonAnnotations Annotations to add to all deployed objects
+##
+commonAnnotations: {}
+## @param clusterDomain Default Kubernetes cluster domain
+##
+clusterDomain: cluster.local
+## @param extraDeploy Array of extra objects to deploy with the release
+##
+extraDeploy: []
+## @param kubeVersion Force target Kubernetes version (using Helm capabilities if not set)
+##
+kubeVersion: ""
+
+## @section CSI driver parameters
+
+## @param driverName Name of the CSIDriver object applications reference
+##
+driverName: csi.juicefs.com
+## @param mountMode How the JuiceFS client runs. This chart supports "mountpod" (production default) and "process". sidecar/serverless need the webhook and are out of scope
+##
+mountMode: mountpod
+
+## @param image.registry [default: REGISTRY_NAME] CSI plugin image registry
+## @param image.repository [default: REPOSITORY_NAME] CSI plugin image repository
+## @param image.tag CSI plugin image tag
+## @param image.digest CSI plugin image digest
+## @param image.pullPolicy CSI plugin image pull policy
+## @param image.pullSecrets CSI plugin image pull secrets
+##
+image:
+  registry: docker.io
+  repository: juicedata/juicefs-csi-driver
+  tag: v0.32.0
+  digest: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+## Mount pod image (the JuiceFS client that actually mounts volumes). THIS is the
+## fork touchpoint: point ce at your fork's ceph + TiKV build so mount pods use it.
+## @param defaultMountImage.ce Community Edition mount pod image (set to your fork image, e.g. ghcr.io/fivetime/juicefs:main)
+## @param defaultMountImage.ee Enterprise Edition mount pod image (leave empty for CE)
+##
+defaultMountImage:
+  ce: ""
+  ee: ""
+
+## CSI sidecar images (upstream k8s-sigs sidecars)
+## @param sidecars.livenessProbeImage.registry [default: REGISTRY_NAME] livenessprobe image registry
+## @param sidecars.livenessProbeImage.repository [default: REPOSITORY_NAME] livenessprobe image repository
+## @param sidecars.livenessProbeImage.tag livenessprobe image tag
+## @param sidecars.livenessProbeImage.digest livenessprobe image digest
+## @param sidecars.nodeDriverRegistrarImage.registry [default: REGISTRY_NAME] node-driver-registrar image registry
+## @param sidecars.nodeDriverRegistrarImage.repository [default: REPOSITORY_NAME] node-driver-registrar image repository
+## @param sidecars.nodeDriverRegistrarImage.tag node-driver-registrar image tag
+## @param sidecars.nodeDriverRegistrarImage.digest node-driver-registrar image digest
+## @param sidecars.csiProvisionerImage.registry [default: REGISTRY_NAME] csi-provisioner image registry
+## @param sidecars.csiProvisionerImage.repository [default: REPOSITORY_NAME] csi-provisioner image repository
+## @param sidecars.csiProvisionerImage.tag csi-provisioner image tag
+## @param sidecars.csiProvisionerImage.digest csi-provisioner image digest
+## @param sidecars.csiResizerImage.registry [default: REGISTRY_NAME] csi-resizer image registry
+## @param sidecars.csiResizerImage.repository [default: REPOSITORY_NAME] csi-resizer image repository
+## @param sidecars.csiResizerImage.tag csi-resizer image tag
+## @param sidecars.csiResizerImage.digest csi-resizer image digest
+##
+sidecars:
+  livenessProbeImage:
+    registry: registry.k8s.io
+    repository: sig-storage/livenessprobe
+    tag: v2.12.0
+    digest: ""
+  nodeDriverRegistrarImage:
+    registry: registry.k8s.io
+    repository: sig-storage/csi-node-driver-registrar
+    tag: v2.9.0
+    digest: ""
+  csiProvisionerImage:
+    registry: registry.k8s.io
+    repository: sig-storage/csi-provisioner
+    tag: v3.6.3
+    digest: ""
+  csiResizerImage:
+    registry: registry.k8s.io
+    repository: sig-storage/csi-resizer
+    tag: v1.9.0
+    digest: ""
+
+## @param kubeletDir kubelet root directory (adjust for k0s/microk8s/etc.)
+##
+kubeletDir: /var/lib/kubelet
+## @param jfsMountDir Host directory where JuiceFS mount points live
+##
+jfsMountDir: /var/lib/juicefs/volume
+## @param jfsConfigDir Host directory for JuiceFS client config
+##
+jfsConfigDir: /var/lib/juicefs/config
+## @param hostAliases Deployment pod host aliases for both controller and node
+##
+hostAliases: []
+
+## @section CSIDriver object parameters
+
+csidriver:
+  ## @param csidriver.disableHooks Disable Helm hooks on the CSIDriver object (useful for ArgoCD/GitOps). If true, delete the CSIDriver manually before upgrades
+  ##
+  disableHooks: false
+  ## @param csidriver.annotations Additional annotations for the CSIDriver object
+  ##
+  annotations: {}
+
+## @section Global configuration (ConfigMap) parameters
+
+globalConfig:
+  ## @param globalConfig.enabled Create the juicefs CSI driver global config ConfigMap
+  ##
+  enabled: true
+  ## @param globalConfig.manageByHelm Let Helm manage (update) the global config. If false, it is applied only on first install
+  ##
+  manageByHelm: true
+  ## @param globalConfig.enableNodeSelector Schedule mount pods via nodeSelector rather than nodeName
+  ##
+  enableNodeSelector: false
+  ## @param globalConfig.mountPodPatch Recursively-merged patches to the mount pod spec (per pvcSelector). Use to override mount image/resources per PVC
+  ##
+  mountPodPatch: []
+
+## @section Controller (provisioner) parameters
+
+controller:
+  ## @param controller.enabled Deploy the CSI controller
+  ##
+  enabled: true
+  ## @param controller.replicas Number of controller replicas (HA with leader election)
+  ##
+  replicas: 2
+  ## @param controller.debug Enable verbose controller logging
+  ##
+  debug: false
+  ## @param controller.provisioner Use the built-in provisioner (required for pathPattern). When true, the external csi-provisioner sidecar is not run
+  ##
+  provisioner: true
+  ## @param controller.provisionWorkerThreads Number of provisioner worker threads
+  ##
+  provisionWorkerThreads: 100
+  ## @param controller.cacheClientConf Cache client auth config in the user's secret (EE only)
+  ##
+  cacheClientConf: true
+  ## @param controller.leaderElection.enabled Enable controller leader election
+  ## @param controller.leaderElection.leaderElectionNamespace Namespace for the leader election lease
+  ## @param controller.leaderElection.leaseDuration Lease duration for leader election
+  ##
+  leaderElection:
+    enabled: true
+    leaderElectionNamespace: ""
+    leaseDuration: ""
+  ## @param controller.metricsPort Controller metrics port
+  ##
+  metricsPort: 9567
+  ## @param controller.terminationGracePeriodSeconds Grace period before the controller pod is killed
+  ##
+  terminationGracePeriodSeconds: 30
+  ## @param controller.podLabels Extra labels for controller pods
+  ##
+  podLabels: {}
+  ## @param controller.podAnnotations Annotations for controller pods
+  ##
+  podAnnotations: {}
+  ## @param controller.podAntiAffinityPreset Pod anti-affinity preset to spread controller replicas. Allowed values: soft, hard
+  ##
+  podAntiAffinityPreset: soft
+  ## @param controller.affinity Affinity for controller pods (overrides the preset)
+  ##
+  affinity: {}
+  ## @param controller.nodeSelector Node selector for controller pods
+  ##
+  nodeSelector: {}
+  ## @param controller.tolerations Tolerations for controller pods
+  ##
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: Exists
+  ## @param controller.priorityClassName Controller pods priority class name
+  ##
+  priorityClassName: system-cluster-critical
+  ## @param controller.resourcesPreset Controller resources preset. Ignored if resources is set
+  ##
+  resourcesPreset: medium
+  ## @param controller.resources Explicit controller resources (overrides preset)
+  ##
+  resources: {}
+  ## @param controller.service.type Controller metrics service type
+  ## @param controller.service.port Controller metrics service port
+  ##
+  service:
+    type: ClusterIP
+    port: 9909
+  ## @param controller.extraEnvVars Extra environment variables for the controller plugin container
+  ##
+  extraEnvVars: []
+  ## @param controller.pdb.create Create a PodDisruptionBudget for the controller
+  ## @param controller.pdb.minAvailable Minimum available controller pods
+  ## @param controller.pdb.maxUnavailable Maximum unavailable controller pods (defaults to 1)
+  ##
+  pdb:
+    create: true
+    minAvailable: ""
+    maxUnavailable: ""
+
+## @section Node (DaemonSet) parameters
+
+node:
+  ## @param node.enabled Deploy the CSI node DaemonSet
+  ##
+  enabled: true
+  ## @param node.debug Enable verbose node logging
+  ##
+  debug: false
+  ## @param node.hostNetwork Run the node pods on the host network
+  ##
+  hostNetwork: false
+  ## @param node.sidecarPrivileged Run node-driver-registrar and liveness-probe privileged (e.g. SELinux)
+  ##
+  sidecarPrivileged: false
+  ## @param node.mountPodNonPreempting Give mount pods a non-preempting priority class
+  ##
+  mountPodNonPreempting: false
+  ## @param node.ifPollingKubelet Poll the kubelet for mount pod state (sets HOST_IP/KUBELET_PORT)
+  ##
+  ifPollingKubelet: false
+  ## @param node.driverRegistrarLogLevel Log verbosity for node-driver-registrar (--v)
+  ##
+  driverRegistrarLogLevel: 5
+  ## @param node.updateStrategy.type Node DaemonSet update strategy type
+  ## @param node.updateStrategy.rollingUpdate Node DaemonSet rolling update config
+  ##
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  ## @param node.podLabels Extra labels for node pods
+  ##
+  podLabels: {}
+  ## @param node.podAnnotations Annotations for node pods
+  ##
+  podAnnotations: {}
+  ## @param node.nodeSelector Node selector for node pods
+  ##
+  nodeSelector: {}
+  ## @param node.tolerations Tolerations for node pods (default tolerates all so the plugin runs everywhere)
+  ##
+  tolerations:
+    - operator: Exists
+  ## @param node.priorityClassName Node pods priority class name
+  ##
+  priorityClassName: system-node-critical
+  ## @param node.resourcesPreset Node resources preset. Ignored if resources is set
+  ##
+  resourcesPreset: medium
+  ## @param node.resources Explicit node resources (overrides preset)
+  ##
+  resources: {}
+  ## @param node.extraEnvVars Extra environment variables for the node plugin container
+  ##
+  extraEnvVars: []
+
+## @section RBAC parameters
+
+serviceAccount:
+  controller:
+    ## @param serviceAccount.controller.create Create the controller ServiceAccount
+    ## @param serviceAccount.controller.name Name of the controller ServiceAccount
+    ## @param serviceAccount.controller.annotations Annotations for the controller ServiceAccount
+    ##
+    create: true
+    name: ""
+    annotations: {}
+  node:
+    ## @param serviceAccount.node.create Create the node ServiceAccount
+    ## @param serviceAccount.node.name Name of the node ServiceAccount
+    ## @param serviceAccount.node.annotations Annotations for the node ServiceAccount
+    ##
+    create: true
+    name: ""
+    annotations: {}
+## @param rbac.create Create the ClusterRoles/Bindings the driver needs
+##
+rbac:
+  create: true
+
+## @section Snapshot parameters
+
+snapshot:
+  ## @param snapshot.enabled Enable volume snapshot support (adds the csi-snapshotter sidecar and RBAC). Requires the snapshot CRDs and controller installed cluster-wide
+  ##
+  enabled: false
+
+## @section StorageClass parameters
+
+## @param storageClasses Array of StorageClasses to create, each with its JuiceFS backend secret.
+## For the ceph + TiKV backend, set backend.storage=ceph, backend.bucket=ceph://pool,
+## backend.metaurl=tikv://pd:2379/vol, backend.accessKey/secretKey to the cephx user/id.
+## e.g.
+## storageClasses:
+##   - name: juicefs-sc
+##     enabled: true
+##     reclaimPolicy: Delete
+##     allowVolumeExpansion: true
+##     backend:
+##       name: myjfs
+##       metaurl: tikv://pd:2379/myjfs
+##       storage: ceph
+##       bucket: ceph://juicefs-nvme
+##       accessKey: ceph
+##       secretKey: client.juicefs
+##     mountOptions: []
+##     parameters: {}
+##
+storageClasses: []

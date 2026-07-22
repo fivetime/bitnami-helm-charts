@@ -1,0 +1,30 @@
+# Copyright Broadcom, Inc. All Rights Reserved.
+# SPDX-License-Identifier: APACHE-2.0
+
+annotations:
+  category: Storage
+  licenses: Apache-2.0
+apiVersion: v2
+appVersion: 0.32.0
+dependencies:
+  - name: common
+    repository: oci://registry-1.docker.io/bitnamicharts
+    tags:
+      - bitnami-common
+    version: 2.x.x
+description: The JuiceFS CSI Driver provisions and mounts JuiceFS volumes in Kubernetes. Packaged in the Bitnami framework for a production-grade, highly available control plane (mountpod mode). Mount pods use the JuiceFS client image, which can be pointed at this fork's ceph + TiKV build.
+home: https://github.com/juicedata/juicefs-csi-driver
+icon: https://s.juicefs.com/static/jfs/logo.svg
+keywords:
+  - juicefs
+  - csi
+  - storage
+  - tikv
+  - ceph
+maintainers:
+  - name: fivetime
+    url: https://github.com/fivetime/juicefs
+name: juicefs-csi-driver
+sources:
+  - https://github.com/juicedata/juicefs-csi-driver
+version: 1.0.0

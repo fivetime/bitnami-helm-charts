@@ -1,0 +1,225 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- $fullname := include "common.names.fullname" . }}
+apiVersion: {{ include "common.capabilities.deployment.apiVersion" . }}
+kind: Deployment
+metadata:
+  name: {{ $fullname }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" (dict "customLabels" .Values.commonLabels "context" .) | nindent 4 }}
+    app.kubernetes.io/component: gateway
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" (dict "value" .Values.commonAnnotations "context" .) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  {{- $podLabels := include "common.tplvalues.merge" (dict "values" (list .Values.podLabels .Values.commonLabels) "context" .) }}
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" (dict "customLabels" $podLabels "context" .) | nindent 6 }}
+      app.kubernetes.io/component: gateway
+  {{- if .Values.updateStrategy }}
+  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" (dict "customLabels" $podLabels "context" .) | nindent 8 }}
+        app.kubernetes.io/component: gateway
+      annotations:
+        {{- if (include "juicefs-s3-gateway.createSecret" .) }}
+        checksum/credentials-secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if .Values.podAnnotations }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.podAnnotations "context" .) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "juicefs-s3-gateway.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "juicefs-s3-gateway.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      {{- if .Values.schedulerName }}
+      schedulerName: {{ .Values.schedulerName | quote }}
+      {{- end }}
+      {{- if .Values.affinity }}
+      affinity: {{- include "common.tplvalues.render" (dict "value" .Values.affinity "context" .) | nindent 8 }}
+      {{- else }}
+      affinity:
+        podAffinity: {{- include "common.affinities.pods" (dict "type" .Values.podAffinityPreset "component" "gateway" "customLabels" $podLabels "context" .) | nindent 10 }}
+        podAntiAffinity: {{- include "common.affinities.pods" (dict "type" .Values.podAntiAffinityPreset "component" "gateway" "customLabels" $podLabels "context" .) | nindent 10 }}
+        nodeAffinity: {{- include "common.affinities.nodes" (dict "type" .Values.nodeAffinityPreset.type "key" .Values.nodeAffinityPreset.key "values" .Values.nodeAffinityPreset.values) | nindent 10 }}
+      {{- end }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.nodeSelector "context" .) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.tolerations "context" .) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.topologySpreadConstraints }}
+      topologySpreadConstraints: {{- include "common.tplvalues.render" (dict "value" .Values.topologySpreadConstraints "context" .) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
+      {{- if .Values.hostAliases }}
+      hostAliases: {{- include "common.tplvalues.render" (dict "value" .Values.hostAliases "context" .) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.podSecurityContext.enabled }}
+      securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.podSecurityContext "context" .) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- end }}
+      {{- if .Values.initContainers }}
+      initContainers: {{- include "common.tplvalues.render" (dict "value" .Values.initContainers "context" .) | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: gateway
+          image: {{ include "juicefs-s3-gateway.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.containerSecurityContext "context" .) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.command }}
+          command: {{- include "common.tplvalues.render" (dict "value" .Values.command "context" .) | nindent 12 }}
+          {{- else }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              exec juicefs gateway "${META_URL}" "0.0.0.0:{{ .Values.containerPorts.api }}" \
+                --metrics "0.0.0.0:{{ .Values.containerPorts.metrics }}" \
+                --atime-mode {{ .Values.atimeMode }} \
+                {{- if .Values.multiBuckets }}
+                --multi-buckets \
+                {{- end }}
+                {{- if .Values.cache.enabled }}
+                --cache-dir {{ .Values.cache.dir }} \
+                --cache-size {{ .Values.cache.size }} \
+                {{- if .Values.cache.writeback }}
+                --writeback \
+                {{- end }}
+                {{- range .Values.cache.extraArgs }}
+                {{ . }} \
+                {{- end }}
+                {{- end }}
+                {{- if .Values.tierAging.enabled }}
+                --tier-demote-after {{ .Values.tierAging.demoteAfter }} \
+                --tier-scan-interval {{ .Values.tierAging.scanInterval }} \
+                --tier-cold {{ .Values.tierAging.coldTier }} \
+                --tier-scan-rate {{ .Values.tierAging.scanRate }} \
+                --tier-full-scan-interval {{ .Values.tierAging.fullScanInterval }} \
+                {{- if .Values.tierAging.promote }}
+                --tier-promote \
+                {{- end }}
+                {{- end }}
+                {{- if .Values.bucketAdmin.enabled }}
+                --bucket-admin-address "0.0.0.0:{{ .Values.containerPorts.admin }}" \
+                {{- end }}
+                {{- range .Values.extraArgs }}
+                {{ . }} \
+                {{- end }}
+                ;
+          {{- end }}
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "juicefs-s3-gateway.secretName" . }}
+                  key: {{ include "juicefs-s3-gateway.rootUserKey" . }}
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "juicefs-s3-gateway.secretName" . }}
+                  key: {{ include "juicefs-s3-gateway.rootPasswordKey" . }}
+            - name: META_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "juicefs-s3-gateway.secretName" . }}
+                  key: {{ include "juicefs-s3-gateway.metaUrlKey" . }}
+            {{- if .Values.bucketAdmin.enabled }}
+            - name: JFS_GATEWAY_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "juicefs-s3-gateway.admin.secretName" . }}
+                  key: {{ .Values.bucketAdmin.tokenSecretKey }}
+            {{- end }}
+            {{- if .Values.extraEnvVars }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.extraEnvVars "context" .) | nindent 12 }}
+            {{- end }}
+          {{- if or .Values.extraEnvVarsCM .Values.extraEnvVarsSecret }}
+          envFrom:
+            {{- if .Values.extraEnvVarsCM }}
+            - configMapRef:
+                name: {{ .Values.extraEnvVarsCM }}
+            {{- end }}
+            {{- if .Values.extraEnvVarsSecret }}
+            - secretRef:
+                name: {{ .Values.extraEnvVarsSecret }}
+            {{- end }}
+          {{- end }}
+          ports:
+            - name: api
+              containerPort: {{ .Values.containerPorts.api }}
+              protocol: TCP
+            - name: metrics
+              containerPort: {{ .Values.containerPorts.metrics }}
+              protocol: TCP
+            {{- if .Values.bucketAdmin.enabled }}
+            - name: admin
+              containerPort: {{ .Values.containerPorts.admin }}
+              protocol: TCP
+            {{- end }}
+          {{- if .Values.customLivenessProbe }}
+          livenessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customLivenessProbe "context" .) | nindent 12 }}
+          {{- else if .Values.livenessProbe.enabled }}
+          livenessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.livenessProbe "enabled") "context" .) | nindent 12 }}
+            tcpSocket:
+              port: api
+          {{- end }}
+          {{- if .Values.customReadinessProbe }}
+          readinessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customReadinessProbe "context" .) | nindent 12 }}
+          {{- else if .Values.readinessProbe.enabled }}
+          readinessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.readinessProbe "enabled") "context" .) | nindent 12 }}
+            httpGet:
+              path: /minio/health/ready
+              port: api
+          {{- end }}
+          {{- if .Values.customStartupProbe }}
+          startupProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customStartupProbe "context" .) | nindent 12 }}
+          {{- else if .Values.startupProbe.enabled }}
+          startupProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.startupProbe "enabled") "context" .) | nindent 12 }}
+            tcpSocket:
+              port: api
+          {{- end }}
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "common.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" .) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.resources }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          {{- else if ne .Values.resourcesPreset "none" }}
+          resources: {{- include "common.resources.preset" (dict "type" .Values.resourcesPreset) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            {{- if .Values.ceph.enabled }}
+            - name: ceph-config
+              mountPath: {{ .Values.ceph.mountPath }}
+              readOnly: true
+            {{- end }}
+            {{- if .Values.extraVolumeMounts }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" .) | nindent 12 }}
+            {{- end }}
+        {{- if .Values.sidecars }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.sidecars "context" .) | nindent 8 }}
+        {{- end }}
+      volumes:
+        {{- if .Values.ceph.enabled }}
+        - name: ceph-config
+          secret:
+            secretName: {{ tpl .Values.ceph.existingSecret . }}
+        {{- end }}
+        {{- if .Values.extraVolumes }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumes "context" .) | nindent 8 }}
+        {{- end }}

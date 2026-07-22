@@ -1,0 +1,51 @@
+CHART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+{{ include "juicefs-csi.validateValues" . }}
+
+** The JuiceFS CSI Driver is installed (mountMode: {{ .Values.mountMode }}). **
+
+Driver name (referenced by StorageClasses / PVs): {{ include "juicefs-csi.driverName" . }}
+
+{{- if not .Values.defaultMountImage.ce }}
+
+NOTE: defaultMountImage.ce is empty, so mount pods use the driver's built-in
+default image. To use this fork's ceph + TiKV client for mounts, set:
+
+  defaultMountImage:
+    ce: ghcr.io/fivetime/juicefs:main
+{{- else }}
+
+Mount pods use image: {{ .Values.defaultMountImage.ce }}
+{{- end }}
+
+{{- if not .Values.storageClasses }}
+
+No StorageClasses were created. Add entries under `storageClasses` with a
+ceph + TiKV backend, for example:
+
+  storageClasses:
+    - name: juicefs-sc
+      enabled: true
+      backend:
+        name: myjfs
+        metaurl: tikv://pd:2379/myjfs
+        storage: ceph
+        bucket: ceph://juicefs-nvme
+        accessKey: ceph
+        secretKey: client.juicefs
+{{- else }}
+
+StorageClasses created:
+{{- range .Values.storageClasses }}
+{{- if .enabled }}
+  - {{ .name }} (backend storage: {{ .backend.storage | default "n/a" }})
+{{- end }}
+{{- end }}
+{{- end }}
+
+IMPORTANT: This chart configures the CSI control plane (controller + node).
+Provisioning correctness (privileged host mounts, kubelet registration,
+mount propagation) can only be fully verified on a live cluster with the
+driver registered. Validate with a test PVC before production use.

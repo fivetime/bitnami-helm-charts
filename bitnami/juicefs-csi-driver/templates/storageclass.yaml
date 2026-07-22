@@ -1,0 +1,83 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- $driverName := include "juicefs-csi.driverName" . }}
+{{- $namespace := include "common.names.namespace" . }}
+{{- range $sc := .Values.storageClasses }}
+{{- if $sc.enabled }}
+{{- if not $sc.existingSecret }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $sc.name }}-secret
+  namespace: {{ $namespace | quote }}
+  labels: {{- include "common.labels.standard" (dict "customLabels" $.Values.commonLabels "context" $) | nindent 4 }}
+type: Opaque
+data:
+  {{- with $sc.backend }}
+  name: {{ .name | b64enc | quote }}
+  {{- if .metaurl }}
+  metaurl: {{ .metaurl | b64enc | quote }}
+  {{- end }}
+  {{- if .storage }}
+  storage: {{ .storage | b64enc | quote }}
+  {{- end }}
+  {{- if .bucket }}
+  bucket: {{ .bucket | b64enc | quote }}
+  {{- end }}
+  {{- if .accessKey }}
+  access-key: {{ .accessKey | b64enc | quote }}
+  {{- end }}
+  {{- if .secretKey }}
+  secret-key: {{ .secretKey | b64enc | quote }}
+  {{- end }}
+  {{- if .token }}
+  token: {{ .token | b64enc | quote }}
+  {{- end }}
+  {{- if .envs }}
+  envs: {{ .envs | b64enc | quote }}
+  {{- end }}
+  {{- if .configs }}
+  configs: {{ .configs | b64enc | quote }}
+  {{- end }}
+  {{- if .trashDays }}
+  trash-days: {{ .trashDays | b64enc | quote }}
+  {{- end }}
+  {{- if .formatOptions }}
+  format-options: {{ .formatOptions | b64enc | quote }}
+  {{- end }}
+  {{- end }}
+---
+{{- end }}
+{{- $secretName := ternary (tpl ($sc.existingSecret | default "") $) (printf "%s-secret" $sc.name) (not (empty $sc.existingSecret)) }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ $sc.name }}
+  labels: {{- include "common.labels.standard" (dict "customLabels" $.Values.commonLabels "context" $) | nindent 4 }}
+  {{- if $sc.annotations }}
+  annotations: {{- include "common.tplvalues.render" (dict "value" $sc.annotations "context" $) | nindent 4 }}
+  {{- end }}
+provisioner: {{ $driverName }}
+reclaimPolicy: {{ $sc.reclaimPolicy | default "Delete" }}
+allowVolumeExpansion: {{ $sc.allowVolumeExpansion | default true }}
+volumeBindingMode: {{ $sc.volumeBindingMode | default "Immediate" }}
+parameters:
+  csi.storage.k8s.io/provisioner-secret-name: {{ $secretName }}
+  csi.storage.k8s.io/provisioner-secret-namespace: {{ $namespace }}
+  csi.storage.k8s.io/node-publish-secret-name: {{ $secretName }}
+  csi.storage.k8s.io/node-publish-secret-namespace: {{ $namespace }}
+  {{- if $sc.pathPattern }}
+  pathPattern: {{ $sc.pathPattern | quote }}
+  {{- end }}
+  {{- with $sc.parameters }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
+{{- if $sc.mountOptions }}
+mountOptions: {{- toYaml $sc.mountOptions | nindent 2 }}
+{{- end }}
+---
+{{- end }}
+{{- end }}

@@ -1,0 +1,123 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if .Values.provisioning.enabled }}
+{{- $fullname := printf "%s-provisioning" (include "common.names.fullname" .) }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $fullname }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" (dict "customLabels" .Values.commonLabels "context" .) | nindent 4 }}
+    app.kubernetes.io/component: provisioning
+  annotations:
+    # Volume-level state (format, tiers, changelog) lives in the metadata
+    # engine, not in the gateway pods. Running it as a post-install/upgrade
+    # hook keeps it independent from the gateway Deployment lifecycle: adding
+    # a tier is a helm upgrade of this Job, never a restart of the gateways.
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation
+    {{- if .Values.commonAnnotations }}
+    {{- include "common.tplvalues.render" (dict "value" .Values.commonAnnotations "context" .) | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.provisioning.cleanupAfterFinished.enabled }}
+  ttlSecondsAfterFinished: {{ .Values.provisioning.cleanupAfterFinished.seconds }}
+  {{- end }}
+  backoffLimit: 3
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" (dict "customLabels" .Values.commonLabels "context" .) | nindent 8 }}
+        app.kubernetes.io/component: provisioning
+    spec:
+      {{- include "juicefs-s3-gateway.imagePullSecrets" . | nindent 6 }}
+      restartPolicy: OnFailure
+      serviceAccountName: {{ include "juicefs-s3-gateway.serviceAccountName" . }}
+      {{- if .Values.provisioning.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.provisioning.nodeSelector "context" .) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.provisioning.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.provisioning.tolerations "context" .) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.provisioning.podSecurityContext.enabled }}
+      securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.provisioning.podSecurityContext "context" .) | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: provisioning
+          image: {{ include "juicefs-s3-gateway.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          {{- if .Values.provisioning.containerSecurityContext.enabled }}
+          securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.provisioning.containerSecurityContext "context" .) | nindent 12 }}
+          {{- end }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              {{- if and .Values.provisioning.format.enabled .Values.provisioning.format.bucket }}
+              if juicefs status "${META_URL}" >/dev/null 2>&1; then
+                echo "Volume already formatted, skipping format"
+              else
+                echo "Formatting volume"
+                juicefs format \
+                  --storage {{ .Values.provisioning.format.storage }} \
+                  --bucket {{ .Values.provisioning.format.bucket }} \
+                  --access-key {{ .Values.provisioning.format.accessKey | quote }} \
+                  --secret-key {{ .Values.provisioning.format.secretKey | quote }} \
+                  {{- if .Values.provisioning.format.dedupTiKV }}
+                  --dedup-tikv {{ .Values.provisioning.format.dedupTiKV | quote }} \
+                  {{- end }}
+                  {{- range .Values.provisioning.format.extraArgs }}
+                  {{ . }} \
+                  {{- end }}
+                  "${META_URL}" {{ include "common.names.fullname" . }}
+              fi
+              {{- end }}
+              {{- range .Values.provisioning.tiers }}
+              echo "Configuring tier {{ .id }} -> {{ .storageClass }}"
+              juicefs config "${META_URL}" --tier {{ .id }} --storage-class {{ .storageClass }} --yes
+              {{- end }}
+              {{- if .Values.provisioning.changelog.enabled }}
+              echo "Enabling changelog"
+              juicefs config "${META_URL}" --changelog --changelog-max-age {{ .Values.provisioning.changelog.maxAge }} --yes
+              {{- end }}
+              {{- range .Values.provisioning.extraCommands }}
+              {{ . }}
+              {{- end }}
+              echo "Provisioning complete"
+          env:
+            - name: META_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "juicefs-s3-gateway.secretName" . }}
+                  key: {{ include "juicefs-s3-gateway.metaUrlKey" . }}
+            {{- if .Values.extraEnvVars }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.extraEnvVars "context" .) | nindent 12 }}
+            {{- end }}
+          {{- if .Values.provisioning.resources }}
+          resources: {{- toYaml .Values.provisioning.resources | nindent 12 }}
+          {{- else if ne .Values.provisioning.resourcesPreset "none" }}
+          resources: {{- include "common.resources.preset" (dict "type" .Values.provisioning.resourcesPreset) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            {{- if .Values.ceph.enabled }}
+            - name: ceph-config
+              mountPath: {{ .Values.ceph.mountPath }}
+              readOnly: true
+            {{- end }}
+            {{- if .Values.extraVolumeMounts }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" .) | nindent 12 }}
+            {{- end }}
+      volumes:
+        {{- if .Values.ceph.enabled }}
+        - name: ceph-config
+          secret:
+            secretName: {{ tpl .Values.ceph.existingSecret . }}
+        {{- end }}
+        {{- if .Values.extraVolumes }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumes "context" .) | nindent 8 }}
+        {{- end }}
+{{- end }}

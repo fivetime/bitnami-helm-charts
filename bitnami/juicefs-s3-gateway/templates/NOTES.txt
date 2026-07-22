@@ -1,0 +1,51 @@
+CHART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+{{ include "juicefs-s3-gateway.validateValues" . }}
+
+** The JuiceFS S3 Gateway is being deployed with {{ .Values.replicaCount }} replica(s). **
+
+To access the S3 API from within the cluster:
+
+  {{ include "common.names.fullname" . }}.{{ include "common.names.namespace" . }}.svc.{{ .Values.clusterDomain }}:{{ .Values.service.ports.api }}
+
+Root credentials (S3 access key / secret key) are stored in secret:
+
+  {{ include "juicefs-s3-gateway.secretName" . }}
+
+  export ROOT_USER=$(kubectl get secret --namespace {{ include "common.names.namespace" . }} {{ include "juicefs-s3-gateway.secretName" . }} -o jsonpath="{.data.{{ include "juicefs-s3-gateway.rootUserKey" . }}}" | base64 -d)
+  export ROOT_PASSWORD=$(kubectl get secret --namespace {{ include "common.names.namespace" . }} {{ include "juicefs-s3-gateway.secretName" . }} -o jsonpath="{.data.{{ include "juicefs-s3-gateway.rootPasswordKey" . }}}" | base64 -d)
+
+{{- if .Values.bucketAdmin.enabled }}
+
+** Bucket-provisioning admin API (INTERNAL ONLY) **
+
+  {{ printf "%s-admin" (include "common.names.fullname" .) }}.{{ include "common.names.namespace" . }}.svc.{{ .Values.clusterDomain }}:{{ .Values.bucketAdmin.service.port }}
+
+  Create a tenant bucket pre-assigned to a cost tier (call from the control plane / BSS only):
+
+    curl -X POST http://<admin-svc>:{{ .Values.bucketAdmin.service.port }}/buckets \
+      -H "Authorization: Bearer <token>" \
+      -d '{"name": "tenant-a-logs", "tier": 1}'
+
+  WARNING: never expose this endpoint to tenants or the public. Keep the
+  service ClusterIP and reachable only from trusted callers, and ensure
+  tenant IAM policies exclude s3:CreateBucket / s3:DeleteBucket.
+{{- end }}
+
+{{- if not .Values.tierAging.enabled }}
+
+NOTE: tier aging is disabled. Enable tierAging to auto-demote idle files to a
+cold tier and promote them back on access (requires atimeMode != noatime and
+tiers configured via provisioning.tiers).
+{{- end }}
+
+{{- if and .Values.tierAging.enabled (gt (int .Values.replicaCount) 1) }}
+
+NOTE: with multiple replicas, every gateway runs the demotion scan and claims
+inode-hash shards via cross-instance locks (work-stealing). No extra config is
+needed; global metadata load is tierAging.scanRate x replicaCount.
+{{- end }}
+
+{{ include "common.warnings.rollingTag" .Values.image }}

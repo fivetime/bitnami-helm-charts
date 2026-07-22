@@ -1,0 +1,32 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if .Values.controller.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ printf "%s-controller" (include "common.names.fullname" .) }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" (dict "customLabels" .Values.commonLabels "context" .) | nindent 4 }}
+    app.kubernetes.io/component: controller
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" (dict "value" .Values.commonAnnotations "context" .) | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.controller.service.type }}
+  clusterIP: None
+  ports:
+    - name: healthz
+      port: {{ .Values.controller.service.port }}
+      targetPort: healthz
+      protocol: TCP
+    - name: metrics
+      port: {{ .Values.controller.metricsPort }}
+      targetPort: metrics
+      protocol: TCP
+  {{- $podLabels := include "common.tplvalues.merge" (dict "values" (list .Values.controller.podLabels .Values.commonLabels) "context" .) }}
+  selector: {{- include "common.labels.matchLabels" (dict "customLabels" $podLabels "context" .) | nindent 4 }}
+    app.kubernetes.io/component: controller
+{{- end }}

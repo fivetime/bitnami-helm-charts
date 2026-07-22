@@ -1,0 +1,337 @@
+# Copyright Broadcom, Inc. All Rights Reserved.
+# SPDX-License-Identifier: APACHE-2.0
+
+## @section Global parameters
+
+## @param global.imageRegistry Global Docker image registry
+## @param global.imagePullSecrets Global Docker registry secret names as an array
+##
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  security:
+    ## @param global.security.allowInsecureImages Allows skipping image verification
+    allowInsecureImages: false
+  compatibility:
+    openshift:
+      ## @param global.compatibility.openshift.adaptSecurityContext Adapt the securityContext sections of the deployment to make them compatible with Openshift restricted-v2 SCC. Possible values: auto, force, disabled
+      ##
+      adaptSecurityContext: auto
+
+## @section Common parameters
+
+## @param nameOverride String to partially override common.names.fullname
+##
+nameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+##
+namespaceOverride: ""
+## @param fullnameOverride String to fully override common.names.fullname
+##
+fullnameOverride: ""
+## @param commonLabels Labels to add to all deployed objects
+##
+commonLabels: {}
+## @param commonAnnotations Annotations to add to all deployed objects
+##
+commonAnnotations: {}
+## @param clusterDomain Default Kubernetes cluster domain
+##
+clusterDomain: cluster.local
+## @param extraDeploy Array of extra objects to deploy with the release
+##
+extraDeploy: []
+## @param kubeVersion Force target Kubernetes version (using Helm capabilities if not set)
+##
+kubeVersion: ""
+
+## @section Operator (controller-manager) image parameters
+
+## @param image.registry [default: REGISTRY_NAME] Operator image registry
+## @param image.repository [default: REPOSITORY_NAME] Operator image repository
+## @param image.tag Operator image tag
+## @param image.digest Operator image digest in the way sha256:aa....
+## @param image.pullPolicy Image pull policy
+## @param image.pullSecrets Specify docker-registry secret names as an array
+##
+image:
+  registry: docker.io
+  repository: juicedata/juicefs-operator
+  tag: v0.8.4
+  digest: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+## @section Operator deployment parameters
+
+## @param replicaCount Number of operator replicas. With leaderElection, extras stand by for failover
+##
+replicaCount: 2
+## @param logLevel Log verbosity: debug, info, error, or a positive integer for custom debug levels
+##
+logLevel: info
+## @param logEncoder Log encoding: json or console
+##
+logEncoder: console
+## @param leaderElection.enabled Enable leader election so only one replica is active at a time
+##
+leaderElection:
+  enabled: true
+
+## Controller options (only effective on operator image tag > v0.4.1 / > v0.6.4 as noted upstream)
+## @param options.maxSyncConcurrentReconciles Max concurrent reconciles for sync controller
+## @param options.maxWarmupConcurrentReconciles Max concurrent reconciles for warmup controller
+## @param options.maxCgConcurrentReconciles Max concurrent reconciles for cache group controller
+## @param options.updateWarmupStatsInterval Interval to update warmup stats
+## @param options.k8sClientQPS Max QPS to the API server from this client
+## @param options.k8sClientBurst Max burst for throttle
+## @param options.watchNamespaces Comma-separated namespaces to watch (empty = all). Requires image tag >= v0.7.0
+##
+options:
+  maxSyncConcurrentReconciles: 10
+  maxWarmupConcurrentReconciles: 10
+  maxCgConcurrentReconciles: 10
+  updateWarmupStatsInterval: 5s
+  k8sClientQPS: 30
+  k8sClientBurst: 20
+  watchNamespaces: ""
+
+## @param extraArgs Additional raw arguments for the controller-manager
+##
+extraArgs: []
+## @param extraEnvVars Array of extra environment variables for the operator container
+##
+extraEnvVars: []
+## @param command Override the operator container command
+##
+command: []
+## @param automountServiceAccountToken Mount Service Account token in the operator pod (required; the controller talks to the API server)
+##
+automountServiceAccountToken: true
+## @param podLabels Extra labels for operator pods
+##
+podLabels: {}
+## @param podAnnotations Annotations for operator pods
+##
+podAnnotations: {}
+## @param podAffinityPreset Pod affinity preset. Allowed values: soft, hard
+##
+podAffinityPreset: ""
+## @param podAntiAffinityPreset Pod anti-affinity preset to spread replicas. Allowed values: soft, hard
+##
+podAntiAffinityPreset: soft
+## Node affinity preset
+## @param nodeAffinityPreset.type Node affinity preset type. Allowed values: soft, hard
+## @param nodeAffinityPreset.key Node label key to match
+## @param nodeAffinityPreset.values Node label values to match
+##
+nodeAffinityPreset:
+  type: ""
+  key: ""
+  values: []
+## @param affinity Affinity for pod assignment (overrides the presets)
+##
+affinity: {}
+## @param nodeSelector Node labels for pod assignment
+##
+nodeSelector: {}
+## @param tolerations Tolerations for pod assignment
+##
+tolerations: []
+## @param topologySpreadConstraints Topology spread constraints for pod assignment
+##
+topologySpreadConstraints: []
+## @param priorityClassName Operator pods priority class name
+##
+priorityClassName: ""
+## @param podSecurityContext.enabled Enable pod Security Context
+## @param podSecurityContext.runAsNonRoot Force pods to run as non root
+## @param podSecurityContext.fsGroup Group ID for the pod
+##
+podSecurityContext:
+  enabled: true
+  runAsNonRoot: true
+  fsGroup: 1001
+## @param containerSecurityContext.enabled Enable container Security Context
+## @param containerSecurityContext.runAsUser User ID for the container
+## @param containerSecurityContext.runAsNonRoot Force the container to run as non root
+## @param containerSecurityContext.readOnlyRootFilesystem Mount the container root filesystem as read only
+## @param containerSecurityContext.allowPrivilegeEscalation Allow privilege escalation
+## @param containerSecurityContext.capabilities.drop Linux capabilities to drop
+##
+containerSecurityContext:
+  enabled: true
+  runAsUser: 1001
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+## @param resourcesPreset Set container resources according to one common preset. Ignored if resources is set
+##
+resourcesPreset: small
+## @param resources Set container requests and limits for different resources
+##
+resources: {}
+## @param livenessProbe Liveness probe configuration for the operator (health-probe on :8081)
+##
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8081
+  initialDelaySeconds: 15
+  periodSeconds: 20
+## @param readinessProbe Readiness probe configuration for the operator
+##
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: 8081
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+## @section RBAC parameters
+
+## @param serviceAccount.create Create a ServiceAccount for the operator
+## @param serviceAccount.name Name of the ServiceAccount (generated when empty)
+## @param serviceAccount.annotations Additional annotations for the ServiceAccount
+## @param serviceAccount.automountServiceAccountToken Auto-mount the ServiceAccount token
+##
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automountServiceAccountToken: true
+## @param rbac.create Create the Role/ClusterRole and bindings the operator needs to function
+##
+rbac:
+  create: true
+
+## @section Metrics parameters
+
+metrics:
+  ## @param metrics.enabled Expose the controller-manager metrics endpoint
+  ##
+  enabled: true
+  ## @param metrics.port Metrics port
+  ##
+  port: 8080
+  ## @param metrics.secure Serve metrics over HTTPS
+  ##
+  secure: false
+  service:
+    ## @param metrics.service.type Metrics service type
+    ##
+    type: ClusterIP
+  serviceMonitor:
+    ## @param metrics.serviceMonitor.enabled Create a Prometheus Operator ServiceMonitor
+    ##
+    enabled: false
+    ## @param metrics.serviceMonitor.namespace Namespace for the ServiceMonitor
+    ##
+    namespace: ""
+    ## @param metrics.serviceMonitor.interval Scrape interval
+    ##
+    interval: ""
+    ## @param metrics.serviceMonitor.scrapeTimeout Scrape timeout
+    ##
+    scrapeTimeout: ""
+    ## @param metrics.serviceMonitor.labels Extra labels for the ServiceMonitor
+    ##
+    labels: {}
+
+## @section pprof parameters
+
+pprof:
+  ## @param pprof.enabled Enable the pprof debug endpoint (requires image tag >= v0.8.0)
+  ##
+  enabled: false
+  ## @param pprof.port pprof port
+  ##
+  port: 6060
+
+## @section Other parameters
+
+## @param pdb.create Enable a PodDisruptionBudget so the active controller survives disruptions
+## @param pdb.minAvailable Minimum number/percentage of pods available
+## @param pdb.maxUnavailable Maximum number/percentage of pods unavailable (defaults to 1 when minAvailable is unset)
+##
+pdb:
+  create: true
+  minAvailable: ""
+  maxUnavailable: ""
+
+networkPolicy:
+  ## @param networkPolicy.enabled Enable NetworkPolicy
+  ##
+  enabled: true
+  ## @param networkPolicy.allowExternal When false, only pods with the correct client label can reach the metrics port
+  ##
+  allowExternal: true
+  ## @param networkPolicy.allowExternalEgress Allow unrestricted egress (needed to reach the API server and mount pods)
+  ##
+  allowExternalEgress: true
+  ## @param networkPolicy.extraIngress Extra ingress rules
+  ##
+  extraIngress: []
+  ## @param networkPolicy.extraEgress Extra egress rules
+  ##
+  extraEgress: []
+
+## @section CSI dashboard parameters (optional web UI)
+
+dashboard:
+  ## @param dashboard.enabled Deploy the JuiceFS CSI dashboard web UI
+  ##
+  enabled: false
+  ## @param dashboard.image.registry [default: REGISTRY_NAME] Dashboard image registry
+  ## @param dashboard.image.repository [default: REPOSITORY_NAME] Dashboard image repository
+  ## @param dashboard.image.tag Dashboard image tag
+  ## @param dashboard.image.digest Dashboard image digest
+  ## @param dashboard.image.pullPolicy Dashboard image pull policy
+  ##
+  image:
+    registry: docker.io
+    repository: juicedata/csi-dashboard
+    tag: v0.26.1
+    digest: ""
+    pullPolicy: IfNotPresent
+  ## @param dashboard.replicaCount Number of dashboard replicas
+  ##
+  replicaCount: 1
+  ## @param dashboard.enableManager Enable the dashboard's manager features (image tag > 0.26.0)
+  ##
+  enableManager: false
+  ## @param dashboard.leaderElection.enabled Enable leader election for the dashboard (needed when replicaCount > 1)
+  ## @param dashboard.leaderElection.namespace Namespace for the dashboard leader election lease
+  ## @param dashboard.leaderElection.leaseDuration Lease duration for dashboard leader election
+  ##
+  leaderElection:
+    enabled: false
+    namespace: ""
+    leaseDuration: ""
+  ## @param dashboard.extraEnvVars Extra environment variables for the dashboard container
+  ##
+  extraEnvVars: []
+  ## @param dashboard.auth.enabled Require basic auth on the dashboard
+  ## @param dashboard.auth.username Dashboard username
+  ## @param dashboard.auth.password Dashboard password (auto-generated when empty)
+  ## @param dashboard.auth.existingSecret Existing secret with dashboard credentials
+  ##
+  auth:
+    enabled: true
+    username: admin
+    password: ""
+    existingSecret: ""
+  ## @param dashboard.service.type Dashboard service type
+  ## @param dashboard.service.port Dashboard service port
+  ##
+  service:
+    type: ClusterIP
+    port: 8088
+  ## @param dashboard.resourcesPreset Dashboard resources preset
+  ##
+  resourcesPreset: small
+  ## @param dashboard.resources Explicit dashboard resources (overrides preset)
+  ##
+  resources: {}

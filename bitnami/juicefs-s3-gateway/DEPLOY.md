@@ -110,6 +110,10 @@ kubectl -n juicefs delete job jfs-format
 
 ```yaml
 # values-prod.yaml
+
+# 覆盖资源名前缀,避免 <release>-<chart> 冗余(-> juicefs-s3 / juicefs-s3-admin)
+fullnameOverride: juicefs-s3
+
 image:
   registry: <registry>          # 例：ghcr.io
   repository: <org>/juicefs
@@ -188,11 +192,11 @@ kubectl -n juicefs get svc,ingress
 # S3 api service (9000) + admin service (9568) + ingress 拿到 LB 地址
 
 # 4) 凭证 secret 正确（应是明文，非双重编码）
-kubectl -n juicefs get secret juicefs-gw-juicefs-s3-gateway -o jsonpath='{.data.root-user}' | base64 -d; echo
+kubectl -n juicefs get secret juicefs-s3 -o jsonpath='{.data.root-user}' | base64 -d; echo
 # 预期：admin
 
 # 5) HA 设施
-kubectl -n juicefs get pdb juicefs-gw-juicefs-s3-gateway
+kubectl -n juicefs get pdb juicefs-s3
 ```
 
 ## 六、用客户端测试是否成功
@@ -202,7 +206,7 @@ kubectl -n juicefs get pdb juicefs-gw-juicefs-s3-gateway
 ### 6.1 建桶（BSS admin API）
 
 ```bash
-kubectl -n juicefs port-forward svc/juicefs-gw-juicefs-s3-gateway-admin 19568:9568 &
+kubectl -n juicefs port-forward svc/juicefs-s3-admin 19568:9568 &
 
 # 建三档桶：热(tier1)/温(tier2)/冷(tier0)
 for spec in bkt-hot:1 bkt-warm:2 bkt-cold:0; do
@@ -215,7 +219,7 @@ done
 ### 6.2 S3 客户端（boto3）
 
 ```bash
-kubectl -n juicefs port-forward svc/juicefs-gw-juicefs-s3-gateway 19000:9000 &
+kubectl -n juicefs port-forward svc/juicefs-s3 19000:9000 &
 
 python3 - <<'PY'
 import boto3, os, hashlib
@@ -309,7 +313,7 @@ Hadoop 配置：
 本部署用 cilium ingress 的 **shared 模式**（`ingress.cilium.io/loadbalancer-mode: shared`），复用集群已有的 `cilium-ingress` 共享 LoadBalancer，按 host 路由，无需为每个 ingress 单独分配 LB IP：
 
 ```bash
-kubectl -n juicefs get ingress juicefs-gw-juicefs-s3-gateway
+kubectl -n juicefs get ingress juicefs-s3
 # ADDRESS 列即共享 LB 的地址
 
 # 从能路由到 LB 的位置测试（Host 头 + LB 地址）

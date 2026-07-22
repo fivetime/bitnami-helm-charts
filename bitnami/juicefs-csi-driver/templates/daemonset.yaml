@@ -12,7 +12,7 @@ the Bitnami framework.
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: {{ printf "%s-node" (include "common.names.fullname" .) }}
+  name: {{ printf "%s-csi-node" (include "common.names.fullname" .) }}
   namespace: {{ include "common.names.namespace" . | quote }}
   labels: {{- include "common.labels.standard" (dict "customLabels" .Values.commonLabels "context" .) | nindent 4 }}
     app.kubernetes.io/component: node
@@ -31,6 +31,8 @@ spec:
     metadata:
       labels: {{- include "common.labels.standard" (dict "customLabels" $podLabels "context" .) | nindent 8 }}
         app.kubernetes.io/component: node
+        # the controller locates node pods by this label (upstream juicefs-csi hardcodes it)
+        app: juicefs-csi-node
       {{- if .Values.node.podAnnotations }}
       annotations: {{- include "common.tplvalues.render" (dict "value" .Values.node.podAnnotations "context" .) | nindent 8 }}
       {{- end }}

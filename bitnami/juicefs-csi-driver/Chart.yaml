@@ -27,4 +27,4 @@ maintainers:
 name: juicefs-csi-driver
 sources:
   - https://github.com/juicedata/juicefs-csi-driver
-version: 1.0.0
+version: 1.0.1

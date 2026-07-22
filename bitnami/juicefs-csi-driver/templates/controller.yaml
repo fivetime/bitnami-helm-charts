@@ -12,7 +12,7 @@ image helpers are adapted to the Bitnami framework.
 apiVersion: {{ include "common.capabilities.statefulset.apiVersion" . }}
 kind: StatefulSet
 metadata:
-  name: {{ printf "%s-controller" (include "common.names.fullname" .) }}
+  name: {{ printf "%s-csi-controller" (include "common.names.fullname" .) }}
   namespace: {{ include "common.names.namespace" . | quote }}
   labels: {{- include "common.labels.standard" (dict "customLabels" .Values.commonLabels "context" .) | nindent 4 }}
     app.kubernetes.io/component: controller
@@ -120,6 +120,9 @@ spec:
               value: {{ include "juicefs-csi.driverName" . | quote }}
             - name: PROVISION_WORKER_THREADS
               value: {{ .Values.controller.provisionWorkerThreads | quote }}
+            # controller falls back to a hardcoded node DaemonSet name; point it at ours
+            - name: JUICEFS_CSI_NODE_DS_NAME
+              value: {{ printf "%s-csi-node" (include "common.names.fullname" .) | quote }}
             {{- if .Values.controller.extraEnvVars }}
             {{- include "common.tplvalues.render" (dict "value" .Values.controller.extraEnvVars "context" .) | nindent 12 }}
             {{- end }}

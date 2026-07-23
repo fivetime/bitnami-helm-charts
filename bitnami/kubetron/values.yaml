@@ -1,0 +1,726 @@
+# Copyright Broadcom, Inc. All Rights Reserved.
+# SPDX-License-Identifier: APACHE-2.0
+
+## @section Global parameters
+## Global Docker image parameters
+## Please, note that this will override the image parameters, including dependencies, configured to use the global value
+## Current available global Docker image parameters: imageRegistry, imagePullSecrets and storageClass
+##
+
+## @param global.imageRegistry Global Docker image registry
+## @param global.imagePullSecrets Global Docker registry secret names as an array
+## @param global.defaultStorageClass Global default StorageClass for Persistent Volume(s)
+## @param global.storageClass DEPRECATED: use global.defaultStorageClass instead
+##
+global:
+  imageRegistry: ""
+  ## E.g.
+  ## imagePullSecrets:
+  ##   - myRegistryKeySecretName
+  ##
+  imagePullSecrets: []
+  defaultStorageClass: ""
+  storageClass: ""
+  ## Compatibility adaptations for Kubernetes platforms
+  ##
+  compatibility:
+    ## Compatibility adaptations for Openshift
+    ##
+    openshift:
+      ## @param global.compatibility.openshift.adaptSecurityContext Adapt the securityContext sections of the deployment to make them compatible with Openshift restricted-v2 SCC: remove runAsUser, runAsGroup and fsGroup and let the platform use their allowed default IDs. Possible values: auto (apply if the detected running cluster is Openshift), force (perform the adaptation always), disabled (do not perform adaptation)
+      ##
+      adaptSecurityContext: auto
+## @section Common parameters
+##
+
+## @param kubeVersion Force target Kubernetes version (using Helm capabilities if not set)
+##
+kubeVersion: ""
+## @param nameOverride String to partially override kubetron.fullname template (will maintain the release name)
+##
+nameOverride: ""
+## @param fullnameOverride String to fully override kubetron.fullname template
+##
+fullnameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+##
+namespaceOverride: ""
+## @param controlPlaneName Name of the SHARED control plane to attach to (cross-release wiring). When running one release per Neutron/OVN cluster, the release that owns the shared resources (`sharedResources.create=true`) provides this name (default: its own fullname), and every `sharedResources.create=false` release must set this to that same name so its manager mounts the shared serving certificate, uses the shared ServiceAccount, and is selected by the shared webhook Service. Empty => this release's own fullname (single-release deployments).
+##
+controlPlaneName: ""
+## @param commonAnnotations Common annotations to add to all kubetron resources (sub-charts are not considered). Evaluated as a template
+##
+commonAnnotations: {}
+## @param commonLabels Common labels to add to all kubetron resources (sub-charts are not considered). Evaluated as a template
+##
+commonLabels: {}
+## @param extraDeploy Array of extra objects to deploy with the release (evaluated as a template).
+##
+extraDeploy: []
+## @section Deployment topology (single vs. one-release-per-Neutron/OVN-cluster)
+##
+## A kubetron shard == one Neutron/OVN cluster (DESIGN §10.3: "分片边界 = 一个 Neutron/OVN 集群"),
+## each with its OWN Neutron endpoint and admin credentials. Deploy ONE Helm release per
+## Neutron/OVN cluster: every release runs its own manager (its own `controller.shard` and
+## `openstack.*`). The cluster-singleton resources — the CRD, the admission webhook (+ its
+## serving certificate and Service), the aggregated apiserver, and the cluster-scoped
+## RBAC/ServiceAccount — must be created by exactly ONE of those releases.
+##
+## Single Neutron/OVN cluster (the default): keep everything in one release.
+## Multiple clusters: leave `sharedResources.create=true` on ONE owner release, set it to
+## false on every other release, and point them all at the owner via `controlPlaneName`.
+##
+sharedResources:
+  ## @param sharedResources.create Create the cluster-singleton resources (CRD, webhook + serving cert + Service, aggregated apiserver, cluster RBAC, shared ServiceAccount, leader-election Role). Set to false on every release except the one that owns the shared control plane.
+  ##
+  create: true
+## Enable diagnostic mode in the deployment
+##
+diagnosticMode:
+  ## @param diagnosticMode.enabled Enable diagnostic mode (all probes will be disabled and the command will be overridden)
+  ##
+  enabled: false
+  ## @param diagnosticMode.command Command to override all containers in the deployment
+  ##
+  command:
+    - sleep
+  ## @param diagnosticMode.args Args to override all containers in the deployment
+  ##
+  args:
+    - infinity
+## @section kubetron image parameters
+##
+
+## kubetron image (bundles both the `manager` and `apiserver` binaries)
+## ref: https://github.com/fivetime/kubetron/pkgs/container/kubetron
+## @param image.registry [default: REGISTRY_NAME] kubetron image registry
+## @param image.repository [default: REPOSITORY_NAME/kubetron] kubetron image repository
+## @skip image.tag kubetron image tag (immutable tags are recommended). CI also publishes `latest` and `sha-<short>` tags.
+## @param image.digest kubetron image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+## @param image.pullPolicy kubetron image pull policy
+## @param image.pullSecrets Specify docker-registry secret names as an array
+## @param image.debug Specify if debug logs should be enabled
+##
+image:
+  registry: ghcr.io
+  repository: fivetime/kubetron
+  tag: 0.11.9
+  digest: ""
+  ## Specify a imagePullPolicy
+  ## ref: https://kubernetes.io/docs/concepts/containers/images/#pre-pulled-images
+  ##
+  pullPolicy: IfNotPresent
+  ## Optionally specify an array of imagePullSecrets.
+  ## Secrets must be manually created in the namespace.
+  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+  ## e.g:
+  ## pullSecrets:
+  ##   - myRegistryKeySecretName
+  ##
+  pullSecrets: []
+  ## Set to true if you would like to see extra information on logs
+  ##
+  debug: false
+## @section OpenStack connection parameters
+##
+
+## kubetron talks to Neutron/Octavia with an admin application credential and to each
+## tenant's project with the credential referenced by a NetworkPortClaim. The admin
+## credential is supplied as a pre-existing Secret whose keys follow gophercloud's
+## OS_* convention (as published by OpenStack-Helm's `neutron-keystone-admin`).
+##
+openstack:
+  ## @param openstack.existingSecret Name of a pre-existing Secret with the admin OpenStack credentials, mounted into the manager via envFrom. Keys are OS_* variables (OS_AUTH_URL, OS_USERNAME, OS_PASSWORD, OS_PROJECT_NAME, OS_PROJECT_DOMAIN_NAME, OS_REGION_NAME, ...). Required unless the credentials are provided via extraEnvVars.
+  ##
+  existingSecret: "neutron-keystone-admin"
+  ## @param openstack.domainNameSecretKey Key in `openstack.existingSecret` to project into OS_DOMAIN_NAME. gophercloud's AuthOptionsFromEnv needs OS_DOMAIN_NAME when scoping by OS_PROJECT_NAME, but OpenStack-Helm secrets only carry OS_PROJECT_DOMAIN_NAME. Set to "" to skip.
+  ##
+  domainNameSecretKey: "OS_PROJECT_DOMAIN_NAME"
+  ## @param openstack.networkEndpointOverride Pin the Neutron endpoint to the real Service instead of the Keystone catalog `neutron.<ns>.svc` alias (which an OpenStack redeploy may drop, breaking every claim). Sets OS_NETWORK_ENDPOINT_OVERRIDE. Set to "" to use the catalog.
+  ##
+  networkEndpointOverride: "http://neutron-server.openstack.svc.cluster.local:9696/"
+## @section kubetron manager (controller + webhook) parameters
+##
+
+## @param replicaCount Number of kubetron manager replicas for this release/shard. Leader election makes only one active at a time; extra replicas are hot standbys for HA.
+##
+replicaCount: 2
+## Controller behaviour flags (rendered into the manager args)
+##
+controller:
+  ## @param controller.shard This release's shard == the Neutron/OVN cluster it manages (DESIGN §10.3). Each shard has its OWN Neutron endpoint + credentials, so deploy one release per Neutron/OVN cluster. Reconcilers are server-side filtered to this shard label; leader election is per-shard; the shared webhook serves all shards.
+  ##
+  shard: default
+  ## @param controller.leaderElect Enable leader election (required when replicaCount > 1)
+  ##
+  leaderElect: true
+  ## @param controller.gcInterval Interval for the orphan Neutron port garbage collector (Go duration)
+  ##
+  gcInterval: 5m
+  ## @param controller.nodeChassisSuffix Suffix appended to the K8s node name to form the OVN chassis hostname (e.g. ".cloud.local" when ovn-controller registers chassis with node FQDNs). Empty => node name is used verbatim.
+  ##
+  nodeChassisSuffix: ""
+  ## @param controller.defaultDNSNameservers [array] Placeholder resolver(s) for full Pods' dnsPolicy:None dnsConfig when neither the claim nor the Neutron subnet supplies DNS. Authority is the Neutron subnet's dns_nameservers; this only satisfies the K8s "DNSNone requires >=1 nameserver" rule.
+  ##
+  defaultDNSNameservers: []
+  ## @param controller.logDevel Use zap development log encoding (human-friendly, verbose). Production => false (JSON).
+  ##
+  logDevel: false
+  ## @param controller.extraArgs Additional raw args appended to the manager container
+  ##
+  extraArgs: []
+## @param containerPorts.webhook Manager webhook (admission) container port
+## @param containerPorts.metrics Manager Prometheus metrics container port
+## @param containerPorts.health Manager health probe (healthz/readyz) container port
+##
+containerPorts:
+  webhook: 9443
+  metrics: 8080
+  health: 8081
+## @param command Override default manager container command (useful when using custom images)
+##
+command: []
+## @param args Override default manager container args (useful when using custom images)
+##
+args: []
+## @param extraEnvVars Extra environment variables to add to the manager container (evaluated as a template)
+##
+extraEnvVars: []
+## @param extraEnvVarsCM ConfigMap with extra environment variables
+##
+extraEnvVarsCM: ""
+## @param extraEnvVarsSecret Secret with extra environment variables
+##
+extraEnvVarsSecret: ""
+## @param extraVolumes Optionally specify extra list of additional volumes for the manager pod(s)
+##
+extraVolumes: []
+## @param extraVolumeMounts Optionally specify extra list of additional volumeMounts for the manager container(s)
+##
+extraVolumeMounts: []
+## @param initContainers Add additional init containers to the manager pod(s) (evaluated as a template)
+##
+initContainers: []
+## @param sidecars Add additional sidecar containers to the manager pod(s) (evaluated as a template)
+##
+sidecars: []
+## @param updateStrategy.type kubetron manager deployment strategy type
+## ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
+##
+updateStrategy:
+  type: RollingUpdate
+## @param priorityClassName kubetron manager pods' priorityClassName
+##
+priorityClassName: ""
+## @param runtimeClassName Name of the runtime class to be used by manager pod(s)
+##
+runtimeClassName: ""
+## @param schedulerName Name of the k8s scheduler (other than default)
+##
+schedulerName: ""
+## @param topologySpreadConstraints Topology Spread Constraints for pod assignment (evaluated as a template)
+##
+topologySpreadConstraints: []
+## @param automountServiceAccountToken Mount Service Account token in manager pod(s)
+##
+automountServiceAccountToken: true
+## @param hostAliases Manager pods host aliases
+##
+hostAliases: []
+## @param podLabels Extra labels for manager pods (evaluated as a template)
+##
+podLabels: {}
+## @param podAnnotations Annotations for manager pods (evaluated as a template)
+##
+podAnnotations: {}
+## @param podAffinityPreset Pod affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+##
+podAffinityPreset: ""
+## @param podAntiAffinityPreset Pod anti-affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+##
+podAntiAffinityPreset: soft
+## Node affinity preset
+## @param nodeAffinityPreset.type Node affinity preset type. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+## @param nodeAffinityPreset.key Node label key to match. Ignored if `affinity` is set.
+## @param nodeAffinityPreset.values Node label values to match. Ignored if `affinity` is set.
+##
+nodeAffinityPreset:
+  type: ""
+  key: ""
+  values: []
+## @param affinity Affinity for manager pod assignment (evaluated as a template). Overrides podAffinityPreset/podAntiAffinityPreset/nodeAffinityPreset.
+##
+affinity: {}
+## @param nodeSelector Node labels for manager pod assignment (evaluated as a template)
+##
+nodeSelector:
+  kubernetes.io/os: linux
+## @param tolerations Tolerations for manager pod assignment
+##
+tolerations: []
+## Manager pods' Security Context
+## @param podSecurityContext.enabled Enable manager pods' Security Context
+## @param podSecurityContext.fsGroupChangePolicy Set filesystem group change policy
+## @param podSecurityContext.sysctls Set kernel settings using the sysctl interface
+## @param podSecurityContext.supplementalGroups Set filesystem extra groups
+## @param podSecurityContext.fsGroup Manager pods' group ID
+##
+podSecurityContext:
+  enabled: true
+  fsGroupChangePolicy: Always
+  sysctls: []
+  supplementalGroups: []
+  fsGroup: 1001
+## Manager container's Security Context
+## @param containerSecurityContext.enabled Enable manager container's Security Context
+## @param containerSecurityContext.seLinuxOptions [object,nullable] Set SELinux options in container
+## @param containerSecurityContext.runAsUser Manager container's Security Context runAsUser
+## @param containerSecurityContext.runAsGroup Manager container's Security Context runAsGroup
+## @param containerSecurityContext.runAsNonRoot Set manager container's Security Context runAsNonRoot
+## @param containerSecurityContext.privileged Set manager container's Security Context privileged
+## @param containerSecurityContext.allowPrivilegeEscalation Set container's Security Context allowPrivilegeEscalation
+## @param containerSecurityContext.readOnlyRootFilesystem Set container's Security Context readOnlyRootFilesystem
+## @param containerSecurityContext.capabilities.drop List of capabilities to be dropped
+## @param containerSecurityContext.seccompProfile.type Set container's Security Context seccomp profile
+##
+containerSecurityContext:
+  enabled: true
+  seLinuxOptions: {}
+  runAsUser: 1001
+  runAsGroup: 1001
+  runAsNonRoot: true
+  privileged: false
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+  seccompProfile:
+    type: "RuntimeDefault"
+## kubetron manager resource requests and limits
+## @param resourcesPreset Set container resources according to one common preset (allowed values: none, nano, micro, small, medium, large, xlarge, 2xlarge). Ignored if `resources` is set (resources is recommended for production).
+## @param resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+##
+resourcesPreset: "micro"
+resources: {}
+## Manager liveness probe (controller-runtime /healthz)
+## @param livenessProbe.enabled Enable livenessProbe on the manager container
+## @param livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+## @param livenessProbe.periodSeconds Period seconds for livenessProbe
+## @param livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+## @param livenessProbe.failureThreshold Failure threshold for livenessProbe
+## @param livenessProbe.successThreshold Success threshold for livenessProbe
+##
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 15
+  periodSeconds: 20
+  timeoutSeconds: 5
+  failureThreshold: 6
+  successThreshold: 1
+## Manager readiness probe (controller-runtime /readyz)
+## @param readinessProbe.enabled Enable readinessProbe on the manager container
+## @param readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+## @param readinessProbe.periodSeconds Period seconds for readinessProbe
+## @param readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+## @param readinessProbe.failureThreshold Failure threshold for readinessProbe
+## @param readinessProbe.successThreshold Success threshold for readinessProbe
+##
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+  successThreshold: 1
+## @param startupProbe.enabled Enable startupProbe on the manager container
+## @param startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
+## @param startupProbe.periodSeconds Period seconds for startupProbe
+## @param startupProbe.timeoutSeconds Timeout seconds for startupProbe
+## @param startupProbe.failureThreshold Failure threshold for startupProbe
+## @param startupProbe.successThreshold Success threshold for startupProbe
+##
+startupProbe:
+  enabled: false
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30
+  successThreshold: 1
+## @param customLivenessProbe Custom livenessProbe that overrides the default one
+##
+customLivenessProbe: {}
+## @param customReadinessProbe Custom readinessProbe that overrides the default one
+##
+customReadinessProbe: {}
+## @param customStartupProbe Custom startupProbe that overrides the default one
+##
+customStartupProbe: {}
+## @param lifecycleHooks LifecycleHooks for the manager container to automate configuration before or after startup
+##
+lifecycleHooks: {}
+## kubetron manager Pod Disruption Budget
+## ref: https://kubernetes.io/docs/concepts/workloads/pods/disruptions/
+##
+pdb:
+  ## @param pdb.create Enable/disable a Pod Disruption Budget creation for the manager
+  ##
+  create: true
+  ## @param pdb.minAvailable Minimum number/percentage of manager pods that should remain scheduled
+  ##
+  minAvailable: 1
+  ## @param pdb.maxUnavailable Maximum number/percentage of manager pods that may be made unavailable. Defaults to `1` if both `pdb.minAvailable` and `pdb.maxUnavailable` are empty.
+  ##
+  maxUnavailable: ""
+## kubetron manager autoscaling (HPA). Note: leader election means only one replica is
+## ever active, so scaling mainly increases standby capacity / webhook throughput.
+##
+autoscaling:
+  ## @param autoscaling.enabled Enable Horizontal POD autoscaling for the manager
+  ##
+  enabled: false
+  ## @param autoscaling.minReplicas Minimum number of manager replicas
+  ##
+  minReplicas: 2
+  ## @param autoscaling.maxReplicas Maximum number of manager replicas
+  ##
+  maxReplicas: 5
+  ## @param autoscaling.targetCPU Target CPU utilization percentage
+  ##
+  targetCPU: 80
+  ## @param autoscaling.targetMemory Target Memory utilization percentage
+  ##
+  targetMemory: ""
+## @section Manager service and webhook parameters
+##
+
+## kubetron manager Service (fronts the admission webhook and the metrics endpoint)
+##
+service:
+  ## @param service.type kubetron manager service type
+  ##
+  type: ClusterIP
+  ## @param service.ports.webhook kubetron manager webhook service port
+  ## @param service.ports.metrics kubetron manager metrics service port
+  ##
+  ports:
+    webhook: 443
+    metrics: 8080
+  ## @param service.clusterIP kubetron manager service Cluster IP
+  ##
+  clusterIP: ""
+  ## @param service.annotations Additional custom annotations for kubetron manager service
+  ##
+  annotations: {}
+  ## @param service.extraPorts Extra ports to expose in the kubetron manager service (normally used with the `sidecars` value)
+  ##
+  extraPorts: []
+## Admission webhook configuration
+##
+webhook:
+  ## @param webhook.failurePolicy How unrecognized errors and timeouts are handled. `Fail` is safe because only labeled objects reach the webhook. Allowed values: Ignore, Fail.
+  ##
+  failurePolicy: Fail
+  ## @param webhook.timeoutSeconds Webhook admission timeout (seconds)
+  ##
+  timeoutSeconds: 10
+  ## @param webhook.pods.enabled Register the Pod mutating webhook (injects Multus attachments into labeled Pods)
+  ##
+  pods:
+    enabled: true
+  ## @param webhook.claims.enabled Register the NetworkPortClaim mutating webhook (stamps the per-namespace shard label on every claim)
+  ##
+  claims:
+    enabled: true
+  ## KubeVirt VirtualMachineInstance webhook. Only relevant when KubeVirt is installed;
+  ## harmless otherwise (no VMIs exist to admit).
+  ##
+  vm:
+    ## @param webhook.vm.enabled Register the VirtualMachineInstance mutating webhook (KubeVirt VM support)
+    ##
+    enabled: true
+  ## TLS for the webhook (and, if enabled, the aggregated apiserver) serving certificate.
+  ## kubetron's design assumes cert-manager is present (it is a hard prerequisite for the
+  ## tenant ClusterIssuer), so cert-manager is the default. Disable it to have the chart
+  ## generate a self-signed CA + certificate with Helm instead (no external dependency).
+  ##
+  certManager:
+    ## @param webhook.certManager.enabled Use cert-manager to issue and rotate the serving certificate(s). When false, the chart generates a self-signed certificate with Helm.
+    ##
+    enabled: true
+    ## @param webhook.certManager.issuerRef.kind cert-manager issuer kind (Issuer or ClusterIssuer)
+    ## @param webhook.certManager.issuerRef.name cert-manager issuer name
+    ##
+    issuerRef:
+      kind: ClusterIssuer
+      name: cluster-internal-ca-issuer
+    ## @param webhook.certManager.duration Requested certificate validity duration (e.g. 8760h)
+    ##
+    duration: ""
+    ## @param webhook.certManager.renewBefore How long before expiry cert-manager should renew (e.g. 720h)
+    ##
+    renewBefore: ""
+## @section Manager RBAC and ServiceAccount parameters
+##
+
+## RBAC configuration
+##
+rbac:
+  ## @param rbac.create Create the ClusterRole/ClusterRoleBinding and leader-election Role/RoleBinding for the manager
+  ##
+  create: true
+## ServiceAccount configuration
+##
+serviceAccount:
+  ## @param serviceAccount.create Enable creation of a ServiceAccount for the manager pods
+  ##
+  create: true
+  ## @param serviceAccount.name The name of the ServiceAccount to use. If not set and create is true, a name is generated using the common.names.fullname template.
+  ##
+  name: ""
+  ## @param serviceAccount.automountServiceAccountToken Allows auto mount of ServiceAccountToken on the serviceAccount created
+  ##
+  automountServiceAccountToken: true
+  ## @param serviceAccount.annotations Additional custom annotations for the ServiceAccount
+  ##
+  annotations: {}
+## @section Network Policy parameters
+##
+
+## Network Policies for the manager
+## ref: https://kubernetes.io/docs/concepts/services-networking/network-policies/
+##
+networkPolicy:
+  ## @param networkPolicy.enabled Specifies whether a NetworkPolicy should be created for the manager
+  ##
+  enabled: true
+  ## @param networkPolicy.allowExternal Don't require server label for connections (ingress to the webhook port). The kube-apiserver source is hard to label, so this defaults to true.
+  ##
+  allowExternal: true
+  ## @param networkPolicy.allowExternalEgress Allow the manager pods to access any range of ports and destinations (Neutron/Octavia/Keystone endpoints are cluster-external).
+  ##
+  allowExternalEgress: true
+  ## @param networkPolicy.kubeAPIServerPorts [array] List of possible endpoints to kube-apiserver (limit to your cluster settings to increase security)
+  ##
+  kubeAPIServerPorts: [443, 6443, 8443]
+  ## @param networkPolicy.extraIngress [array] Add extra ingress rules to the NetworkPolicy
+  ##
+  extraIngress: []
+  ## @param networkPolicy.extraEgress [array] Add extra egress rules to the NetworkPolicy
+  ##
+  extraEgress: []
+  ## @param networkPolicy.ingressNSMatchLabels [object] Labels to match to allow traffic from other namespaces
+  ## @param networkPolicy.ingressNSPodMatchLabels [object] Pod labels to match to allow traffic from other namespaces
+  ##
+  ingressNSMatchLabels: {}
+  ingressNSPodMatchLabels: {}
+## @section Metrics parameters
+##
+
+metrics:
+  ## @param metrics.enabled Expose the manager Prometheus metrics
+  ##
+  enabled: true
+  ## Prometheus Operator ServiceMonitor configuration
+  ##
+  serviceMonitor:
+    ## @param metrics.serviceMonitor.enabled Create a ServiceMonitor resource for scraping metrics using Prometheus Operator
+    ##
+    enabled: false
+    ## @param metrics.serviceMonitor.namespace Namespace in which the ServiceMonitor is created (defaults to the release namespace)
+    ##
+    namespace: ""
+    ## @param metrics.serviceMonitor.labels Additional labels for the ServiceMonitor
+    ##
+    labels: {}
+    ## @param metrics.serviceMonitor.annotations Additional annotations for the ServiceMonitor
+    ##
+    annotations: {}
+    ## @param metrics.serviceMonitor.interval Scrape interval. If not set, the Prometheus default is used.
+    ##
+    interval: ""
+    ## @param metrics.serviceMonitor.scrapeTimeout Scrape timeout. If not set, the Prometheus default is used.
+    ##
+    scrapeTimeout: ""
+    ## @param metrics.serviceMonitor.honorLabels honorLabels chooses the metric's labels on collisions with target labels
+    ##
+    honorLabels: false
+    ## @param metrics.serviceMonitor.relabelings RelabelConfigs to apply to samples before scraping
+    ##
+    relabelings: []
+    ## @param metrics.serviceMonitor.metricRelabelings MetricRelabelConfigs to apply to samples before ingestion
+    ##
+    metricRelabelings: []
+    ## @param metrics.serviceMonitor.selector Prometheus instance selector labels
+    ##
+    selector: {}
+## @section CRD parameters
+##
+
+crds:
+  ## @param crds.install Install the NetworkPortClaim CustomResourceDefinition. Disable this when running the aggregated apiserver (`apiserver.enabled=true`), which serves the resource instead of a CRD.
+  ##
+  install: true
+  ## @param crds.keep Keep the CRD on `helm uninstall` (adds the helm.sh/resource-policy: keep annotation) to protect existing NetworkPortClaims
+  ##
+  keep: true
+## @section Aggregated apiserver parameters (advanced, opt-in)
+##
+
+## The aggregated apiserver serves NetworkPortClaims from kubetron's OWN etcd instead of
+## a CRD in the main cluster's etcd — an opt-in for very large deployments where claim
+## storage and watch fan-out should leave the core apiserver (see DESIGN §10.5). Switching
+## a live cluster from the CRD to the apiserver is a deliberate data migration; do not flip
+## `crds.install`/`apiserver.enabled` on an in-use cluster without following that procedure.
+##
+apiserver:
+  ## @param apiserver.enabled Deploy the aggregated apiserver (and its etcd) instead of relying on the CRD
+  ##
+  enabled: false
+  ## @param apiserver.replicaCount Number of aggregated apiserver replicas
+  ##
+  replicaCount: 2
+  ## @param apiserver.groupPriorityMinimum APIService group priority minimum
+  ## @param apiserver.versionPriority APIService version priority
+  ##
+  groupPriorityMinimum: 1000
+  versionPriority: 15
+  ## @param apiserver.containerPort Aggregated apiserver HTTPS container port
+  ##
+  containerPort: 8443
+  ## @param apiserver.extraArgs Additional raw args appended to the apiserver container
+  ##
+  extraArgs: []
+  ## @param apiserver.command Override default apiserver container command
+  ##
+  command: []
+  ## @param apiserver.args Override default apiserver container args
+  ##
+  args: []
+  ## @param apiserver.resourcesPreset Set apiserver container resources according to one common preset. Ignored if `apiserver.resources` is set.
+  ## @param apiserver.resources Set apiserver container requests and limits
+  ##
+  resourcesPreset: "small"
+  resources: {}
+  ## Aggregated apiserver probes (kube-apiserver /livez and /readyz)
+  ## @param apiserver.livenessProbe.enabled Enable livenessProbe on the apiserver container
+  ## @param apiserver.livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+  ## @param apiserver.livenessProbe.periodSeconds Period seconds for livenessProbe
+  ## @param apiserver.livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+  ## @param apiserver.livenessProbe.failureThreshold Failure threshold for livenessProbe
+  ## @param apiserver.livenessProbe.successThreshold Success threshold for livenessProbe
+  ##
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 15
+    periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 6
+    successThreshold: 1
+  ## @param apiserver.readinessProbe.enabled Enable readinessProbe on the apiserver container
+  ## @param apiserver.readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+  ## @param apiserver.readinessProbe.periodSeconds Period seconds for readinessProbe
+  ## @param apiserver.readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+  ## @param apiserver.readinessProbe.failureThreshold Failure threshold for readinessProbe
+  ## @param apiserver.readinessProbe.successThreshold Success threshold for readinessProbe
+  ##
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+    successThreshold: 1
+  ## @param apiserver.podAntiAffinityPreset Pod anti-affinity preset for the apiserver. Ignored if `apiserver.affinity` is set.
+  ##
+  podAntiAffinityPreset: soft
+  ## @param apiserver.nodeSelector Node labels for apiserver pod assignment
+  ##
+  nodeSelector:
+    kubernetes.io/os: linux
+  ## @param apiserver.tolerations Tolerations for apiserver pod assignment
+  ##
+  tolerations: []
+  ## @param apiserver.affinity Affinity for apiserver pod assignment (overrides the preset)
+  ##
+  affinity: {}
+  ## @param apiserver.podAnnotations Annotations for apiserver pods
+  ##
+  podAnnotations: {}
+  ## @param apiserver.extraEnvVars Extra environment variables for the apiserver container
+  ##
+  extraEnvVars: []
+  ## Aggregated apiserver Pod Disruption Budget
+  ##
+  pdb:
+    ## @param apiserver.pdb.create Enable a Pod Disruption Budget for the apiserver
+    ##
+    create: true
+    ## @param apiserver.pdb.minAvailable Minimum number/percentage of apiserver pods that should remain scheduled
+    ##
+    minAvailable: 1
+    ## @param apiserver.pdb.maxUnavailable Maximum number/percentage of apiserver pods that may be made unavailable
+    ##
+    maxUnavailable: ""
+  ## Aggregated apiserver ServiceAccount
+  ##
+  serviceAccount:
+    ## @param apiserver.serviceAccount.create Create a dedicated ServiceAccount for the apiserver
+    ##
+    create: true
+    ## @param apiserver.serviceAccount.name Name of the apiserver ServiceAccount (generated if empty)
+    ##
+    name: ""
+    ## @param apiserver.serviceAccount.automountServiceAccountToken Automount the apiserver ServiceAccount token
+    ##
+    automountServiceAccountToken: true
+  ## Bundled etcd backing store for the aggregated apiserver. This etcd is owned by
+  ## kubetron and isolated to the release namespace. For a single-node control plane keep
+  ## replicaCount at 1; set 3 (or 5) for a highly available quorum.
+  ##
+  etcd:
+    ## @param apiserver.etcd.replicaCount Number of etcd replicas (use an odd number: 1, 3 or 5)
+    ##
+    replicaCount: 1
+    ## @param apiserver.etcd.image.registry [default: REGISTRY_NAME] etcd image registry
+    ## @param apiserver.etcd.image.repository [default: REPOSITORY_NAME/etcd] etcd image repository
+    ## @param apiserver.etcd.image.tag etcd image tag
+    ## @param apiserver.etcd.image.digest etcd image digest in the way sha256:aa.... Overrides the tag if set.
+    ## @param apiserver.etcd.image.pullPolicy etcd image pull policy
+    ##
+    image:
+      registry: quay.io
+      repository: coreos/etcd
+      tag: v3.5.16
+      digest: ""
+      pullPolicy: IfNotPresent
+    ## @param apiserver.etcd.resourcesPreset Set etcd container resources according to one common preset. Ignored if `apiserver.etcd.resources` is set.
+    ## @param apiserver.etcd.resources Set etcd container requests and limits
+    ##
+    resourcesPreset: "small"
+    resources: {}
+    ## etcd persistence
+    ##
+    persistence:
+      ## @param apiserver.etcd.persistence.enabled Enable persistence for etcd using a PersistentVolumeClaim. Disable to use an emptyDir (NOT recommended: claims are lost on pod restart).
+      ##
+      enabled: true
+      ## @param apiserver.etcd.persistence.storageClass Storage class for the etcd PVC. Set to "-" to disable dynamic provisioning.
+      ##
+      storageClass: ""
+      ## @param apiserver.etcd.persistence.size Size of the etcd PVC
+      ##
+      size: 8Gi
+      ## @param apiserver.etcd.persistence.accessModes Access modes for the etcd PVC
+      ##
+      accessModes:
+        - ReadWriteOnce
+      ## @param apiserver.etcd.persistence.annotations Annotations for the etcd PVC
+      ##
+      annotations: {}
+    ## @param apiserver.etcd.nodeSelector Node labels for etcd pod assignment
+    ##
+    nodeSelector:
+      kubernetes.io/os: linux
+    ## @param apiserver.etcd.tolerations Tolerations for etcd pod assignment
+    ##
+    tolerations: []

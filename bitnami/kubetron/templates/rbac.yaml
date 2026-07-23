@@ -1,0 +1,125 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if and .Values.sharedResources.create .Values.rbac.create }}
+apiVersion: {{ include "common.capabilities.rbac.apiVersion" . }}
+kind: ClusterRole
+metadata:
+  name: {{ include "common.names.fullname.namespace" . }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: manager
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+rules:
+  # Pods: read for reconciliation; status/patch for the readiness-gate writeback.
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [pods/status]
+    verbs: [patch]
+  # Service -> Octavia LB: finalizer + lb-id/vip annotations; type=LoadBalancer VIP writeback.
+  - apiGroups: [""]
+    resources: [services]
+    verbs: [get, list, watch, update, patch]
+  - apiGroups: [""]
+    resources: [services/status]
+    verbs: [update, patch]
+  # LB members = ready pods' OVN IPs.
+  - apiGroups: [discovery.k8s.io]
+    resources: [endpointslices]
+    verbs: [get, list, watch]
+  # StatefulSet transparency: auto-mint per-ordinal claims.
+  - apiGroups: [apps]
+    resources: [statefulsets]
+    verbs: [get, list, watch]
+  # Namespace config (read) + tenant DNS zone (write).
+  - apiGroups: [""]
+    resources: [configmaps]
+    verbs: [get, list, watch, create, update, patch]
+  # DNS zone reconciler iterates namespaces.
+  - apiGroups: [""]
+    resources: [namespaces]
+    verbs: [get, list, watch]
+  # Tenant OpenStack application credentials.
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [events]
+    verbs: [create, patch]
+  # Multus attachment definitions (full-mode per-subnet NADs).
+  - apiGroups: [k8s.cni.cncf.io]
+    resources: [network-attachment-definitions]
+    verbs: [get, list, watch, create, update, patch]
+  # KubeVirt VM identity.
+  - apiGroups: [kubevirt.io]
+    resources: [virtualmachineinstances]
+    verbs: [get, list, watch]
+  # The claims the controller owns.
+  - apiGroups: [kubetron.network.kubevirt.io]
+    resources: [networkportclaims]
+    verbs: [get, list, watch, create, update, patch]
+  - apiGroups: [kubetron.network.kubevirt.io]
+    resources: [networkportclaims/status]
+    verbs: [get, update, patch]
+---
+apiVersion: {{ include "common.capabilities.rbac.apiVersion" . }}
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "common.names.fullname.namespace" . }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: manager
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "common.names.fullname.namespace" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "kubetron.serviceAccountName" . }}
+    namespace: {{ include "common.names.namespace" . | quote }}
+---
+# Leader election needs Lease access in the release namespace only.
+apiVersion: {{ include "common.capabilities.rbac.apiVersion" . }}
+kind: Role
+metadata:
+  name: {{ printf "%s-leader-election" (include "common.names.fullname" .) }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: manager
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+rules:
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [events]
+    verbs: [create, patch]
+---
+apiVersion: {{ include "common.capabilities.rbac.apiVersion" . }}
+kind: RoleBinding
+metadata:
+  name: {{ printf "%s-leader-election" (include "common.names.fullname" .) }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: manager
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ printf "%s-leader-election" (include "common.names.fullname" .) }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "kubetron.serviceAccountName" . }}
+    namespace: {{ include "common.names.namespace" . | quote }}
+{{- end }}

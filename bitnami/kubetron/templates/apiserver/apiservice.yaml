@@ -1,0 +1,37 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if and .Values.apiserver.enabled .Values.sharedResources.create }}
+{{- $caBundle := "" }}
+{{- if not .Values.webhook.certManager.enabled }}
+{{- include "kubetron.genCerts" (dict "context" $ "service" (include "kubetron.apiserver.fullname" .) "secretName" (include "kubetron.apiserver.secretName" .) "cacheKey" "_kubetronApiserverCerts") }}
+{{- $caBundle = (index $ "_kubetronApiserverCerts").ca | b64enc }}
+{{- end }}
+apiVersion: {{ include "common.capabilities.apiService.apiVersion" . }}
+kind: APIService
+metadata:
+  name: v1alpha1.kubetron.network.kubevirt.io
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: apiserver
+  annotations:
+    {{- if .Values.webhook.certManager.enabled }}
+    cert-manager.io/inject-ca-from: {{ printf "%s/%s" (include "common.names.namespace" .) (include "kubetron.apiserver.secretName" .) }}
+    {{- end }}
+    {{- if .Values.commonAnnotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+spec:
+  group: kubetron.network.kubevirt.io
+  version: v1alpha1
+  groupPriorityMinimum: {{ .Values.apiserver.groupPriorityMinimum }}
+  versionPriority: {{ .Values.apiserver.versionPriority }}
+  {{- if not .Values.webhook.certManager.enabled }}
+  caBundle: {{ $caBundle | quote }}
+  {{- end }}
+  service:
+    name: {{ include "kubetron.apiserver.fullname" . }}
+    namespace: {{ include "common.names.namespace" . | quote }}
+    port: 443
+{{- end }}

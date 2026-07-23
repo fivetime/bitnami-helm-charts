@@ -1,0 +1,27 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if and .Values.sharedResources.create .Values.apiserver.enabled .Values.apiserver.pdb.create }}
+apiVersion: {{ include "common.capabilities.policy.apiVersion" . }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "kubetron.apiserver.fullname" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: apiserver
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.apiserver.pdb.minAvailable }}
+  minAvailable: {{ .Values.apiserver.pdb.minAvailable }}
+  {{- end }}
+  {{- if or .Values.apiserver.pdb.maxUnavailable (not .Values.apiserver.pdb.minAvailable) }}
+  maxUnavailable: {{ .Values.apiserver.pdb.maxUnavailable | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 6 }}
+      app.kubernetes.io/component: apiserver
+{{- end }}

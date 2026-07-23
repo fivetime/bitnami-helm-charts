@@ -1,0 +1,103 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if and .Values.sharedResources.create (or .Values.webhook.pods.enabled .Values.webhook.claims.enabled .Values.webhook.vm.enabled) }}
+{{- $svc := include "kubetron.webhook.serviceName" . }}
+{{- $ns := include "common.names.namespace" . }}
+{{- $caBundle := "" }}
+{{- if not .Values.webhook.certManager.enabled }}
+{{- include "kubetron.genCerts" (dict "context" $ "service" $svc "secretName" (include "kubetron.webhook.secretName" .) "cacheKey" "_kubetronWebhookCerts") }}
+{{- $caBundle = (index $ "_kubetronWebhookCerts").ca | b64enc }}
+{{- end }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "common.names.fullname.namespace" . }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: manager
+  annotations:
+    {{- if .Values.webhook.certManager.enabled }}
+    cert-manager.io/inject-ca-from: {{ printf "%s/%s" $ns (include "kubetron.webhook.secretName" .) }}
+    {{- end }}
+    {{- if .Values.commonAnnotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+webhooks:
+  {{- if .Values.webhook.pods.enabled }}
+  # objectSelector matches LABELS only, hence the enabled label; the port-claims
+  # annotation carries the claim names. Only labeled pods ever reach the webhook,
+  # so failurePolicy Fail is safe.
+  - name: pods.kubetron.network.kubevirt.io
+    admissionReviewVersions: [v1]
+    sideEffects: None
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+    objectSelector:
+      matchLabels:
+        kubetron.network.kubevirt.io/enabled: "true"
+    clientConfig:
+      {{- if not .Values.webhook.certManager.enabled }}
+      caBundle: {{ $caBundle | quote }}
+      {{- end }}
+      service:
+        name: {{ $svc }}
+        namespace: {{ $ns | quote }}
+        path: /mutate-v1-pod
+        port: {{ .Values.service.ports.webhook }}
+    rules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE]
+        resources: [pods]
+  {{- end }}
+  {{- if .Values.webhook.claims.enabled }}
+  # Shard stamping: every claim gets its namespace's shard label at CREATE.
+  - name: claims.kubetron.network.kubevirt.io
+    admissionReviewVersions: [v1]
+    sideEffects: None
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+    clientConfig:
+      {{- if not .Values.webhook.certManager.enabled }}
+      caBundle: {{ $caBundle | quote }}
+      {{- end }}
+      service:
+        name: {{ $svc }}
+        namespace: {{ $ns | quote }}
+        path: /mutate-v1alpha1-networkportclaim
+        port: {{ .Values.service.ports.webhook }}
+    rules:
+      - apiGroups: [kubetron.network.kubevirt.io]
+        apiVersions: [v1alpha1]
+        operations: [CREATE]
+        resources: [networkportclaims]
+  {{- end }}
+  {{- if .Values.webhook.vm.enabled }}
+  # VM path: distinct vm-enabled label — VMI labels are copied to the virt-launcher
+  # pod, and the pod webhook must never see KubeVirt launchers.
+  - name: vmis.kubetron.network.kubevirt.io
+    admissionReviewVersions: [v1]
+    sideEffects: None
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+    objectSelector:
+      matchLabels:
+        kubetron.network.kubevirt.io/vm-enabled: "true"
+    clientConfig:
+      {{- if not .Values.webhook.certManager.enabled }}
+      caBundle: {{ $caBundle | quote }}
+      {{- end }}
+      service:
+        name: {{ $svc }}
+        namespace: {{ $ns | quote }}
+        path: /mutate-kubevirt-vmi
+        port: {{ .Values.service.ports.webhook }}
+    rules:
+      - apiGroups: [kubevirt.io]
+        apiVersions: [v1]
+        operations: [CREATE]
+        resources: [virtualmachineinstances]
+  {{- end }}
+{{- end }}

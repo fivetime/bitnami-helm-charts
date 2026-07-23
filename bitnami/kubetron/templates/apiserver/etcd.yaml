@@ -1,0 +1,151 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if and .Values.apiserver.enabled .Values.sharedResources.create }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kubetron.etcd.fullname" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: etcd
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector: {{- include "common.labels.matchLabels" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: etcd
+  ports:
+    - name: client
+      port: 2379
+      targetPort: client
+    - name: peer
+      port: 2380
+      targetPort: peer
+---
+apiVersion: {{ include "common.capabilities.statefulset.apiVersion" . }}
+kind: StatefulSet
+metadata:
+  name: {{ include "kubetron.etcd.fullname" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: etcd
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  serviceName: {{ include "kubetron.etcd.fullname" . }}
+  replicas: {{ .Values.apiserver.etcd.replicaCount }}
+  podManagementPolicy: Parallel
+  {{- $etcdLabels := include "common.tplvalues.merge" ( dict "values" ( list .Values.commonLabels ) "context" . ) }}
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" ( dict "customLabels" $etcdLabels "context" $ ) | nindent 6 }}
+      app.kubernetes.io/component: etcd
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" ( dict "customLabels" $etcdLabels "context" $ ) | nindent 8 }}
+        app.kubernetes.io/component: etcd
+    spec:
+      {{- include "kubetron.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+        fsGroupChangePolicy: Always
+        seccompProfile:
+          type: RuntimeDefault
+      {{- if .Values.apiserver.etcd.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.apiserver.etcd.nodeSelector "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.apiserver.etcd.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.apiserver.etcd.tolerations "context" $) | nindent 8 }}
+      {{- end }}
+      affinity:
+        podAntiAffinity: {{- include "common.affinities.pods" (dict "type" "soft" "component" "etcd" "customLabels" $etcdLabels "context" $) | nindent 10 }}
+      containers:
+        - name: etcd
+          image: {{ template "kubetron.etcd.image" . }}
+          imagePullPolicy: {{ .Values.apiserver.etcd.image.pullPolicy | quote }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          command:
+            - etcd
+          args:
+            - --name=$(POD_NAME)
+            - --data-dir=/var/lib/etcd
+            - --listen-client-urls=http://0.0.0.0:2379
+            - --advertise-client-urls=http://$(POD_NAME).{{ include "kubetron.etcd.fullname" . }}.{{ include "common.names.namespace" . }}.svc:2379
+            - --listen-peer-urls=http://0.0.0.0:2380
+            - --initial-advertise-peer-urls=http://$(POD_NAME).{{ include "kubetron.etcd.fullname" . }}.{{ include "common.names.namespace" . }}.svc:2380
+            - --initial-cluster={{ include "kubetron.etcd.initialCluster" . }}
+            - --initial-cluster-state=new
+            - --initial-cluster-token={{ include "kubetron.etcd.fullname" . }}
+          ports:
+            - name: client
+              containerPort: 2379
+            - name: peer
+              containerPort: 2380
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: client
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: client
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+          {{- if .Values.apiserver.etcd.resources }}
+          resources: {{- toYaml .Values.apiserver.etcd.resources | nindent 12 }}
+          {{- else if ne .Values.apiserver.etcd.resourcesPreset "none" }}
+          resources: {{- include "common.resources.preset" (dict "type" .Values.apiserver.etcd.resourcesPreset) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/etcd
+      {{- if not .Values.apiserver.etcd.persistence.enabled }}
+      volumes:
+        - name: data
+          emptyDir: {}
+      {{- end }}
+  {{- if .Values.apiserver.etcd.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        {{- if .Values.apiserver.etcd.persistence.annotations }}
+        annotations: {{- include "common.tplvalues.render" (dict "value" .Values.apiserver.etcd.persistence.annotations "context" $) | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- range .Values.apiserver.etcd.persistence.accessModes }}
+          - {{ . | quote }}
+          {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.apiserver.etcd.persistence.size | quote }}
+        {{- include "common.storage.class" (dict "persistence" .Values.apiserver.etcd.persistence "global" .Values.global) | nindent 8 }}
+  {{- end }}
+{{- end }}

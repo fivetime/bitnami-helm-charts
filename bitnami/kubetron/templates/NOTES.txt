@@ -1,0 +1,91 @@
+CHART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+** Please be patient while the chart is being deployed **
+
+{{- if .Values.diagnosticMode.enabled }}
+
+The chart has been deployed in diagnostic mode. All probes have been disabled and the command has been overwritten with:
+
+  command: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 4 }}
+  args: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 4 }}
+
+Get the list of pods by executing:
+
+    kubectl get pods --namespace {{ include "common.names.namespace" . }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+Access the pod you want to debug by executing:
+
+    kubectl exec --namespace {{ include "common.names.namespace" . }} -ti <NAME OF THE POD> -- bash
+{{- else }}
+
+Watch the kubetron manager become ready with:
+
+    kubectl get deploy -w --namespace {{ include "common.names.namespace" . }} -l app.kubernetes.io/name={{ include "common.names.name" . }},app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=manager
+
+{{- end }}
+
+PREREQUISITES on the cluster (kubetron is an orchestration layer, not a standalone CNI):
+  - Multus CNI and ovs-cni (with the marker DaemonSet) installed and healthy.
+  - OpenStack Neutron/Octavia reachable, and an admin application credential provided as
+    the Secret named "{{ .Values.openstack.existingSecret }}" (envFrom keys: OS_AUTH_URL,
+    OS_USERNAME/OS_PASSWORD or OS_APPLICATION_CREDENTIAL_*, OS_PROJECT_NAME, OS_PROJECT_DOMAIN_NAME, ...).
+{{- if not .Values.openstack.existingSecret }}
+
+  WARNING: openstack.existingSecret is empty. The manager has no OpenStack credentials and
+  every NetworkPortClaim will fail. Set openstack.existingSecret (or provide the OS_* vars
+  via extraEnvVars/extraEnvVarsSecret).
+{{- end }}
+{{- if .Values.webhook.certManager.enabled }}
+  - cert-manager installed, plus the issuer referenced by the chart:
+        {{ .Values.webhook.certManager.issuerRef.kind }}/{{ .Values.webhook.certManager.issuerRef.name }}
+    (serving certificates for the webhook{{ if .Values.apiserver.enabled }} and the aggregated apiserver{{ end }} are issued by cert-manager).
+{{- else }}
+  - The webhook{{ if .Values.apiserver.enabled }}/apiserver{{ end }} serving certificate is a Helm-generated self-signed
+    certificate. Set webhook.certManager.enabled=true to have cert-manager issue and rotate it.
+{{- end }}
+
+Enrol a workload by labelling its Pods (or the StatefulSet/VMI template) with:
+
+    kubetron.network.kubevirt.io/enabled: "true"
+
+and referencing a NetworkPortClaim. A minimal claim:
+
+    apiVersion: kubetron.network.kubevirt.io/v1alpha1
+    kind: NetworkPortClaim
+    metadata:
+      name: my-app
+      namespace: {{ include "common.names.namespace" . }}
+    spec:
+      network: <neutron-network-name-or-id>
+      credentialSecretRef: <tenant-app-credential-secret>
+
+List claims with:
+
+    kubectl get networkportclaims -A     # short name: npc
+
+{{- if not .Values.sharedResources.create }}
+
+This release is a FOLLOWER shard (sharedResources.create=false) for shard "{{ .Values.controller.shard }}".
+It runs only its own manager and reuses the shared control plane "{{ include "kubetron.controlPlaneName" . }}"
+(webhook + serving certificate + Service, ServiceAccount,{{ if .Values.apiserver.enabled }} aggregated apiserver,{{ end }} CRD and cluster RBAC).
+Make sure that control plane is installed first — a release with `sharedResources.create=true`
+whose fullname equals "{{ include "kubetron.controlPlaneName" . }}", in this same namespace.
+{{- else if ne (include "kubetron.controlPlaneName" .) (include "common.names.fullname" .) }}
+
+This release OWNS the shared control plane "{{ include "kubetron.controlPlaneName" . }}"; add more
+Neutron/OVN clusters as follower releases (`sharedResources.create=false`, `controlPlaneName={{ include "kubetron.controlPlaneName" . }}`).
+{{- end }}
+
+{{- if .Values.apiserver.enabled }}
+
+AGGREGATED APISERVER is enabled: NetworkPortClaims are served from kubetron's own etcd
+({{ .Values.apiserver.etcd.replicaCount }} replica(s)) via an APIService, not a CRD. Do NOT also set crds.install=true.
+Migrating a live cluster from the CRD to the apiserver is a deliberate data migration
+(snapshot claims -> remove CRD -> enable apiserver -> restore claims). See DESIGN §10.5.
+{{- end }}
+
+{{- include "common.warnings.rollingTag" .Values.image }}
+{{- include "common.warnings.resources" (dict "sections" (list "" "apiserver" "apiserver.etcd") "context" $) }}
+{{- include "kubetron.validateValues" . }}

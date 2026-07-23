@@ -1,0 +1,234 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if and .Values.sharedResources.create .Values.crds.install }}
+apiVersion: {{ include "common.capabilities.crd.apiVersion" . }}
+kind: CustomResourceDefinition
+metadata:
+  name: networkportclaims.kubetron.network.kubevirt.io
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.19.0
+    {{- if .Values.crds.keep }}
+    helm.sh/resource-policy: keep
+    {{- end }}
+    {{- if .Values.commonAnnotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+spec:
+  group: kubetron.network.kubevirt.io
+  names:
+    kind: NetworkPortClaim
+    listKind: NetworkPortClaimList
+    plural: networkportclaims
+    shortNames:
+      - npc
+    singular: networkportclaim
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - jsonPath: .spec.network
+          name: Network
+          type: string
+        - jsonPath: .status.phase
+          name: Phase
+          type: string
+        - jsonPath: .status.portID
+          name: Port-ID
+          type: string
+        - jsonPath: .status.macAddress
+          name: MAC
+          type: string
+        - jsonPath: .status.ips[0]
+          name: IP
+          type: string
+        - jsonPath: .status.hostID
+          name: Node
+          type: string
+        - jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
+      schema:
+        openAPIV3Schema:
+          description: |-
+            NetworkPortClaim owns a Neutron port whose lifecycle is decoupled from any pod
+            (PVC/PV analog). Pods reference it by the port-claims annotation.
+          type: object
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: |-
+                NetworkPortClaimSpec is the tenant-writable desired state. Tenant/project is
+                the OpenStack application credential (CredentialSecretRef), not the namespace.
+              type: object
+              required:
+                - credentialSecretRef
+              properties:
+                credentialSecretRef:
+                  description: |-
+                    CredentialSecretRef names a Secret (same namespace) holding the tenant's
+                    OpenStack application credential; the port lands in the credential's project
+                    and Neutron RBAC governs access. Keys: authURL, applicationCredentialID,
+                    applicationCredentialSecret.
+                  type: string
+                dnsNameservers:
+                  description: |-
+                    DNSNameservers override for the pod's dnsPolicy:None dnsConfig; empty =>
+                    status.dns.nameservers.
+                  type: array
+                  items:
+                    type: string
+                fixedIP:
+                  description: FixedIP optionally pins the port IP; empty => Neutron allocates.
+                  type: string
+                network:
+                  description: |-
+                    Network is the Neutron network (~VPC) name or id, resolved with the tenant's
+                    own credential. Optional when PortID is set.
+                  type: string
+                portID:
+                  description: |-
+                    PortID adopts an EXISTING Neutron port (pre-created by the tenant) instead of
+                    creating one. Adopted ports carry no kubetron tags, so the orphan GC never
+                    touches them and reclaimPolicy Retain leaves the port exactly as it was.
+                  type: string
+                reclaimPolicy:
+                  description: ReclaimPolicy defaults to Retain (PV-like).
+                  type: string
+                  default: Retain
+                  enum:
+                    - Retain
+                    - Delete
+                routes:
+                  description: Routes are extra static routes (full mode's default route is on the per-subnet NAD).
+                  type: array
+                  items:
+                    description: Route is an extra static route.
+                    type: object
+                    required:
+                      - dst
+                      - gw
+                    properties:
+                      dst:
+                        type: string
+                      gw:
+                        type: string
+              x-kubernetes-validations:
+                - message: either network (create a port) or portID (adopt an existing port) must be set
+                  rule: (has(self.network) && self.network != "") || (has(self.portID) && self.portID != "")
+                - message: fixedIP cannot be combined with portID (the adopted port already owns its IPs)
+                  rule: '!(has(self.portID) && self.portID != "") || !(has(self.fixedIP) && self.fixedIP != "")'
+            status:
+              description: |-
+                NetworkPortClaimStatus is controller-filled; tenants read-only (status subresource).
+              type: object
+              properties:
+                boundPods:
+                  description: BoundPods holds current users; during live-migration it may hold two.
+                  type: array
+                  items:
+                    type: string
+                conditions:
+                  type: array
+                  items:
+                    description: Condition contains details for one aspect of the current state of this API Resource.
+                    type: object
+                    required:
+                      - lastTransitionTime
+                      - message
+                      - reason
+                      - status
+                      - type
+                    properties:
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                      message:
+                        type: string
+                        maxLength: 32768
+                      observedGeneration:
+                        type: integer
+                        format: int64
+                        minimum: 0
+                      reason:
+                        type: string
+                        maxLength: 1024
+                        minLength: 1
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      status:
+                        type: string
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                      type:
+                        type: string
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                  x-kubernetes-list-map-keys:
+                    - type
+                  x-kubernetes-list-type: map
+                dns:
+                  description: DNSStatus carries the subnet's DNS servers.
+                  type: object
+                  properties:
+                    nameservers:
+                      type: array
+                      items:
+                        type: string
+                hostID:
+                  description: HostID is the current binding:host_id (= the node's OVN chassis id).
+                  type: string
+                ips:
+                  description: IPs in CIDR form with the subnet's real prefix (never /32).
+                  type: array
+                  items:
+                    type: string
+                macAddress:
+                  type: string
+                migrationTargetPod:
+                  description: MigrationTargetPod non-empty means the claim is in a live-migration double-bind window.
+                  type: string
+                networkID:
+                  type: string
+                observedGeneration:
+                  type: integer
+                  format: int64
+                phase:
+                  description: ClaimPhase is the high-level lifecycle phase.
+                  type: string
+                  enum:
+                    - Pending
+                    - Bound
+                    - Released
+                    - Failed
+                portID:
+                  type: string
+                projectID:
+                  type: string
+                subnet:
+                  description: SubnetStatus carries the read-back subnet detail for routing/DNS.
+                  type: object
+                  properties:
+                    cidr:
+                      type: string
+                    gatewayIP:
+                      type: string
+                    id:
+                      type: string
+              x-kubernetes-validations:
+                - message: a claim may be held by one pod (two only during live migration)
+                  rule: '!has(self.boundPods) || ((has(self.migrationTargetPod) && self.migrationTargetPod != "") ? size(self.boundPods) <= 2 : size(self.boundPods) <= 1)'
+{{- end }}

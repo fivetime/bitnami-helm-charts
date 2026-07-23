@@ -1,0 +1,132 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if and .Values.apiserver.enabled .Values.sharedResources.create }}
+apiVersion: {{ include "common.capabilities.deployment.apiVersion" . }}
+kind: Deployment
+metadata:
+  name: {{ include "kubetron.apiserver.fullname" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  {{- $versionLabel := dict "app.kubernetes.io/version" ( include "common.images.version" ( dict "imageRoot" .Values.image "chart" .Chart ) ) }}
+  {{- $labels := include "common.tplvalues.merge" ( dict "values" ( list .Values.commonLabels $versionLabel ) "context" . ) }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" $labels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: apiserver
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- $podLabels := include "common.tplvalues.merge" ( dict "values" ( list .Values.commonLabels $versionLabel ) "context" . ) }}
+  replicas: {{ .Values.apiserver.replicaCount }}
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" ( dict "customLabels" $podLabels "context" $ ) | nindent 6 }}
+      app.kubernetes.io/component: apiserver
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" ( dict "customLabels" $podLabels "context" $ ) | nindent 8 }}
+        app.kubernetes.io/component: apiserver
+      {{- if .Values.apiserver.podAnnotations }}
+      annotations: {{- include "common.tplvalues.render" (dict "value" .Values.apiserver.podAnnotations "context" $) | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- include "kubetron.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "kubetron.apiserver.serviceAccountName" . }}
+      automountServiceAccountToken: true
+      {{- if .Values.podSecurityContext.enabled }}
+      securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.podSecurityContext "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.apiserver.affinity }}
+      affinity: {{- include "common.tplvalues.render" (dict "value" .Values.apiserver.affinity "context" $) | nindent 8 }}
+      {{- else }}
+      affinity:
+        podAntiAffinity: {{- include "common.affinities.pods" (dict "type" .Values.apiserver.podAntiAffinityPreset "component" "apiserver" "customLabels" $podLabels "context" $) | nindent 10 }}
+      {{- end }}
+      {{- if .Values.apiserver.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.apiserver.nodeSelector "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.apiserver.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.apiserver.tolerations "context" $) | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: apiserver
+          image: {{ template "kubetron.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          {{- if .Values.diagnosticMode.enabled }}
+          command: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 12 }}
+          {{- else if .Values.apiserver.command }}
+          command: {{- include "common.tplvalues.render" (dict "value" .Values.apiserver.command "context" $) | nindent 12 }}
+          {{- else }}
+          command:
+            - /apiserver
+          {{- end }}
+          {{- if .Values.diagnosticMode.enabled }}
+          args: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 12 }}
+          {{- else if .Values.apiserver.args }}
+          args: {{- include "common.tplvalues.render" (dict "value" .Values.apiserver.args "context" $) | nindent 12 }}
+          {{- else }}
+          args:
+            - --etcd-servers={{ include "kubetron.etcd.endpoints" . }}
+            - --secure-port={{ .Values.apiserver.containerPort }}
+            - --tls-cert-file=/certs/tls.crt
+            - --tls-private-key-file=/certs/tls.key
+            - --audit-log-path=-
+            - --audit-log-maxage=0
+            {{- if .Values.apiserver.extraArgs }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.apiserver.extraArgs "context" $) | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.containerSecurityContext "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.apiserver.extraEnvVars }}
+          env: {{- include "common.tplvalues.render" (dict "value" .Values.apiserver.extraEnvVars "context" $) | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: https
+              containerPort: {{ .Values.apiserver.containerPort }}
+              protocol: TCP
+          {{- if not .Values.diagnosticMode.enabled }}
+          {{- if .Values.apiserver.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: https
+              scheme: HTTPS
+            initialDelaySeconds: {{ .Values.apiserver.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.apiserver.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.apiserver.livenessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.apiserver.livenessProbe.successThreshold }}
+            failureThreshold: {{ .Values.apiserver.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.apiserver.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: https
+              scheme: HTTPS
+            initialDelaySeconds: {{ .Values.apiserver.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.apiserver.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.apiserver.readinessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.apiserver.readinessProbe.successThreshold }}
+            failureThreshold: {{ .Values.apiserver.readinessProbe.failureThreshold }}
+          {{- end }}
+          {{- end }}
+          {{- if .Values.apiserver.resources }}
+          resources: {{- toYaml .Values.apiserver.resources | nindent 12 }}
+          {{- else if ne .Values.apiserver.resourcesPreset "none" }}
+          resources: {{- include "common.resources.preset" (dict "type" .Values.apiserver.resourcesPreset) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: certs
+              mountPath: /certs
+              readOnly: true
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: certs
+          secret:
+            secretName: {{ include "kubetron.apiserver.secretName" . }}
+{{- end }}

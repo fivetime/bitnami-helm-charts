@@ -1,0 +1,45 @@
+# Copyright Broadcom, Inc. All Rights Reserved.
+# SPDX-License-Identifier: APACHE-2.0
+
+annotations:
+  images: |
+    - name: kubetron
+      image: ghcr.io/fivetime/kubetron:0.11.9
+    - name: etcd
+      image: quay.io/coreos/etcd:v3.5.16
+  licenses: Apache-2.0
+  tanzuCategory: clusterUtility
+apiVersion: v2
+appVersion: 0.11.9
+dependencies:
+- name: common
+  repository: oci://registry-1.docker.io/bitnamicharts
+  tags:
+  - bitnami-common
+  version: 2.x.x
+description: kubetron is a thin K8s-to-Neutron/Octavia orchestration layer that gives
+  standard, unmodified Kubernetes/Helm workloads a VM-like persistent network identity
+  on OpenStack OVN tenant networks. It reconciles NetworkPortClaims into Neutron ports,
+  injects Multus attachments via an admission webhook, and (optionally) serves claims
+  from its own aggregated apiserver.
+home: https://github.com/fivetime/kubetron
+icon: https://upload.wikimedia.org/wikipedia/commons/3/35/Kubernetes_logo.svg
+keywords:
+- kubetron
+- neutron
+- octavia
+- openstack
+- ovn
+- cni
+- kubernetes
+- networking
+- kubevirt
+- multus
+maintainers:
+- name: Broadcom, Inc. All Rights Reserved.
+  url: https://github.com/bitnami/charts
+name: kubetron
+sources:
+- https://github.com/fivetime/kubetron
+- https://github.com/bitnami/charts/tree/main/bitnami/kubetron
+version: 1.0.0

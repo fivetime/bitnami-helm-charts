@@ -1,0 +1,51 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if .Values.sharedResources.create }}
+{{- if .Values.webhook.certManager.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "kubetron.webhook.secretName" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: manager
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  secretName: {{ include "kubetron.webhook.secretName" . }}
+  dnsNames:
+    - {{ printf "%s.%s.svc" (include "kubetron.webhook.serviceName" .) (include "common.names.namespace" .) }}
+    - {{ printf "%s.%s.svc.cluster.local" (include "kubetron.webhook.serviceName" .) (include "common.names.namespace" .) }}
+  {{- if .Values.webhook.certManager.duration }}
+  duration: {{ .Values.webhook.certManager.duration }}
+  {{- end }}
+  {{- if .Values.webhook.certManager.renewBefore }}
+  renewBefore: {{ .Values.webhook.certManager.renewBefore }}
+  {{- end }}
+  issuerRef:
+    kind: {{ .Values.webhook.certManager.issuerRef.kind }}
+    name: {{ .Values.webhook.certManager.issuerRef.name }}
+{{- else }}
+{{- include "kubetron.genCerts" (dict "context" $ "service" (include "kubetron.webhook.serviceName" .) "secretName" (include "kubetron.webhook.secretName" .) "cacheKey" "_kubetronWebhookCerts") }}
+{{- $certs := index $ "_kubetronWebhookCerts" }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "kubetron.webhook.secretName" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: manager
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+type: kubernetes.io/tls
+data:
+  tls.crt: {{ $certs.crt | b64enc | quote }}
+  tls.key: {{ $certs.key | b64enc | quote }}
+  ca.crt: {{ $certs.ca | b64enc | quote }}
+{{- end }}
+{{- end }}

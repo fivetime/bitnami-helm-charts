@@ -2544,6 +2544,40 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 0.32.0
+    created: "2026-07-23T02:08:31.91704473Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: The JuiceFS CSI Driver provisions and mounts JuiceFS volumes in Kubernetes.
+      Packaged in the Bitnami framework for a production-grade, highly available control
+      plane (mountpod mode). Mount pods use the JuiceFS client image, which can be
+      pointed at this fork's ceph + TiKV build.
+    digest: d878a679739119988064a653b5afe3bde8b8ab0e4fd5bfaf3b52fb2a1537cda2
+    home: https://github.com/juicedata/juicefs-csi-driver
+    icon: https://s.juicefs.com/static/jfs/logo.svg
+    keywords:
+    - juicefs
+    - csi
+    - storage
+    - tikv
+    - ceph
+    maintainers:
+    - name: fivetime
+      url: https://github.com/fivetime/juicefs
+    name: juicefs-csi-driver
+    sources:
+    - https://github.com/juicedata/juicefs-csi-driver
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/juicefs-csi-driver-1.0.1/juicefs-csi-driver-1.0.1.tgz
+    version: 1.0.1
+  - annotations:
+      category: Storage
+      licenses: Apache-2.0
+    apiVersion: v2
+    appVersion: 0.32.0
     created: "2026-07-22T13:02:52.035216453Z"
     dependencies:
     - name: common
@@ -3211,6 +3245,53 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/kubernetes-event-exporter-3.6.4/kubernetes-event-exporter-3.6.4.tgz
     version: 3.6.4
+  kubetron:
+  - annotations:
+      images: |
+        - name: kubetron
+          image: ghcr.io/fivetime/kubetron:0.11.9
+        - name: etcd
+          image: quay.io/coreos/etcd:v3.5.16
+      licenses: Apache-2.0
+      tanzuCategory: clusterUtility
+    apiVersion: v2
+    appVersion: 0.11.9
+    created: "2026-07-23T02:08:32.607869887Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: kubetron is a thin K8s-to-Neutron/Octavia orchestration layer that
+      gives standard, unmodified Kubernetes/Helm workloads a VM-like persistent network
+      identity on OpenStack OVN tenant networks. It reconciles NetworkPortClaims into
+      Neutron ports, injects Multus attachments via an admission webhook, and (optionally)
+      serves claims from its own aggregated apiserver.
+    digest: b255d61ef20d5aff6f24224e75fe47bd7bd6722447f26b53e8193c3df5a7fcf8
+    home: https://github.com/fivetime/kubetron
+    icon: https://upload.wikimedia.org/wikipedia/commons/3/35/Kubernetes_logo.svg
+    keywords:
+    - kubetron
+    - neutron
+    - octavia
+    - openstack
+    - ovn
+    - cni
+    - kubernetes
+    - networking
+    - kubevirt
+    - multus
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: kubetron
+    sources:
+    - https://github.com/fivetime/kubetron
+    - https://github.com/bitnami/charts/tree/main/bitnami/kubetron
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/kubetron-1.0.0/kubetron-1.0.0.tgz
+    version: 1.0.0
   logstash:
   - annotations:
       images: |
@@ -7001,4 +7082,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-07-22T13:02:52.538728194Z"
+generated: "2026-07-23T02:08:32.607976145Z"

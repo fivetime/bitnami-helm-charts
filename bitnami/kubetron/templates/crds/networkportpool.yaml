@@ -91,11 +91,46 @@ spec:
                 items:
                   type: string
                 type: array
+              minAvailable:
+                description: |-
+                  MinAvailable keeps at least this many FREE slots warm by surging the
+                  total beyond Size while allocations eat it: the controller converges
+                  total to max(Size, allocated+MinAvailable) and shrinks back as pods go.
+                  0 disables surging (total stays at Size).
+                format: int32
+                minimum: 0
+                type: integer
               network:
                 description: |-
                   Network is the Neutron network (≈VPC) name or id every slot port is
                   created on, resolved with the tenant credential.
                 type: string
+              placement:
+                description: |-
+                  Placement pre-positions free slots onto nodes (P2, DESIGN-warm-pool §5):
+                  their ports get binding:host_id written ahead of time so flows are
+                  programmed the moment the pod's interface appears. Omit to keep slots
+                  unbound (P1 behavior: reactive bind at pod landing).
+                properties:
+                  nodeSelector:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      NodeSelector picks the nodes eligible for pre-positioning. MUST select
+                      nodes belonging to this pool's Neutron/OVN shard (a port pre-bound to a
+                      foreign-shard node is dead there, DESIGN-sharding-topology §6).
+                    type: object
+                  perNodeTarget:
+                    description: |-
+                      PerNodeTarget caps how many FREE slots are kept pre-bound per node —
+                      the zero-latency-vs-fragmentation knob (§5.2): pre-bound stock on node
+                      X serves only pods landing on X without a rebind.
+                    format: int32
+                    minimum: 1
+                    type: integer
+                required:
+                - perNodeTarget
+                type: object
               reclaimPolicy:
                 default: Delete
                 description: |-
@@ -188,6 +223,14 @@ spec:
                   - type
                   type: object
                 type: array
+              perNode:
+                additionalProperties:
+                  format: int32
+                  type: integer
+                description: |-
+                  PerNode counts FREE pre-bound slots per node (placement observability;
+                  the hot-path allocator prefers an exact node match).
+                type: object
               total:
                 description: Total is the number of slot claims that currently exist.
                 format: int32

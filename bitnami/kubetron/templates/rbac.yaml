@@ -66,6 +66,10 @@ rules:
   - apiGroups: [kubetron.network.kubevirt.io]
     resources: [networkportclaims/status]
     verbs: [get, update, patch]
+  # Warm-pool placement reads nodes to pick pre-position targets.
+  - apiGroups: [""]
+    resources: [nodes]
+    verbs: [get, list, watch]
   # Warm pools (DESIGN-warm-pool): slot claim factory + free-list recycle.
   - apiGroups: [kubetron.network.kubevirt.io]
     resources: [networkportpools]

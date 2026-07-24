@@ -108,6 +108,7 @@ spec:
             - -node-chassis-suffix={{ .Values.controller.nodeChassisSuffix }}
             {{- end }}
             - -gc-interval={{ .Values.controller.gcInterval }}
+            - -claim-concurrency={{ .Values.controller.claimConcurrency }}
             {{- if .Values.controller.probeHelper.enabled }}
             # Static probe-helper injection (distroless-safe exec probes): the
             # helper binary ships in this very manager image.

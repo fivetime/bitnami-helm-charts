@@ -157,6 +157,9 @@ controller:
   ## @param controller.gcInterval Interval for the orphan Neutron port garbage collector (Go duration)
   ##
   gcInterval: 5m
+  ## @param controller.claimConcurrency MaxConcurrentReconciles for the claim controller. Port create/delete is Neutron-RTT-bound; raise for large warm pools (scale-tested at 64), keep low to be gentle on Neutron.
+  ##
+  claimConcurrency: 8
   ## @param controller.nodeChassisSuffix Suffix appended to the K8s node name to form the OVN chassis hostname (e.g. ".cloud.local" when ovn-controller registers chassis with node FQDNs). Empty => node name is used verbatim.
   ##
   nodeChassisSuffix: ""

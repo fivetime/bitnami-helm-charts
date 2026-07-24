@@ -163,6 +163,10 @@ controller:
   ## @param controller.defaultDNSNameservers [array] Placeholder resolver(s) for full Pods' dnsPolicy:None dnsConfig when neither the claim nor the Neutron subnet supplies DNS. Authority is the Neutron subnet's dns_nameservers; this only satisfies the K8s "DNSNone requires >=1 nameserver" rule.
   ##
   defaultDNSNameservers: []
+  ## @param controller.probeHelper.enabled Inject the static probe-helper binary (from this manager image) and rewrite httpGet/tcpSocket probes to exec it — required for distroless images (e.g. Knative queue-proxy) and preserves probe HTTP headers. Disabled => legacy sh-c curl/wget rewriting.
+  ##
+  probeHelper:
+    enabled: true
   ## @param controller.logDevel Use zap development log encoding (human-friendly, verbose). Production => false (JSON).
   ##
   logDevel: false

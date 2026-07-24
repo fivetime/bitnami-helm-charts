@@ -108,6 +108,11 @@ spec:
             - -node-chassis-suffix={{ .Values.controller.nodeChassisSuffix }}
             {{- end }}
             - -gc-interval={{ .Values.controller.gcInterval }}
+            {{- if .Values.controller.probeHelper.enabled }}
+            # Static probe-helper injection (distroless-safe exec probes): the
+            # helper binary ships in this very manager image.
+            - -probe-helper-image={{ include "kubetron.image" . }}
+            {{- end }}
             {{- if .Values.controller.defaultDNSNameservers }}
             - -default-dns-nameservers={{ join "," .Values.controller.defaultDNSNameservers }}
             {{- end }}

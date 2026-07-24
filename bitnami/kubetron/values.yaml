@@ -160,6 +160,15 @@ controller:
   ## @param controller.claimConcurrency MaxConcurrentReconciles for the claim controller. Port create/delete is Neutron-RTT-bound; raise for large warm pools (scale-tested at 64), keep low to be gentle on Neutron.
   ##
   claimConcurrency: 8
+  ## @param controller.bindingConcurrency MaxConcurrentReconciles for the pod binding controller (host_id handover + readiness gate). Raise under sustained pod influx.
+  ##
+  bindingConcurrency: 4
+  ## @param controller.poolConcurrency MaxConcurrentReconciles for the warm-pool controller (one worker per pool sweep). Raise with pool count.
+  ##
+  poolConcurrency: 2
+  ## @param controller.cacheSyncTimeout Startup informer cache-sync time limit. Raise on shards holding many claims (a ~300k-claim shard exceeds the 2m default and the manager never goes ready after a restart).
+  ##
+  cacheSyncTimeout: 2m
   ## @param controller.nodeChassisSuffix Suffix appended to the K8s node name to form the OVN chassis hostname (e.g. ".cloud.local" when ovn-controller registers chassis with node FQDNs). Empty => node name is used verbatim.
   ##
   nodeChassisSuffix: ""

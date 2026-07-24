@@ -109,6 +109,9 @@ spec:
             {{- end }}
             - -gc-interval={{ .Values.controller.gcInterval }}
             - -claim-concurrency={{ .Values.controller.claimConcurrency }}
+            - -binding-concurrency={{ .Values.controller.bindingConcurrency }}
+            - -pool-concurrency={{ .Values.controller.poolConcurrency }}
+            - -cache-sync-timeout={{ .Values.controller.cacheSyncTimeout }}
             {{- if .Values.controller.probeHelper.enabled }}
             # Static probe-helper injection (distroless-safe exec probes): the
             # helper binary ships in this very manager image.

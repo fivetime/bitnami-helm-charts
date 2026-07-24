@@ -80,6 +80,16 @@ spec:
               exactly ONE network — whether that network is tenant-isolated or a shared
               provider net is the application's choice, not kubetron's policy (§4.6).
             properties:
+              batchSize:
+                description: |-
+                  BatchSize quantizes growth/shrink into chunks (Cilium neededIPCeil
+                  pattern, cilium pkg/ipam/multipool_manager.go): instead of minting one
+                  slot per consumption, the desired total rounds UP to the next BatchSize
+                  boundary — Neutron sees one batch of creates per watermark crossing, not
+                  a per-pod trickle. 0/1 keeps the linear (per-slot) behavior.
+                format: int32
+                minimum: 0
+                type: integer
               credentialSecretRef:
                 description: |-
                   CredentialSecretRef names the Secret (same namespace) with the OpenStack
@@ -91,6 +101,15 @@ spec:
                 items:
                   type: string
                 type: array
+              maxSize:
+                description: |-
+                  MaxSize caps the surged total (lazy growth ceiling): start small at
+                  Size, grow batch-by-batch on watermark pressure, never exceed MaxSize —
+                  so a pool does not pre-claim its worst-case IP count up front
+                  (DESIGN-warm-pool §6.7). 0 = no cap.
+                format: int32
+                minimum: 0
+                type: integer
               minAvailable:
                 description: |-
                   MinAvailable keeps at least this many FREE slots warm by surging the

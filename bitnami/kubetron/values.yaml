@@ -151,6 +151,12 @@ controller:
   ## @param controller.shard This release's shard == the Neutron/OVN cluster it manages (DESIGN §10.3). Each shard has its OWN Neutron endpoint + credentials, so deploy one release per Neutron/OVN cluster. Reconcilers are server-side filtered to this shard label; leader election is per-shard; the shared webhook serves all shards.
   ##
   shard: default
+  ## @param controller.clusterID Identity of THIS Kubernetes cluster. Leave empty unless several kubetron installations share ONE Neutron/Octavia (e.g. two clusters whose nodes join the same OVN). It scopes Neutron port ownership to `device_owner=kubetron:<id>` and Octavia LB names to `kubetron_<id>_<ns>_<svc>`, which is what lets each installation tell "not mine" from "orphaned": the orphan GCs query Neutron/Octavia cluster-wide but can only see their OWN cluster's claims and Services, so without this every GC reaps the other cluster's live ports and load balancers. MUST be identical across all kubetron releases in the same Kubernetes cluster (unlike `controller.shard`, which differs per release), and DIFFERENT between clusters. Reuse the Cilium ClusterMesh cluster name when one exists. Existing ports are retagged automatically on the next claim reconcile.
+  ##
+  clusterID: ""
+  ## @param controller.enforceShardPlacement Inject a `kubetron.network.kubevirt.io/shard` nodeSelector into every full Pod (and exclude foreign-shard nodes from warm-pool pre-positioning), so the scheduler cannot land a Pod on a node whose OVN belongs to another shard — that yields a Neutron `binding_failed` port and a Pod that is Running with a silently dead dataplane. Requires the nodes to carry that label first.
+  ##
+  enforceShardPlacement: false
   ## @param controller.leaderElect Enable leader election (required when replicaCount > 1)
   ##
   leaderElect: true

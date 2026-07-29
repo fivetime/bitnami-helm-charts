@@ -103,6 +103,14 @@ spec:
             - -leader-elect
             {{- end }}
             - -shard={{ .Values.controller.shard }}
+            {{- if .Values.controller.clusterID }}
+            # Several kubetron installations sharing one Neutron/Octavia: scope
+            # port ownership and LB names so each GC only reclaims its own.
+            - -cluster-id={{ .Values.controller.clusterID }}
+            {{- end }}
+            {{- if .Values.controller.enforceShardPlacement }}
+            - -enforce-shard-placement
+            {{- end }}
             - -zap-devel={{ .Values.controller.logDevel }}
             {{- if .Values.controller.nodeChassisSuffix }}
             - -node-chassis-suffix={{ .Values.controller.nodeChassisSuffix }}

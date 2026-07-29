@@ -95,6 +95,35 @@ helm install kubetron-c2 oci://REGISTRY_NAME/REPOSITORY_NAME/kubetron \
 
 A follower (`sharedResources.create=false`) deploys **only** its manager, PodDisruptionBudget and NetworkPolicy; it reuses the owner's ServiceAccount, serving certificate and webhook Service (matched via a cross-release control-plane label, independent of the release name). `controlPlaneName` must equal the owner's fullname, and all releases must share one namespace. A claim is routed to a shard by its namespace's `kubetron-network` ConfigMap (`shard` key). This pairs naturally with GitOps (one argo Application per cluster) or an argo ApplicationSet.
 
+### Several Kubernetes clusters on one Neutron/OVN
+
+Nodes of two (or more) Kubernetes clusters can join the **same** OVN: each node's
+`ovn-controller` points at the same OVN SB and their tunnel endpoints are mutually
+routable. Pods then share tenant logical switches across clusters and reach each other
+directly at L2 — Cilium ClusterMesh is *not* required for that, since full Pods are off
+the cluster CNI entirely. (ClusterMesh remains useful for **dual-attached** Pods, whose
+`eth0` stays on Cilium: with a global Service they can also reach K8s Services in the
+other cluster.)
+
+In that topology **every installation must set `controller.clusterID`, and each cluster
+must use a different value.** The orphan collectors query Neutron and Octavia
+cluster-wide, but a given installation can only see the claims and Services of its own
+Kubernetes cluster — so another cluster's live port or load balancer is indistinguishable
+from an orphan and would be deleted. `clusterID` scopes ownership
+(`device_owner=kubetron:<id>`, `kubetron_<id>_<ns>_<svc>`) so each installation reclaims
+only what it created. Two further constraints apply:
+
+- **Node names must be unique across the clusters**, because the OVN chassis name is
+  derived from the node name (plus `controller.nodeChassisSuffix`); a collision points
+  `binding:host_id` at the wrong machine.
+- A Service's load balancer only carries **its own cluster's** endpoints. A VIP fronting
+  Pods from both clusters is reachable at the data-plane level (the OVN load balancer is
+  attached to the logical switch, which knows nothing about Kubernetes), but has to be
+  created out of band.
+
+Unlike `controller.shard`, which differs per release, `clusterID` is a property of the
+Kubernetes cluster: **all releases in the same cluster must share the same value.**
+
 ## Enrolling a workload
 
 Label the workload's Pods (or the StatefulSet / VMI template) and reference a claim:
@@ -160,6 +189,8 @@ The chart is fully parameterised; every value is documented inline in [`values.y
 | ------------------------------------- | -------------------------------------------------------------------------- | ---------------- |
 | `replicaCount`                        | Number of manager replicas for this release/shard (hot standbys)           | `2`              |
 | `controller.shard`                    | This release's shard = the Neutron/OVN cluster it manages                  | `default`        |
+| `controller.clusterID`                | Identity of THIS K8s cluster; set only when several kubetron installations share one Neutron/Octavia (scopes port ownership + LB names so each GC reclaims only its own) | `""`             |
+| `controller.enforceShardPlacement`    | Inject a shard nodeSelector into full Pods so they cannot land on another shard's OVN nodes | `false`          |
 | `controller.leaderElect`              | Enable leader election (required when `replicaCount > 1`)                   | `true`           |
 | `controller.gcInterval`               | Orphan Neutron port garbage-collector interval                             | `5m`             |
 | `controller.nodeChassisSuffix`        | Suffix appended to the node name to form the OVN chassis hostname          | `""`             |

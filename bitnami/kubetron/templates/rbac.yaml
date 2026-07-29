@@ -15,9 +15,14 @@ metadata:
   {{- end }}
 rules:
   # Pods: read for reconciliation; status/patch for the readiness-gate writeback.
+  # `patch` on the pod ITSELF (not just status) completes a pending identity: a Pod
+  # admitted before its claim is Bound carries the reserved `kubetron-identity-pending`
+  # attachment, and the binding controller swaps in the real one by patching the pod's
+  # annotations once host_id is written. Without it such a Pod stays in
+  # ContainerCreating forever and the only symptom is a controller-log RBAC error.
   - apiGroups: [""]
     resources: [pods]
-    verbs: [get, list, watch]
+    verbs: [get, list, watch, patch]
   - apiGroups: [""]
     resources: [pods/status]
     verbs: [patch]

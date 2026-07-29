@@ -139,6 +139,9 @@ openstack:
   ## @param openstack.networkEndpointOverride Pin the Neutron endpoint to the real Service instead of the Keystone catalog `neutron.<ns>.svc` alias (which an OpenStack redeploy may drop, breaking every claim). Sets OS_NETWORK_ENDPOINT_OVERRIDE. Set to "" to use the catalog.
   ##
   networkEndpointOverride: "http://neutron-server.openstack.svc.cluster.local:9696/"
+  ## @param openstack.loadbalancerEndpointOverride Pin the Octavia endpoint instead of resolving it from the Keystone catalog. Sets OS_LOADBALANCER_ENDPOINT_OVERRIDE. Required when kubetron does NOT run beside OpenStack — notably several Kubernetes clusters sharing one Neutron/Octavia, where the catalog publishes the owning cluster's ClusterIP names that no other cluster can resolve. Leaving it empty there does not fail loudly: ports keep working and only Service/LoadBalancer support dies, with one line in the manager log. Set to "" to use the catalog.
+  ##
+  loadbalancerEndpointOverride: ""
 ## @section kubetron manager (controller + webhook) parameters
 ##
 

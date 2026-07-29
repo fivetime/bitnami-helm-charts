@@ -151,6 +151,12 @@ spec:
             - name: OS_NETWORK_ENDPOINT_OVERRIDE
               value: {{ .Values.openstack.networkEndpointOverride | quote }}
             {{- end }}
+            {{- if .Values.openstack.loadbalancerEndpointOverride }}
+            # Several clusters on one Octavia: the catalog's URL belongs to the
+            # cluster that owns OpenStack and is unresolvable from the others.
+            - name: OS_LOADBALANCER_ENDPOINT_OVERRIDE
+              value: {{ .Values.openstack.loadbalancerEndpointOverride | quote }}
+            {{- end }}
             {{- if .Values.extraEnvVars }}
             {{- include "common.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
             {{- end }}

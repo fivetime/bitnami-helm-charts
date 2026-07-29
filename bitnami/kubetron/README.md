@@ -124,6 +124,14 @@ only what it created. Two further constraints apply:
 Unlike `controller.shard`, which differs per release, `clusterID` is a property of the
 Kubernetes cluster: **all releases in the same cluster must share the same value.**
 
+The cluster that does *not* host OpenStack must also pin both API endpoints —
+`openstack.networkEndpointOverride` **and** `openstack.loadbalancerEndpointOverride` —
+because the Keystone catalog publishes URLs that only resolve where OpenStack runs.
+The two fail differently: a missing Neutron override is obvious (every claim goes
+`Failed`), while a missing Octavia override is silent — ports keep working and only
+Service/LoadBalancer support and the LB orphan collector stop, leaving a single line
+in the manager log.
+
 ## Enrolling a workload
 
 Label the workload's Pods (or the StatefulSet / VMI template) and reference a claim:
@@ -182,6 +190,7 @@ The chart is fully parameterised; every value is documented inline in [`values.y
 | `openstack.existingSecret`          | Secret with the admin OpenStack credentials (envFrom, `OS_*` keys)                | `neutron-keystone-admin`                                     |
 | `openstack.domainNameSecretKey`     | Key in `existingSecret` to project into `OS_DOMAIN_NAME`                          | `OS_PROJECT_DOMAIN_NAME`                                     |
 | `openstack.networkEndpointOverride` | Pin the Neutron endpoint (bypass the Keystone catalog alias)                      | `http://neutron-server.openstack.svc.cluster.local:9696/`   |
+| `openstack.loadbalancerEndpointOverride` | Pin the Octavia endpoint (bypass the Keystone catalog). Required when kubetron does not run beside OpenStack | `""` |
 
 ### Manager (controller + webhook) parameters
 

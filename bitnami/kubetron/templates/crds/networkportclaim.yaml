@@ -203,6 +203,15 @@ spec:
                   type: string
                 networkID:
                   type: string
+                networkMTU:
+                  description: |-
+                    NetworkMTU is the Neutron network's `mtu`, copied verbatim into the
+                    generated NAD so ovs-cni sets it on the veth. Neutron owns the value
+                    (computed from global_physnet_mtu minus encapsulation, overridable per
+                    network in Horizon); kubetron only transports it, because a full pod's
+                    static IPAM never receives the DHCP option 26 that delivers it to a VM.
+                    0 = not reported, NAD omits it.
+                  type: integer
                 observedGeneration:
                   type: integer
                   format: int64

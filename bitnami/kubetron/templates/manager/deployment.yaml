@@ -112,6 +112,13 @@ spec:
             - -enforce-shard-placement
             {{- end }}
             - -zap-devel={{ .Values.controller.logDevel }}
+            # containerPorts must reach the process: they are rendered into
+            # ports/Service/NetworkPolicy/probes, so a non-default value that the
+            # binary never hears makes the pod fail its health probe and, with the
+            # default failurePolicy=Fail, breaks admission for every labelled Pod.
+            - -webhook-port={{ .Values.containerPorts.webhook }}
+            - -metrics-bind-address=:{{ .Values.containerPorts.metrics }}
+            - -health-probe-bind-address=:{{ .Values.containerPorts.health }}
             {{- if .Values.controller.nodeChassisSuffix }}
             - -node-chassis-suffix={{ .Values.controller.nodeChassisSuffix }}
             {{- end }}
@@ -136,8 +143,6 @@ spec:
           securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.containerSecurityContext "context" $) | nindent 12 }}
           {{- end }}
           env:
-            - name: KUBETRON_DEBUG
-              value: {{ ternary "true" "false" .Values.image.debug | quote }}
             {{- if and .Values.openstack.existingSecret .Values.openstack.domainNameSecretKey }}
             # gophercloud needs OS_DOMAIN_NAME when scoping by OS_PROJECT_NAME, but
             # OpenStack-Helm secrets only carry OS_PROJECT_DOMAIN_NAME.

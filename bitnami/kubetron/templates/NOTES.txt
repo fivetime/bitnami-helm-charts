@@ -81,7 +81,7 @@ Neutron/OVN clusters as follower releases (`sharedResources.create=false`, `cont
 {{- if .Values.apiserver.enabled }}
 
 AGGREGATED APISERVER is enabled: NetworkPortClaims are served from kubetron's own etcd
-({{ .Values.apiserver.etcd.replicaCount }} replica(s)) via an APIService, not a CRD. Do NOT also set crds.install=true.
+({{ .Values.apiserver.etcd.replicaCount }} replica(s)) via an APIService, not a CRD. Do NOT also set crds.install=true. Warning: crds.install=false also drops the NetworkPortPool CRD, which the aggregated apiserver does NOT serve — do not use this mode with warm pools.
 Migrating a live cluster from the CRD to the apiserver is a deliberate data migration
 (snapshot claims -> remove CRD -> enable apiserver -> restore claims). See DESIGN §10.5.
 {{- end }}

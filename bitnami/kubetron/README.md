@@ -225,12 +225,17 @@ The chart is fully parameterised; every value is documented inline in [`values.y
 
 | Name                             | Description                                                            | Value            |
 | -------------------------------- | --------------------------------------------------------------------- | ---------------- |
-| `crds.install`                   | Install the NetworkPortClaim CRD                                      | `true`           |
-| `crds.keep`                      | Keep the CRD on `helm uninstall`                                      | `true`           |
-| `apiserver.enabled`              | Deploy the aggregated apiserver + etcd instead of the CRD            | `false`          |
+| `crds.install`                   | Install the NetworkPortClaim **and** NetworkPortPool CRDs             | `true`           |
+| `crds.keep`                      | Keep both CRDs on `helm uninstall`                                    | `true`           |
+| `apiserver.enabled`              | Deploy the aggregated apiserver + etcd instead of the claim CRD       | `false`          |
 | `apiserver.replicaCount`         | Aggregated apiserver replicas                                         | `2`              |
 | `apiserver.etcd.replicaCount`    | Bundled etcd replicas (use an odd number for quorum)                 | `1`              |
 | `apiserver.etcd.persistence.size`| Size of the etcd PVC                                                  | `8Gi`            |
+
+> **The aggregated apiserver does not serve `NetworkPortPool`.** Both CRDs are rendered under the same
+> condition, so the `apiserver.enabled=true` + `crds.install=false` combination also removes the
+> NetworkPortPool API with nothing left serving it, while the manager keeps its pool controller and RBAC.
+> Do not enable the aggregated apiserver on a cluster that uses warm pools.
 
 ### Metrics and NetworkPolicy parameters
 

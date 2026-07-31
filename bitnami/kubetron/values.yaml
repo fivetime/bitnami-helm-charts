@@ -99,7 +99,6 @@ diagnosticMode:
 ## @param image.digest kubetron image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
 ## @param image.pullPolicy kubetron image pull policy
 ## @param image.pullSecrets Specify docker-registry secret names as an array
-## @param image.debug Specify if debug logs should be enabled
 ##
 image:
   registry: ghcr.io
@@ -120,7 +119,6 @@ image:
   pullSecrets: []
   ## Set to true if you would like to see extra information on logs
   ##
-  debug: false
 ## @section OpenStack connection parameters
 ##
 
@@ -581,11 +579,19 @@ metrics:
 ## @section CRD parameters
 ##
 
+## Both switches below cover BOTH CustomResourceDefinitions — NetworkPortClaim and
+## NetworkPortPool (warm pools) — they are rendered under the same condition.
+## WARNING: the aggregated apiserver only serves NetworkPortClaim; it has no storage for
+## NetworkPortPool (DESIGN-warm-pool §9 P3 "与 aggregated apiserver 集成" is not done).
+## `apiserver.enabled=true` therefore requires `crds.install=false`, which also removes the
+## NetworkPortPool API with nothing replacing it, while the manager still registers the pool
+## controller and its RBAC. Do not combine the aggregated apiserver with warm pools.
+##
 crds:
-  ## @param crds.install Install the NetworkPortClaim CustomResourceDefinition. Disable this when running the aggregated apiserver (`apiserver.enabled=true`), which serves the resource instead of a CRD.
+  ## @param crds.install Install the NetworkPortClaim and NetworkPortPool CustomResourceDefinitions. Must be disabled when running the aggregated apiserver (`apiserver.enabled=true`), which serves NetworkPortClaim only — warm pools lose their API.
   ##
   install: true
-  ## @param crds.keep Keep the CRD on `helm uninstall` (adds the helm.sh/resource-policy: keep annotation) to protect existing NetworkPortClaims
+  ## @param crds.keep Keep both CRDs on `helm uninstall` (adds the helm.sh/resource-policy: keep annotation) to protect existing NetworkPortClaims and NetworkPortPools
   ##
   keep: true
 ## @section Aggregated apiserver parameters (advanced, opt-in)
@@ -593,9 +599,11 @@ crds:
 
 ## The aggregated apiserver serves NetworkPortClaims from kubetron's OWN etcd instead of
 ## a CRD in the main cluster's etcd — an opt-in for very large deployments where claim
-## storage and watch fan-out should leave the core apiserver (see DESIGN §10.5). Switching
-## a live cluster from the CRD to the apiserver is a deliberate data migration; do not flip
-## `crds.install`/`apiserver.enabled` on an in-use cluster without following that procedure.
+## storage and watch fan-out should leave the core apiserver (see DESIGN §10.5). It serves
+## NetworkPortClaim ONLY — NetworkPortPool is not registered, so enabling it is incompatible
+## with warm pools (see the CRD section above). Switching a live cluster from the CRD to the
+## apiserver is a deliberate data migration; do not flip `crds.install`/`apiserver.enabled`
+## on an in-use cluster without following that procedure.
 ##
 apiserver:
   ## @param apiserver.enabled Deploy the aggregated apiserver (and its etcd) instead of relying on the CRD

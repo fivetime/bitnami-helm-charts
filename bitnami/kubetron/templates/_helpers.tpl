@@ -153,7 +153,7 @@ Compile all validation warnings into a single failure message.
 {{- define "kubetron.validateValues" -}}
 {{- $messages := list -}}
 {{- if and .Values.apiserver.enabled .Values.crds.install -}}
-{{- $messages = append $messages "kubetron: apiserver.enabled and crds.install are both true. The aggregated apiserver serves NetworkPortClaims INSTEAD of the CRD; installing both makes the API group ambiguous. Set crds.install=false when apiserver.enabled=true." -}}
+{{- $messages = append $messages "kubetron: apiserver.enabled and crds.install are both true. The aggregated apiserver serves NetworkPortClaims INSTEAD of the CRD; installing both makes the API group ambiguous. Set crds.install=false when apiserver.enabled=true — but note this ALSO removes the NetworkPortPool CRD (both are behind the same condition) and the aggregated apiserver does not serve it, so warm pools stop working while the manager still runs its pool controller." -}}
 {{- end -}}
 {{- if and .Values.apiserver.enabled (eq (int (mod (int .Values.apiserver.etcd.replicaCount) 2)) 0) -}}
 {{- $messages = append $messages "kubetron: apiserver.etcd.replicaCount should be an odd number (1, 3 or 5) so the cluster can form a quorum." -}}

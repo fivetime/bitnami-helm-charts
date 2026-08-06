@@ -1,0 +1,193 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-scripts" (include "common.names.fullname" .) }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+{{- if .Values.openvswitch.enabled }}
+  ovs-db.sh: |
+    #!/bin/bash
+    set -eu
+
+    # conf.db lives on a real filesystem, not on /run. On /run (tmpfs) a reboot destroys
+    # the database, and with it the chassis system-id and every bridge and port - the node
+    # comes back as a brand-new chassis and the old one lingers in the Southbound.
+    DB="${OVS_DB_DIR}/conf.db"
+    SCHEMA=/usr/share/openvswitch/vswitch.ovsschema
+
+    mkdir -p "${OVS_DB_DIR}" "${OVS_RUN_DIR}"
+
+    if [ ! -e "${DB}" ]; then
+      echo "creating ${DB}"
+      ovsdb-tool create "${DB}" "${SCHEMA}"
+    elif [ "$(ovsdb-tool needs-conversion "${DB}" "${SCHEMA}")" = "yes" ]; then
+      # The image was upgraded past the on-disk schema. Convert rather than recreate:
+      # recreating would silently discard the system-id and the bridge configuration.
+      echo "converting ${DB} to the schema shipped in this image"
+      ovsdb-tool convert "${DB}" "${SCHEMA}"
+    fi
+
+    exec ovsdb-server "${DB}" \
+      --pidfile="${OVS_RUN_DIR}/ovsdb-server.pid" \
+      --remote=punix:"${OVS_RUN_DIR}/db.sock" \
+      --remote=db:Open_vSwitch,Open_vSwitch,manager_options \
+      {{- if gt (int .Values.openvswitch.ptcpPort) 0 }}
+      --remote=ptcp:{{ .Values.openvswitch.ptcpPort }} \
+      {{- end }}
+      --private-key=db:Open_vSwitch,SSL,private_key \
+      --certificate=db:Open_vSwitch,SSL,certificate \
+      --bootstrap-ca-cert=db:Open_vSwitch,SSL,ca_cert \
+      -vconsole:info -vsyslog:off -vfile:off
+
+  ovs-vswitchd.sh: |
+    #!/bin/bash
+    set -eu
+    . /opt/ovn/lib.sh
+
+    wait_for_ovsdb
+
+    ovs-vsctl --db=unix:"${OVS_RUN_DIR}/db.sock" --timeout=30 --no-wait init
+    {{- range $k, $v := .Values.openvswitch.extraOtherConfig }}
+    ovs-vsctl --db=unix:"${OVS_RUN_DIR}/db.sock" --timeout=30 --no-wait set Open_vSwitch . other_config:{{ $k }}={{ $v | quote }}
+    {{- end }}
+
+    exec ovs-vswitchd unix:"${OVS_RUN_DIR}/db.sock" \
+      --pidfile="${OVS_RUN_DIR}/ovs-vswitchd.pid" \
+      --mlockall \
+      -vconsole:info -vsyslog:off -vfile:off
+{{- end }}
+
+  lib.sh: |
+    #!/bin/bash
+    # Shared helpers. Sourced, never executed.
+
+    # Wait for the ovsdb socket. When openvswitch.enabled is false this is how we attach
+    # to an OVS that something else on the node owns, so the wait is not merely a
+    # startup race - the socket may legitimately appear minutes later.
+    wait_for_ovsdb() {
+      local sock="${OVS_RUN_DIR}/db.sock" waited=0
+      while [ ! -S "${sock}" ]; do
+        if [ "${waited}" -ge "${OVS_WAIT_TIMEOUT:-300}" ]; then
+          echo "no ovsdb socket at ${sock} after ${waited}s." >&2
+          echo "  openvswitch.enabled=false means this chart expects Open vSwitch to be" >&2
+          echo "  running on the node already. Check that it is, and that it uses this" >&2
+          echo "  rundir (openvswitch.runPath)." >&2
+          return 1
+        fi
+        [ $((waited % 30)) -eq 0 ] && echo "waiting for ${sock} (${waited}s)"
+        sleep 2; waited=$((waited + 2))
+      done
+      # The socket existing is not the same as the database answering.
+      ovs-vsctl --db=unix:"${sock}" --timeout=30 --no-wait show >/dev/null
+    }
+
+    vsctl() { ovs-vsctl --db=unix:"${OVS_RUN_DIR}/db.sock" --timeout=30 --no-wait "$@"; }
+
+    # Set one external_ids key, or DELETE it when the value is empty.
+    #
+    # The delete branch is the whole point. `ovs-vsctl set open . external_ids:k=` - which
+    # is exactly what an empty variable expands to - is a syntax error: "argument does not
+    # end in = followed by a value". It aborts the entrypoint before ovn-controller ever
+    # starts, and the message never mentions which key was empty. Every optional key here
+    # goes through this function so that an unset value means "unset", not "crash".
+    set_ext() {
+      if [ -n "${2:-}" ]; then
+        vsctl set open . external_ids:"$1"="$2"
+      else
+        vsctl --if-exists remove open . external_ids "$1"
+      fi
+    }
+
+  ovn-controller.sh: |
+    #!/bin/bash
+    set -eu
+    . /opt/ovn/lib.sh
+
+    wait_for_ovsdb
+
+    # Tunnel endpoint. Precedence: explicit address, then interface, then the node IP.
+    encap_ip="${OVN_ENCAP_ADDRESS:-}"
+    if [ -z "${encap_ip}" ] && [ -n "${OVN_ENCAP_INTERFACE:-}" ]; then
+      encap_ip=$(ip -4 -o addr show "${OVN_ENCAP_INTERFACE}" 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -1)
+      if [ -z "${encap_ip}" ]; then
+        echo "ovn.encapInterface=${OVN_ENCAP_INTERFACE} has no IPv4 address on $(hostname)" >&2
+        exit 1
+      fi
+    fi
+    : "${encap_ip:=${NODE_IP}}"
+
+    # Chassis identity. Defaults to the node name: stable across reboots with nothing to
+    # persist, and legible in `ovn-sbctl show` instead of a bare UUID.
+    system_id="${OVN_SYSTEM_ID:-${NODE_NAME}}"
+
+    echo "chassis=${system_id} encap=${OVN_ENCAP_TYPE}/${encap_ip} sb=${OVN_SB_ADDRESS}"
+
+    vsctl set open . external_ids:system-id="${system_id}"
+    vsctl set open . external_ids:hostname="${NODE_NAME}"
+    vsctl set open . external_ids:rundir="${OVS_RUN_DIR}"
+
+    set_ext ovn-remote           "${OVN_SB_ADDRESS}"
+    set_ext ovn-encap-type       "${OVN_ENCAP_TYPE}"
+    set_ext ovn-encap-ip         "${encap_ip}"
+    set_ext ovn-bridge           "${OVN_BRIDGE}"
+    set_ext ovn-bridge-mappings  "${OVN_BRIDGE_MAPPINGS}"
+    set_ext ovn-monitor-all      "${OVN_MONITOR_ALL}"
+    set_ext ovn-cms-options      "${OVN_CMS_OPTIONS:-}"
+    set_ext ovn-remote-probe-interval "${OVN_REMOTE_PROBE_INTERVAL:-}"
+    {{- range $k, $v := .Values.ovn.extraExternalIDs }}
+    set_ext {{ $k | quote }} {{ $v | quote }}
+    {{- end }}
+
+    {{- if .Values.ovn.provider.createBridge }}
+    # Provider bridge. No IP is ever moved onto it - see ovn.provider.interface in
+    # values.yaml for why a container must not do that to a live NIC.
+    vsctl --may-exist add-br "${OVN_PROVIDER_BRIDGE}" -- set bridge "${OVN_PROVIDER_BRIDGE}" protocols=OpenFlow13
+    if [ -n "${OVN_PROVIDER_INTERFACE:-}" ]; then
+      if ip link show "${OVN_PROVIDER_INTERFACE}" >/dev/null 2>&1; then
+        if ip -4 -o addr show "${OVN_PROVIDER_INTERFACE}" | grep -q inet; then
+          echo "refusing to enslave ${OVN_PROVIDER_INTERFACE}: it has an IPv4 address." >&2
+          echo "  Moving it into ${OVN_PROVIDER_BRIDGE} would take this node off the network" >&2
+          echo "  mid-flight. Use an address-less NIC, or build the bridge out of band and" >&2
+          echo "  set ovn.provider.createBridge=false." >&2
+          exit 1
+        fi
+        vsctl --may-exist add-port "${OVN_PROVIDER_BRIDGE}" "${OVN_PROVIDER_INTERFACE}"
+      else
+        echo "ovn.provider.interface=${OVN_PROVIDER_INTERFACE} not present on $(hostname)" >&2
+        exit 1
+      fi
+    fi
+    {{- end }}
+
+    mkdir -p "${OVN_RUNDIR}"
+    rm -f "${OVN_RUNDIR}"/ovn-controller.*.ctl "${OVN_RUNDIR}"/ovn-controller.pid
+
+    # exec, so ovn-controller is PID 1 in the container and gets SIGTERM directly. It
+    # deregisters the chassis on the way out; a wrapper swallowing the signal would leave
+    # a stale chassis in the Southbound until the probe times out.
+    exec ovn-controller unix:"${OVS_RUN_DIR}/db.sock" \
+      --no-chdir \
+      --pidfile="${OVN_RUNDIR}/ovn-controller.pid" \
+      {{- if .Values.ovn.tls.enabled }}
+      -p /etc/ovn/tls/tls.key -c /etc/ovn/tls/tls.crt -C /etc/ovn/tls/ca.crt \
+      {{- end }}
+      -vconsole:"${OVN_LOG_LEVEL}" -vsyslog:off -vfile:off
+
+  ovn-controller-probe.sh: |
+    #!/bin/bash
+    # Readiness means connected to the Southbound, not merely "the process is alive".
+    # A chassis that is up but disconnected accepts no port bindings, so reporting it
+    # Ready would hand traffic to a node that cannot carry it.
+    set -eu
+    status=$(ovn-appctl -t ovn-controller connection-status 2>/dev/null) || {
+      echo "ovn-controller is not answering on its control socket"; exit 1; }
+    [ "${status}" = "connected" ] || { echo "southbound: ${status}"; exit 1; }

@@ -1,0 +1,45 @@
+# Copyright Broadcom, Inc. All Rights Reserved.
+# SPDX-License-Identifier: APACHE-2.0
+
+annotations:
+  images: |
+    - name: ovn
+      image: quay.io/airshipit/ovn:ubuntu_noble
+  licenses: Apache-2.0
+  tanzuCategory: clusterUtility
+apiVersion: v2
+appVersion: 24.03.6
+dependencies:
+- name: common
+  repository: oci://registry-1.docker.io/bitnamicharts
+  tags:
+  - bitnami-common
+  version: 2.x.x
+description: Turns Kubernetes nodes into OVN chassis that join an EXTERNAL OVN control
+  plane. It runs ovn-controller (and, optionally, Open vSwitch) as a host-network
+  DaemonSet and points it at a Southbound database you already operate - DevStack,
+  OpenStack-Helm, a distro OVN, or an ovsdb-relay fan-out. It deploys no Northbound,
+  no Southbound and no northd, so several Kubernetes clusters can share one OVN
+  without any of them owning it.
+home: https://www.ovn.org
+icon: https://www.ovn.org/images/ovn-logo.png
+keywords:
+- ovn
+- openvswitch
+- ovs
+- chassis
+- openstack
+- neutron
+- networking
+- sdn
+- multus
+- kubetron
+maintainers:
+- name: Broadcom, Inc. All Rights Reserved.
+  url: https://github.com/bitnami/charts
+name: ovn-chassis
+sources:
+- https://github.com/ovn-org/ovn
+- https://github.com/bitnami/charts/tree/main/bitnami/ovn-chassis
+type: application
+version: 1.0.0

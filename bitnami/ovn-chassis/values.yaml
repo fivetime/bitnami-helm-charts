@@ -1,0 +1,409 @@
+# Copyright Broadcom, Inc. All Rights Reserved.
+# SPDX-License-Identifier: APACHE-2.0
+
+## @section Global parameters
+## Global Docker image parameters
+## Please, note that this will override the image parameters, including dependencies, configured to use the global value
+## Current available global Docker image parameters: imageRegistry, imagePullSecrets and storageClass
+##
+
+## @param global.imageRegistry Global Docker image registry
+## @param global.imagePullSecrets Global Docker registry secret names as an array
+##
+global:
+  imageRegistry: ""
+  ## E.g.
+  ## imagePullSecrets:
+  ##   - myRegistryKeySecretName
+  ##
+  imagePullSecrets: []
+  ## Compatibility adaptations for Kubernetes platforms
+  ##
+  compatibility:
+    ## Compatibility adaptations for Openshift
+    ##
+    openshift:
+      ## @param global.compatibility.openshift.adaptSecurityContext Adapt the securityContext sections of the deployment to make them compatible with Openshift restricted-v2 SCC: remove runAsUser, runAsGroup and fsGroup and let the platform use their allowed default IDs. Possible values: auto (apply if the detected running cluster is Openshift), force (perform the adaptation always), disabled (do not perform adaptation)
+      ##
+      adaptSecurityContext: auto
+## @section Common parameters
+##
+
+## @param kubeVersion Force target Kubernetes version (using Helm capabilities if not set)
+##
+kubeVersion: ""
+## @param nameOverride String to partially override ovn-chassis.fullname template (will maintain the release name)
+##
+nameOverride: ""
+## @param fullnameOverride String to fully override ovn-chassis.fullname template
+##
+fullnameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+##
+namespaceOverride: ""
+## @param commonAnnotations Common annotations to add to all resources (evaluated as a template)
+##
+commonAnnotations: {}
+## @param commonLabels Common labels to add to all resources (evaluated as a template)
+##
+commonLabels: {}
+## @param extraDeploy Array of extra objects to deploy with the release (evaluated as a template)
+##
+extraDeploy: []
+
+## @section OVN control plane connection
+## This is the ONLY section you must fill in. Everything below it has a working default.
+##
+ovn:
+  ## Southbound database. THE required value.
+  ##
+  ## ovn-controller speaks to the Southbound DB and nothing else - it never opens the
+  ## Northbound. So this one address is the whole integration.
+  ##
+  ## Accepts anything ovsdb takes as a `--remote`, which is what makes relays and HA
+  ## a values-only change rather than a chart change:
+  ##   tcp:10.0.0.1:6642                       single DB (DevStack, all-in-one)
+  ##   tcp:10.0.0.1:6642,tcp:10.0.0.2:6642     RAFT cluster, client-side failover
+  ##   tcp:relay.ovn.svc:6642                  ovsdb-relay fan-out (recommended at scale:
+  ##                                           relays absorb the read load that thousands of
+  ##                                           chassis put on the SB leader)
+  ##   ssl:10.0.0.1:6642                       TLS - also set ovn.tls.*
+  ##
+  ## @param ovn.southbound.address OVN Southbound DB remote(s). REQUIRED - the chart refuses to render without it
+  ##
+  southbound:
+    address: ""
+  ## Northbound database. OPTIONAL, and deliberately not required.
+  ##
+  ## Nothing this chart runs needs the NB. It is wired in only so that `ovn-nbctl` works
+  ## when you exec into the pod to debug, and so the address is recorded in one obvious
+  ## place. Leaving it empty costs you nothing but that convenience.
+  ##
+  ## @param ovn.northbound.address OVN Northbound DB remote(s). Optional; only used by CLI tools inside the pod
+  ##
+  northbound:
+    address: ""
+  ## @param ovn.tls.enabled Use SSL/TLS for the Southbound connection. Requires ovn.tls.existingSecret and `ssl:` addresses
+  ## @param ovn.tls.existingSecret Secret holding the client certificate. Keys: tls.crt, tls.key, ca.crt
+  ##
+  tls:
+    enabled: false
+    existingSecret: ""
+
+  ## @section Chassis identity and tunnelling
+  ##
+
+  ## Chassis name as it appears in `ovn-sbctl show` and in Neutron's agent list.
+  ##
+  ## Empty means "use the Kubernetes node name", which is almost always what you want:
+  ## it is stable across reboots and pod restarts with no state to persist, and the
+  ## chassis is instantly recognisable instead of being a bare UUID.
+  ##
+  ## Hard constraint when several clusters share one OVN: node names must be unique
+  ## across ALL of them. Two chassis with the same system-id are one chassis as far as
+  ## the Southbound is concerned, and they will fight over port bindings.
+  ##
+  ## @param ovn.systemID Chassis system-id. Empty => the Kubernetes node name
+  ##
+  systemID: ""
+  ## @param ovn.encapType Tunnel encapsulation. `geneve` (Neutron's default) or `vxlan`
+  ##
+  encapType: geneve
+  ## Tunnel endpoint address, resolved in this order:
+  ##   1. ovn.encapAddress if set
+  ##   2. the first IPv4 on ovn.encapInterface if set
+  ##   3. the node IP (Downward API status.hostIP)
+  ##
+  ## (3) is the default because it needs no guessing and no host inspection. Set (2) when
+  ## tunnels must leave by a dedicated NIC rather than the node's primary address - a
+  ## separate underlay for east-west traffic is the usual reason.
+  ##
+  ## @param ovn.encapInterface Interface whose first IPv4 becomes the tunnel endpoint. Empty => use the node IP
+  ## @param ovn.encapAddress Tunnel endpoint address, set literally. Wins over encapInterface
+  ##
+  encapInterface: ""
+  encapAddress: ""
+  ## @param ovn.bridge Integration bridge. ovn-controller creates it; every pod/VM port lands here
+  ##
+  bridge: br-int
+  ## @param ovn.monitorAll Have ovn-controller monitor the whole SB instead of only rows it needs. Costs memory on every chassis; occasionally worth it for debugging
+  ##
+  monitorAll: false
+  ## @param ovn.availabilityZones Value for the `availability-zones=` CMS option (e.g. `nova`). Empty => not advertised
+  ##
+  availabilityZones: ""
+  ## @param ovn.extraCMSOptions Extra `ovn-cms-options` entries, comma-separated, appended to whatever the gateway and AZ settings produce
+  ##
+  extraCMSOptions: ""
+  ## @param ovn.extraExternalIDs Extra `Open_vSwitch.external_ids` to set, as a map. Empty values delete the key rather than writing `key=`
+  ## E.g.
+  ## extraExternalIDs:
+  ##   ovn-openflow-probe-interval: "60"
+  ##
+  extraExternalIDs: {}
+  ## @param ovn.logLevel ovn-controller console log level: emer, err, warn, info, dbg
+  ##
+  logLevel: info
+
+  ## @section Distributed chassis gateway
+  ##
+
+  ## Advertises `enable-chassis-as-gw`, which makes Neutron eligible to schedule tenant
+  ## routers' external gateway ports onto these nodes.
+  ##
+  ## Off by default, and that default is load-bearing rather than merely conservative.
+  ## A chassis that claims to be a gateway but has no working provider bridge becomes a
+  ## black hole: Neutron schedules the gateway there, north-south traffic follows, and
+  ## nothing comes back. The failure is silent - the port binds, the router looks healthy.
+  ## So enabling this is an assertion that ovn.provider below actually reaches the
+  ## provider network on every node this release targets.
+  ##
+  ## For a mixed cluster (only some nodes are gateways), install the chart twice with
+  ## different nodeSelectors rather than trying to express it in one release.
+  ##
+  ## @param ovn.gateway.enabled Advertise this chassis as eligible to host distributed gateway ports
+  ##
+  gateway:
+    enabled: false
+
+  ## @section Provider network
+  ##
+
+  provider:
+    ## @param ovn.provider.bridge Provider bridge name
+    ##
+    bridge: br-ex
+    ## @param ovn.provider.physicalNetwork Neutron physical network name mapped to that bridge. Must match a physnet Neutron knows, or provider ports will not bind
+    ##
+    physicalNetwork: external
+    ## @param ovn.provider.createBridge Create the bridge if missing. Leave false when the bridge is prepared out of band (netplan, ifupdown, another chart)
+    ##
+    createBridge: false
+    ## Physical interface to enslave to the bridge. Only used when createBridge is true.
+    ##
+    ## This chart deliberately does NOT migrate the interface's IP onto the bridge. Doing
+    ## that from a container means flushing an address off a live NIC and hoping the
+    ## re-add succeeds; if the pod is killed in between, the node is off the network and
+    ## nothing in the cluster can reach it to fix it. Use an interface with no address,
+    ## or prepare the bridge out of band.
+    ##
+    ## @param ovn.provider.interface Physical interface to add to the provider bridge. Must have no IP - see the comment above
+    ##
+    interface: ""
+    ## @param ovn.provider.bridgeMappings Full `ovn-bridge-mappings` string, overriding the physicalNetwork:bridge pair above. For multiple physnets
+    ##
+    bridgeMappings: ""
+
+## @section Open vSwitch (optional component)
+##
+## Enabled by default: on a stock node there is no OVS, and ovn-controller without OVS
+## is inert. Turn it off when something else already owns Open vSwitch on these nodes -
+## distro packages under systemd, another chart, or a pre-existing OVS that ovs-cni is
+## already using - and this chart will attach to that instead.
+##
+## Sharing note when disabled: only one process may own /run/openvswitch/db.sock. If a
+## host ovsdb-server and a pod one both start, the last to bind wins and the loser's
+## clients silently lose br-int. Mask the host units (`systemctl mask ovsdb-server
+## ovs-vswitchd`) before enabling this, or leave this off and use the host's.
+##
+openvswitch:
+  ## @param openvswitch.enabled Run Open vSwitch in this DaemonSet. Disable to attach to an OVS already running on the node
+  ##
+  enabled: true
+  ## Where conf.db lives on the host.
+  ##
+  ## Deliberately NOT under /run: that is a tmpfs, so the database - and with it the
+  ## chassis identity and every bridge/port you configured - is destroyed on reboot.
+  ##
+  ## @param openvswitch.dbPath Host directory holding conf.db. Must survive reboots
+  ##
+  dbPath: /var/lib/openvswitch
+  ## @param openvswitch.runPath Host directory for sockets and pidfiles. This is what ovs-cni and out-of-band `ovs-vsctl` look for
+  ##
+  runPath: /run/openvswitch
+  ## @param openvswitch.ptcpPort Also listen for ovsdb on this TCP port (host network). 0 disables. Any port here is unauthenticated - bind it only on a trusted underlay
+  ##
+  ptcpPort: 0
+  ## @param openvswitch.loadKernelModule Run an init container that modprobes `openvswitch`. Disable on nodes where the module is built in or already loaded
+  ##
+  loadKernelModule: true
+  ## @param openvswitch.extraOtherConfig Extra `Open_vSwitch.other_config` entries, as a map
+  ## E.g.
+  ## extraOtherConfig:
+  ##   n-handler-threads: "4"
+  ##
+  extraOtherConfig: {}
+  ## @param openvswitch.resources Resource requests/limits for the OVS containers
+  ## @param openvswitch.resourcesPreset Preset for resources when `openvswitch.resources` is empty: nano, micro, small, medium, large, xlarge, 2xlarge
+  ##
+  resources: {}
+  resourcesPreset: "micro"
+
+## @section ovn-chassis image
+##
+
+## Bitnami does not publish an OVN image, so this defaults to the OpenStack-Helm one.
+## It is the same image the OSH `ovn` chart uses, and it carries ovsdb-server,
+## ovs-vswitchd, ovn-controller and the ovs/ovn CLI tools in one layer - which is why
+## this chart needs only one image for both components.
+##
+## Version rule: ovn-controller must not be NEWER than the Southbound it connects to.
+## OVN supports central-first upgrades, so an older chassis against a newer SB is a
+## supported state; the reverse is not.
+##
+## @param image.registry OVN image registry
+## @param image.repository OVN image repository
+## @param image.tag OVN image tag
+## @param image.digest OVN image digest, takes precedence over tag
+## @param image.pullPolicy OVN image pull policy
+## @param image.pullSecrets OVN image pull secrets
+## @param image.debug Enable image debug mode
+##
+image:
+  registry: quay.io
+  repository: airshipit/ovn
+  tag: ubuntu_noble
+  digest: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+  debug: false
+
+## @section Deployment parameters
+##
+
+## @param hostAliases Deployment pod host aliases
+##
+hostAliases: []
+## @param dnsPolicy Pod DNS policy. Defaults to ClusterFirstWithHostNet, which is required for name resolution to work on host network
+##
+dnsPolicy: ClusterFirstWithHostNet
+## @param updateStrategy.type DaemonSet strategy type
+## @param updateStrategy.rollingUpdate.maxUnavailable Maximum number of nodes updated at once
+##
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+## @param priorityClassName Priority class name. `system-node-critical` is a reasonable choice: losing this pod takes the node's dataplane down
+##
+priorityClassName: ""
+## @param podLabels Extra labels for pods
+## @param podAnnotations Extra annotations for pods
+##
+podLabels: {}
+podAnnotations: {}
+## @param nodeSelector Node labels for pod assignment. Empty targets every schedulable node
+##
+nodeSelector: {}
+## @param tolerations Tolerations for pod assignment
+##
+tolerations: []
+## @param affinity Affinity for pod assignment. Overrides nodeSelector when both are set
+##
+affinity: {}
+## @param resources Resource requests/limits for the ovn-controller container
+## @param resourcesPreset Preset for resources when `resources` is empty: nano, micro, small, medium, large, xlarge, 2xlarge
+##
+resources: {}
+resourcesPreset: "micro"
+## Security contexts.
+##
+## Both components need real privilege and there is no useful way around it:
+## ovs-vswitchd programs the kernel datapath and ovn-controller drives netlink and the
+## OVS control socket. The knobs are here so you can tighten them for a specific
+## kernel/CNI combination, not because the defaults are expected to be enough.
+##
+## @param podSecurityContext.enabled Enable pod security context
+## @param podSecurityContext.fsGroup Group ID for the pod's volumes
+##
+podSecurityContext:
+  enabled: true
+  fsGroup: 0
+## @param containerSecurityContext.enabled Enable container security context
+## @param containerSecurityContext.runAsUser User ID for the containers
+## @param containerSecurityContext.runAsNonRoot Run containers as non-root
+## @param containerSecurityContext.privileged Run containers as privileged
+## @param containerSecurityContext.readOnlyRootFilesystem Mount the container root filesystem read-only
+## @param containerSecurityContext.allowPrivilegeEscalation Allow privilege escalation
+## @param containerSecurityContext.capabilities.add Linux capabilities to add
+##
+containerSecurityContext:
+  enabled: true
+  runAsUser: 0
+  runAsNonRoot: false
+  privileged: true
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: true
+  capabilities:
+    add: ["NET_ADMIN", "SYS_NICE", "SYS_ADMIN"]
+## @param livenessProbe.enabled Enable liveness probe on ovn-controller
+## @param livenessProbe.initialDelaySeconds Initial delay
+## @param livenessProbe.periodSeconds Period
+## @param livenessProbe.timeoutSeconds Timeout
+## @param livenessProbe.failureThreshold Failure threshold
+## @param livenessProbe.successThreshold Success threshold
+##
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 5
+  successThreshold: 1
+## Readiness means "connected to the Southbound", not merely "process alive".
+##
+## @param readinessProbe.enabled Enable readiness probe on ovn-controller
+## @param readinessProbe.initialDelaySeconds Initial delay
+## @param readinessProbe.periodSeconds Period
+## @param readinessProbe.timeoutSeconds Timeout
+## @param readinessProbe.failureThreshold Failure threshold
+## @param readinessProbe.successThreshold Success threshold
+##
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 10
+  failureThreshold: 4
+  successThreshold: 1
+## @param customLivenessProbe Custom livenessProbe that overrides the default one
+## @param customReadinessProbe Custom readinessProbe that overrides the default one
+##
+customLivenessProbe: {}
+customReadinessProbe: {}
+## @param terminationGracePeriodSeconds Grace period. ovn-controller leaving cleanly lets the SB drop the chassis promptly instead of waiting for the probe to expire
+##
+terminationGracePeriodSeconds: 30
+## @param extraEnvVars Extra environment variables for all containers
+## @param extraEnvVarsCM ConfigMap with extra environment variables
+## @param extraEnvVarsSecret Secret with extra environment variables
+##
+extraEnvVars: []
+extraEnvVarsCM: ""
+extraEnvVarsSecret: ""
+## @param extraVolumes Extra volumes for the pod
+## @param extraVolumeMounts Extra volume mounts for all containers
+##
+extraVolumes: []
+extraVolumeMounts: []
+## @param initContainers Extra init containers
+## @param sidecars Extra sidecar containers
+##
+initContainers: []
+sidecars: []
+
+## @section RBAC parameters
+##
+## Nothing this chart runs calls the Kubernetes API. The ServiceAccount exists only so
+## the pod has an identity for admission and audit, and its token is not mounted.
+##
+## @param serviceAccount.create Create a ServiceAccount
+## @param serviceAccount.name Name of the ServiceAccount. Generated if empty
+## @param serviceAccount.annotations Annotations for the ServiceAccount
+## @param serviceAccount.automountServiceAccountToken Mount the SA token. No component needs it
+##
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automountServiceAccountToken: false

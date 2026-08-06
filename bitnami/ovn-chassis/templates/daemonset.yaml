@@ -1,0 +1,261 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- include "ovn-chassis.validateValues" . }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "common.names.fullname" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 6 }}
+  updateStrategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 8 }}
+        {{- if .Values.podLabels }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+      annotations:
+        # Roll the pods when the scripts change. Without this a values edit that only
+        # touches the entrypoint updates the ConfigMap and nothing else happens.
+        checksum/scripts: {{ include (print $.Template.BasePath "/configmap-scripts.yaml") . | sha256sum }}
+        {{- if .Values.commonAnnotations }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podAnnotations }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.podAnnotations "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "ovn-chassis.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "ovn-chassis.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+      # Host network is not a hardening choice to revisit: the tunnel endpoint must be a
+      # node address, and ovs-vswitchd programs the node's datapath.
+      hostNetwork: true
+      dnsPolicy: {{ .Values.dnsPolicy }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
+      {{- if .Values.hostAliases }}
+      hostAliases: {{- include "common.tplvalues.render" (dict "value" .Values.hostAliases "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.affinity }}
+      affinity: {{- include "common.tplvalues.render" (dict "value" .Values.affinity "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.nodeSelector "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.tolerations "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.podSecurityContext.enabled }}
+      securityContext: {{- omit .Values.podSecurityContext "enabled" | toYaml | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      initContainers:
+        {{- if and .Values.openvswitch.enabled .Values.openvswitch.loadKernelModule }}
+        - name: load-kernel-module
+          image: {{ include "ovn-chassis.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -eu
+              # Already built in or already loaded is success, not an error.
+              if [ -d /sys/module/openvswitch ]; then
+                echo "openvswitch module already present"; exit 0
+              fi
+              modprobe openvswitch
+          volumeMounts:
+            - name: lib-modules
+              mountPath: /lib/modules
+              readOnly: true
+        {{- end }}
+        {{- if .Values.initContainers }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.initContainers "context" $) | nindent 8 }}
+        {{- end }}
+      containers:
+        {{- if .Values.openvswitch.enabled }}
+        - name: ovsdb-server
+          image: {{ include "ovn-chassis.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          command: ["/opt/ovn/ovs-db.sh"]
+          env:
+            - name: OVS_DB_DIR
+              value: {{ .Values.openvswitch.dbPath | quote }}
+            - name: OVS_RUN_DIR
+              value: {{ .Values.openvswitch.runPath | quote }}
+            {{- include "ovn-chassis.commonEnv" . | nindent 12 }}
+          {{- include "ovn-chassis.envFrom" . | nindent 10 }}
+          {{- if .Values.openvswitch.resources }}
+          resources: {{- toYaml .Values.openvswitch.resources | nindent 12 }}
+          {{- else if ne .Values.openvswitch.resourcesPreset "none" }}
+          resources: {{- include "common.resources.preset" (dict "type" .Values.openvswitch.resourcesPreset) | nindent 12 }}
+          {{- end }}
+          livenessProbe:
+            exec:
+              command: ["/usr/bin/ovs-vsctl", "--db=unix:{{ .Values.openvswitch.runPath }}/db.sock", "--timeout=10", "show"]
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 15
+            failureThreshold: 5
+          volumeMounts:
+            {{- include "ovn-chassis.commonVolumeMounts" . | nindent 12 }}
+            - name: ovs-db
+              mountPath: {{ .Values.openvswitch.dbPath }}
+        - name: ovs-vswitchd
+          image: {{ include "ovn-chassis.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          command: ["/opt/ovn/ovs-vswitchd.sh"]
+          env:
+            - name: OVS_RUN_DIR
+              value: {{ .Values.openvswitch.runPath | quote }}
+            {{- include "ovn-chassis.commonEnv" . | nindent 12 }}
+          {{- include "ovn-chassis.envFrom" . | nindent 10 }}
+          {{- if .Values.openvswitch.resources }}
+          resources: {{- toYaml .Values.openvswitch.resources | nindent 12 }}
+          {{- else if ne .Values.openvswitch.resourcesPreset "none" }}
+          resources: {{- include "common.resources.preset" (dict "type" .Values.openvswitch.resourcesPreset) | nindent 12 }}
+          {{- end }}
+          livenessProbe:
+            exec:
+              command: ["/usr/bin/ovs-appctl", "-t", "ovs-vswitchd", "version"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 15
+            failureThreshold: 5
+          volumeMounts:
+            {{- include "ovn-chassis.commonVolumeMounts" . | nindent 12 }}
+            - name: lib-modules
+              mountPath: /lib/modules
+              readOnly: true
+        {{- end }}
+        - name: ovn-controller
+          image: {{ include "ovn-chassis.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          command: ["/opt/ovn/ovn-controller.sh"]
+          env:
+            - name: OVS_RUN_DIR
+              value: {{ .Values.openvswitch.runPath | quote }}
+            - name: OVN_RUNDIR
+              value: /run/ovn
+            - name: OVN_SB_ADDRESS
+              value: {{ include "ovn-chassis.sbAddress" . | quote }}
+            {{- if .Values.ovn.northbound.address }}
+            # Not used by ovn-controller. Present so `ovn-nbctl` works when you exec in.
+            - name: OVN_NB_DB
+              value: {{ include "ovn-chassis.nbAddress" . | quote }}
+            {{- end }}
+            - name: OVN_SB_DB
+              value: {{ include "ovn-chassis.sbAddress" . | quote }}
+            - name: OVN_ENCAP_TYPE
+              value: {{ .Values.ovn.encapType | quote }}
+            - name: OVN_ENCAP_INTERFACE
+              value: {{ .Values.ovn.encapInterface | quote }}
+            - name: OVN_ENCAP_ADDRESS
+              value: {{ .Values.ovn.encapAddress | quote }}
+            - name: OVN_SYSTEM_ID
+              value: {{ .Values.ovn.systemID | quote }}
+            - name: OVN_BRIDGE
+              value: {{ .Values.ovn.bridge | quote }}
+            - name: OVN_BRIDGE_MAPPINGS
+              value: {{ include "ovn-chassis.bridgeMappings" . | quote }}
+            - name: OVN_CMS_OPTIONS
+              value: {{ include "ovn-chassis.cmsOptions" . | quote }}
+            - name: OVN_MONITOR_ALL
+              value: {{ .Values.ovn.monitorAll | quote }}
+            - name: OVN_PROVIDER_BRIDGE
+              value: {{ .Values.ovn.provider.bridge | quote }}
+            - name: OVN_PROVIDER_INTERFACE
+              value: {{ .Values.ovn.provider.interface | quote }}
+            - name: OVN_LOG_LEVEL
+              value: {{ .Values.ovn.logLevel | quote }}
+            {{- include "ovn-chassis.commonEnv" . | nindent 12 }}
+          {{- include "ovn-chassis.envFrom" . | nindent 10 }}
+          {{- if .Values.resources }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          {{- else if ne .Values.resourcesPreset "none" }}
+          resources: {{- include "common.resources.preset" (dict "type" .Values.resourcesPreset) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.customLivenessProbe }}
+          livenessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customLivenessProbe "context" $) | nindent 12 }}
+          {{- else if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            exec:
+              command: ["/usr/bin/ovn-appctl", "-t", "ovn-controller", "version"]
+            {{- include "common.tplvalues.render" (dict "value" (omit .Values.livenessProbe "enabled") "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.customReadinessProbe }}
+          readinessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customReadinessProbe "context" $) | nindent 12 }}
+          {{- else if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            exec:
+              command: ["/opt/ovn/ovn-controller-probe.sh"]
+            {{- include "common.tplvalues.render" (dict "value" (omit .Values.readinessProbe "enabled") "context" $) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            {{- include "ovn-chassis.commonVolumeMounts" . | nindent 12 }}
+            - name: ovn-run
+              mountPath: /run/ovn
+            {{- if .Values.ovn.tls.enabled }}
+            - name: ovn-tls
+              mountPath: /etc/ovn/tls
+              readOnly: true
+            {{- end }}
+        {{- if .Values.sidecars }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.sidecars "context" $) | nindent 8 }}
+        {{- end }}
+      volumes:
+        - name: scripts
+          configMap:
+            name: {{ printf "%s-scripts" (include "common.names.fullname" .) }}
+            defaultMode: 0755
+        - name: ovs-run
+          hostPath:
+            path: {{ .Values.openvswitch.runPath }}
+            type: DirectoryOrCreate
+        {{- if .Values.openvswitch.enabled }}
+        - name: ovs-db
+          hostPath:
+            path: {{ .Values.openvswitch.dbPath }}
+            type: DirectoryOrCreate
+        {{- end }}
+        - name: lib-modules
+          hostPath:
+            path: /lib/modules
+            type: Directory
+        # Pod-local on purpose. Nothing outside this pod consumes ovn-controller's
+        # unixctl socket, and putting it on the host would only invite debugging from the
+        # node - which needs client binaries the node does not have, and installing them
+        # drags in the OVS systemd units that then fight for db.sock.
+        - name: ovn-run
+          emptyDir: {}
+        {{- if .Values.ovn.tls.enabled }}
+        - name: ovn-tls
+          secret:
+            secretName: {{ .Values.ovn.tls.existingSecret }}
+        {{- end }}
+        {{- if .Values.extraVolumes }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumes "context" $) | nindent 8 }}
+        {{- end }}

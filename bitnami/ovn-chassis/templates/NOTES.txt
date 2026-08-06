@@ -1,0 +1,76 @@
+CHART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+{{ .Release.Name }} turns {{ if .Values.nodeSelector }}the selected nodes{{ else }}every schedulable node{{ end }} into an OVN chassis
+attached to the Southbound database at:
+
+    {{ include "ovn-chassis.sbAddress" . }}
+
+Open vSwitch: {{ if .Values.openvswitch.enabled }}deployed by this chart{{ else }}NOT deployed - attaching to the OVS already on the node{{ end }}
+Chassis name: {{ if .Values.ovn.systemID }}{{ .Values.ovn.systemID }}{{ else }}the Kubernetes node name{{ end }}
+Gateway:      {{ if .Values.ovn.gateway.enabled }}ENABLED - these chassis advertise enable-chassis-as-gw{{ else }}disabled{{ end }}
+Tunnel from:  {{ if .Values.ovn.encapAddress }}{{ .Values.ovn.encapAddress }} (ovn.encapAddress){{ else if .Values.ovn.encapInterface }}the first IPv4 on {{ .Values.ovn.encapInterface }} (ovn.encapInterface){{ else }}the node IP - see the warning below{{ end }}
+
+{{- if and (not .Values.ovn.encapAddress) (not .Values.ovn.encapInterface) }}
+
+## ! Check which network your tunnels are using
+
+Neither ovn.encapAddress nor ovn.encapInterface is set, so each chassis will announce
+its Kubernetes node IP as the tunnel endpoint. That is right only if the node's primary
+address is also your overlay underlay.
+
+If the existing chassis in this OVN tunnel over a *different* network - a dedicated
+underlay is the usual reason - these nodes will join on the wrong one. It does not fail
+loudly: as long as the two networks are mutually routable the tunnels come up and traffic
+flows, you simply end up with a split underlay, an MTU that no longer matches what
+Neutron computed, and no obvious symptom until something fragments.
+
+Compare, then pin it if they differ:
+
+    ovn-sbctl --columns=chassis_name,ip --format=table list encap
+    helm upgrade ... --set ovn.encapInterface=<nic>
+{{- end }}
+
+## Check it worked
+
+1. Every pod Ready. Readiness here means ovn-controller reports `connected` to the
+   Southbound, not merely that the process started:
+
+     kubectl get pods -n {{ include "common.names.namespace" . }} -l app.kubernetes.io/instance={{ .Release.Name }} -o wide
+
+2. The chassis appeared, seen from wherever you run the OVN control plane. This is the
+   check that actually matters - a Ready pod that never registered means the SB accepted
+   the connection but rejected or ignored the chassis:
+
+     ovn-sbctl show
+
+3. The integration bridge exists on the node:
+
+     kubectl exec -n {{ include "common.names.namespace" . }} ds/{{ include "common.names.fullname" . }} -c {{ if .Values.openvswitch.enabled }}ovs-vswitchd{{ else }}ovn-controller{{ end }} -- ovs-vsctl list-br
+
+{{- if not .Values.ovn.gateway.enabled }}
+
+## Note on north-south traffic
+
+These chassis do not advertise themselves as gateways, so Neutron will not place tenant
+routers' external gateway ports here. East-west traffic and floating-IP traffic that
+transits a gateway elsewhere are unaffected. Set ovn.gateway.enabled=true only once
+{{ .Values.ovn.provider.bridge }} genuinely reaches the provider network on every one of
+these nodes.
+{{- end }}
+
+{{- if and .Values.openvswitch.enabled (eq .Values.openvswitch.runPath "/run/openvswitch") }}
+
+## One socket, one owner
+
+{{ .Values.openvswitch.runPath }}/db.sock can only be held by one ovsdb-server. If the
+node also runs Open vSwitch under systemd, the two will take turns claiming it on every
+restart, and whichever loses takes br-int away from its clients without an error anywhere.
+Mask the host units on every targeted node:
+
+    systemctl mask ovsdb-server.service ovs-vswitchd.service
+{{- end }}
+
+{{- include "common.warnings.rollingTag" .Values.image }}
+{{- include "common.warnings.resources" (dict "sections" (list "" "openvswitch") "context" $) }}

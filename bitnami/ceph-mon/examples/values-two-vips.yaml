@@ -1,0 +1,13 @@
+# mon addresses are read at pod creation from the Rook-maintained secret
+# `rook-ceph-config` (cluster.configSecretName) — nothing to hardcode.
+mons:
+  - name: ext1
+    vip: 10.224.18.21
+    serviceLabels:
+      io.cilium/ip-pool-private: "true"
+      io.cilium/bgp-advertise-external-ip: "true"
+  - name: ext2
+    vip: 10.224.18.22
+    serviceLabels:
+      io.cilium/ip-pool-private: "true"
+      io.cilium/bgp-advertise-external-ip: "true"

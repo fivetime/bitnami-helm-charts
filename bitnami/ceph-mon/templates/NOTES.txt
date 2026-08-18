@@ -1,0 +1,43 @@
+CHART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+{{ include "ceph-mon.validateValues" . }}
+
+External Ceph monitors deployed:
+
+{{- range .Values.mons }}
+  * mon.{{ .name }}  VIP {{ .vip }}:{{ $.Values.monPort }}
+{{- end }}
+
+** IMPORTANT — do these BEFORE the mons are useful: **
+
+1. Tell Rook about the external mons, or its health checker will REMOVE them
+   from quorum (do this BEFORE installing this chart on first deploy):
+
+     kubectl -n {{ .Values.cluster.namespace }} patch cephcluster rook-ceph --type=merge \
+       -p '{"spec":{"mon":{"externalMonIDs":[{{- $ids := list }}{{- range .Values.mons }}{{- $ids = append $ids (printf "%q" .name) }}{{- end }}{{ join "," $ids }}]}}}'
+
+2. Keep the TOTAL mon count odd (Rook `mon.count` + number of entries in `mons`).
+
+3. Watch the join (a brand-new mon logs `failed to assign global_id` for up to
+   ~1 minute while auth paxos catches up — this is normal, do not panic):
+
+     kubectl -n {{ .Values.cluster.namespace }} exec deploy/rook-ceph-tools -- ceph quorum_status -f json-pretty
+
+4. Verify a client can bootstrap from the VIP alone:
+
+     kubectl -n {{ .Values.cluster.namespace }} exec deploy/rook-ceph-tools -- \
+       ceph -s -m v2:{{ (first .Values.mons).vip }}:{{ .Values.monPort }} --connect-timeout 20
+
+Rook automatically publishes these mons to `rook-ceph-mon-endpoints` (and the CSI
+config) once they are in quorum.
+
+** Removing a mon ** (reverse order, one at a time):
+
+  1. remove its ID from CephCluster spec.mon.externalMonIDs
+  2. kubectl -n {{ .Values.cluster.namespace }} exec deploy/rook-ceph-tools -- ceph mon rm <name>
+  3. helm upgrade with the entry removed from `mons` (or uninstall)
+  4. Rook does NOT purge removed mons from the rook-ceph-mon-endpoints ConfigMap —
+     edit it manually if a stale entry remains
+  5. wipe {{ .Values.persistence.hostPath }}/<name> on the node

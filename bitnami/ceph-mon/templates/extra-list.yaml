@@ -1,0 +1,9 @@
+{{- /*
+Copyright fivetime.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- range .Values.extraDeploy }}
+---
+{{ include "common.tplvalues.render" (dict "value" . "context" $) }}
+{{- end }}

@@ -1,0 +1,38 @@
+{{- /*
+Copyright fivetime.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- range $mon := .Values.mons }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ceph-mon.instanceFullname" (dict "mon" $mon "context" $) }}
+  namespace: {{ include "common.names.namespace" $ | quote }}
+  {{- $svcLabels := include "common.tplvalues.merge" (dict "values" (list ($mon.serviceLabels | default dict) $.Values.service.labels $.Values.commonLabels) "context" $) }}
+  labels: {{- include "common.labels.standard" (dict "customLabels" $svcLabels "context" $) | nindent 4 }}
+    app.kubernetes.io/component: mon
+    ceph-mon.fivetime.io/mon: {{ $mon.name | quote }}
+  {{- $svcAnnotations := include "common.tplvalues.merge" (dict "values" (list ($mon.serviceAnnotations | default dict) $.Values.service.annotations $.Values.commonAnnotations) "context" $) }}
+  {{- if ne $svcAnnotations "{}" }}
+  annotations: {{- include "common.tplvalues.render" (dict "value" $svcAnnotations "context" $) | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ $.Values.service.type }}
+  {{- if eq $.Values.service.type "LoadBalancer" }}
+  loadBalancerIP: {{ $mon.vip }}
+  {{- if $.Values.service.loadBalancerClass }}
+  loadBalancerClass: {{ $.Values.service.loadBalancerClass }}
+  {{- end }}
+  externalTrafficPolicy: {{ $.Values.service.externalTrafficPolicy }}
+  {{- end }}
+  selector: {{- include "ceph-mon.instanceSelectorLabels" (dict "mon" $mon) | nindent 4 }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/name: {{ include "common.names.name" $ }}
+  ports:
+    - name: tcp-msgr2
+      port: {{ $.Values.monPort }}
+      targetPort: {{ $.Values.monPort }}
+      protocol: TCP
+---
+{{- end }}

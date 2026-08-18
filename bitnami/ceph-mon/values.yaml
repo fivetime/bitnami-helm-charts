@@ -1,0 +1,183 @@
+# Copyright fivetime.
+# SPDX-License-Identifier: Apache-2.0
+
+## @section Global parameters
+## Global Docker image parameters
+## Please, note that this will override the image parameters, including dependencies, configured to use the global value
+
+global:
+  ## @param global.imageRegistry Global Docker Image registry
+  imageRegistry: ""
+  ## @param global.imagePullSecrets Global Docker registry secret names as an array
+  imagePullSecrets: []
+
+## @section Common parameters
+
+## @param kubeVersion Override Kubernetes version reported by .Capabilities
+kubeVersion: ""
+## @param nameOverride String to partially override common.names.name
+nameOverride: ""
+## @param fullnameOverride String to fully override common.names.fullname
+fullnameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+namespaceOverride: ""
+## @param commonLabels Labels to add to all deployed objects
+commonLabels: {}
+## @param commonAnnotations Annotations to add to all deployed objects
+commonAnnotations: {}
+## @param clusterDomain Kubernetes cluster domain name
+clusterDomain: cluster.local
+## @param extraDeploy Array of extra objects to deploy with the release
+extraDeploy: []
+
+## @section Ceph mon image parameters
+
+image:
+  ## @param image.registry [default: quay.io] Ceph image registry
+  registry: quay.io
+  ## @param image.repository [default: ceph/ceph] Ceph image repository
+  repository: ceph/ceph
+  ## @param image.tag Ceph image tag. MUST match the Ceph version of the Rook cluster (see the Rook mon deployments)
+  tag: v20.2.3
+  ## @param image.digest Ceph image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+  digest: ""
+  ## @param image.pullPolicy Ceph image pull policy
+  pullPolicy: IfNotPresent
+  ## @param image.pullSecrets Ceph image pull secrets
+  pullSecrets: []
+
+## @section Ceph cluster parameters
+## How the external mons join the existing (Rook-managed) Ceph cluster
+
+cluster:
+  ## @param cluster.fsid Ceph cluster fsid. Leave empty to read it at runtime from the Rook `rook-ceph-mon`
+  ## secret (same-cluster install). Set it explicitly when deploying into a DIFFERENT Kubernetes cluster,
+  ## which also drops the dependency on that secret.
+  fsid: ""
+  ## @param cluster.namespace Namespace of the Rook cluster (where the mon keyring/config secrets live)
+  ## The release itself should normally be installed into this same namespace so the
+  ## mon pods can mount the Rook secrets directly.
+  namespace: "rook-ceph"
+  ## @param cluster.keyringSecretName Existing secret holding the mon keyring ([mon.] + [client.admin]), as created by Rook
+  keyringSecretName: "rook-ceph-mons-keyring"
+  ## @param cluster.keyringSecretKey Key inside the keyring secret
+  keyringSecretKey: "keyring"
+  ## @param cluster.monSecretName Existing Rook secret holding the fsid (key `fsid`), used when cluster.fsid is empty
+  monSecretName: "rook-ceph-mon"
+  ## @param cluster.configSecretName Existing Rook secret with the CURRENT mon addresses. Rook keeps it up to
+  ## date on every monmap change, and env vars resolve at pod creation — exactly when a fresh
+  ## store needs current addresses (first mkfs, or re-sync after a node move). Once a mon has
+  ## a store, its own monmap takes precedence and a stale --mon-host is harmless.
+  configSecretName: "rook-ceph-config"
+  ## @param cluster.monHostKey Key with the mon address list (--mon-host)
+  monHostKey: "mon_host"
+  ## @param cluster.monInitialMembersKey Key with the mon names (--mon-initial-members)
+  monInitialMembersKey: "mon_initial_members"
+
+## @section External mon instances
+## One entry per mon. Each instance gets its own LoadBalancer Service (the VIP it
+## advertises via --public-addr) and a single-replica StatefulSet (at-most-one
+## semantics: a mon identity must never run twice concurrently). The pod uses the
+## ordinary pod network and binds its pod IP (--public-bind-addr from the downward
+## API) while always advertising its VIP, so it can float freely: the LB follows the
+## pod, the monmap entry never changes, and there is no host port to collide with
+## (Rook's own host-network mons occupy 3300 on their nodes).
+## Instances repel each other via podAntiAffinityPreset.
+
+## @param mons [array] External mon instances
+## Each entry:
+##   name: mon ID as it appears in the monmap / `ceph mon stat` (also used in Rook's spec.mon.externalMonIDs)
+##   vip: the stable address this mon ADVERTISES (--public-addr) and the Service requests
+##        (spec.loadBalancerIP). Must be known up front: a mon cannot start without its
+##        advertised address, so auto-allocated LB IPs are not supported.
+##   serviceAnnotations: optional per-instance Service annotations (e.g. io.cilium/lb-ipam-ips)
+##   serviceLabels: optional per-instance Service labels (e.g. io.cilium/ip-pool-private: "true")
+## e.g.:
+## mons:
+##   - name: ext1
+##     vip: 10.224.18.21
+##     serviceLabels:
+##       io.cilium/ip-pool-private: "true"
+##       io.cilium/bgp-advertise-external-ip: "true"
+mons: []
+
+## @section Mon runtime parameters
+
+## @param msgr2Only Run msgr2 only (--ms-bind-msgr1=false). Keep in sync with the Rook cluster (`requireMsgr2`)
+msgr2Only: true
+## @param monPort msgr2 port the mon listens on and the Service exposes
+monPort: 3300
+## @param extraArgs Additional command-line arguments for ceph-mon
+extraArgs: []
+
+## @section Persistence (mon store.db)
+
+persistence:
+  ## @param persistence.hostPath Base hostPath directory on each node; the mon store lives in <hostPath>/<name>
+  hostPath: /var/lib/ceph-mon
+
+## @section Service parameters (per-instance LoadBalancer)
+
+service:
+  ## @param service.type Per-instance Service type (the VIP). Only LoadBalancer gives a stable address
+  type: LoadBalancer
+  ## @param service.annotations Annotations applied to every per-instance Service (merged with per-instance ones)
+  annotations: {}
+  ## @param service.labels Labels applied to every per-instance Service (merged with per-instance ones)
+  labels: {}
+  ## @param service.loadBalancerClass loadBalancerClass for the Services
+  loadBalancerClass: ""
+  ## @param service.externalTrafficPolicy External traffic policy
+  externalTrafficPolicy: Cluster
+
+## @section Pod parameters
+
+## @param podLabels Extra labels for mon pods
+podLabels: {}
+## @param podAffinityPreset Pod affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+podAffinityPreset: ""
+## @param podAntiAffinityPreset Pod anti-affinity preset (between the mons of this release). Ignored if `affinity` is set. Allowed values: `soft` or `hard`
+podAntiAffinityPreset: hard
+## Node affinity preset. Ignored if `affinity` is set
+## @param nodeAffinityPreset.type Node affinity preset type. Allowed values: `soft` or `hard`
+## @param nodeAffinityPreset.key Node label key to match
+## @param nodeAffinityPreset.values Node label values to match
+nodeAffinityPreset:
+  type: ""
+  key: ""
+  values: []
+## @param affinity Affinity for pod assignment. Overrides the presets above
+affinity: {}
+## @param nodeSelector Node labels for pod assignment
+nodeSelector: {}
+## @param podAnnotations Extra annotations for mon pods
+podAnnotations: {}
+## @param priorityClassName Pod priority class name (Rook uses system-node-critical for mons)
+priorityClassName: ""
+## @param tolerations Tolerations for mon pods
+tolerations: []
+## @param resources Resource requests/limits for the mon container
+## e.g:
+## resources:
+##   requests:
+##     cpu: 200m
+##     memory: 512Mi
+##   limits:
+##     memory: 2Gi
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    memory: 2Gi
+## @param containerSecurityContext.enabled Enabled containers' Security Context
+## @param containerSecurityContext.runAsUser Set containers' Security Context runAsUser (ceph uid via --setuser instead)
+containerSecurityContext:
+  enabled: false
+  runAsUser: 0
+
+## @section Diagnostics
+
+diagnosticMode:
+  ## @param diagnosticMode.enabled Enable diagnostic mode (all probes disabled, command overridden to sleep)
+  enabled: false

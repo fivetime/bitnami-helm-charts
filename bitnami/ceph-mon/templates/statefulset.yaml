@@ -1,0 +1,217 @@
+{{- /*
+Copyright fivetime.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- range $mon := .Values.mons }}
+{{- $instanceFullname := include "ceph-mon.instanceFullname" (dict "mon" $mon "context" $) }}
+apiVersion: {{ include "common.capabilities.statefulset.apiVersion" $ }}
+kind: StatefulSet
+metadata:
+  name: {{ $instanceFullname }}
+  namespace: {{ include "common.names.namespace" $ | quote }}
+  labels: {{- include "common.labels.standard" (dict "customLabels" $.Values.commonLabels "context" $) | nindent 4 }}
+    app.kubernetes.io/component: mon
+    ceph-mon.fivetime.io/mon: {{ $mon.name | quote }}
+  {{- if $.Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" (dict "value" $.Values.commonAnnotations "context" $) | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: 1
+  serviceName: {{ $instanceFullname }}
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" (dict "customLabels" $.Values.podLabels "context" $) | nindent 6 }}
+      app.kubernetes.io/component: mon
+      ceph-mon.fivetime.io/mon: {{ $mon.name | quote }}
+  template:
+    metadata:
+      {{- $podLabels := include "common.tplvalues.merge" (dict "values" (list $.Values.podLabels $.Values.commonLabels) "context" $) }}
+      labels: {{- include "common.labels.standard" (dict "customLabels" $podLabels "context" $) | nindent 8 }}
+        app.kubernetes.io/component: mon
+        ceph-mon.fivetime.io/mon: {{ $mon.name | quote }}
+      {{- if $.Values.podAnnotations }}
+      annotations: {{- include "common.tplvalues.render" (dict "value" $.Values.podAnnotations "context" $) | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- include "ceph-mon.imagePullSecrets" $ | nindent 6 }}
+      {{- if $.Values.affinity }}
+      affinity: {{- include "common.tplvalues.render" (dict "value" $.Values.affinity "context" $) | nindent 8 }}
+      {{- else }}
+      affinity:
+        podAffinity: {{- include "common.affinities.pods" (dict "type" $.Values.podAffinityPreset "component" "mon" "customLabels" $podLabels "context" $) | nindent 10 }}
+        podAntiAffinity: {{- include "common.affinities.pods" (dict "type" $.Values.podAntiAffinityPreset "component" "mon" "customLabels" $podLabels "context" $) | nindent 10 }}
+        nodeAffinity: {{- include "common.affinities.nodes" (dict "type" $.Values.nodeAffinityPreset.type "key" $.Values.nodeAffinityPreset.key "values" $.Values.nodeAffinityPreset.values) | nindent 10 }}
+      {{- end }}
+      {{- if $.Values.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" (dict "value" $.Values.nodeSelector "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if $.Values.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" $.Values.tolerations "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if $.Values.priorityClassName }}
+      priorityClassName: {{ $.Values.priorityClassName | quote }}
+      {{- end }}
+      initContainers:
+        # Create the mon store on first boot only. Never touches an existing store.
+        - name: mkfs
+          image: {{ include "ceph-mon.image" $ }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy | quote }}
+          env:
+            - name: BIND_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: MON_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.cluster.configSecretName }}
+                  key: {{ $.Values.cluster.monHostKey }}
+            - name: MON_INITIAL_MEMBERS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.cluster.configSecretName }}
+                  key: {{ $.Values.cluster.monInitialMembersKey }}
+          command:
+            - sh
+            - -ec
+            - |
+              FSID="{{ $.Values.cluster.fsid }}"
+              if [ -z "$FSID" ]; then
+                FSID="$(cat /etc/ceph-cluster/fsid)"
+              fi
+              if [ ! -f /var/lib/ceph/mon/ceph-{{ $mon.name }}/store.db/CURRENT ]; then
+                ceph-mon --mkfs --id={{ $mon.name }} --fsid="$FSID" \
+                  --keyring=/etc/ceph/keyring-store/{{ $.Values.cluster.keyringSecretKey }} \
+                  --mon-host="$MON_HOST" \
+                  --mon-initial-members="$MON_INITIAL_MEMBERS" \
+                  --public-addr={{ $mon.vip }} --public-bind-addr="$BIND_IP" \
+                  --mon-data=/var/lib/ceph/mon/ceph-{{ $mon.name }}
+                chown -R ceph:ceph /var/lib/ceph/mon/ceph-{{ $mon.name }}
+                echo "mkfs done"
+              else
+                echo "store exists, skipping mkfs"
+              fi
+          volumeMounts:
+            - name: keyring
+              mountPath: /etc/ceph/keyring-store
+              readOnly: true
+            {{- if not $.Values.cluster.fsid }}
+            - name: cluster-info
+              mountPath: /etc/ceph-cluster
+              readOnly: true
+            {{- end }}
+            - name: mon-data
+              mountPath: /var/lib/ceph/mon/ceph-{{ $mon.name }}
+      containers:
+        - name: mon
+          image: {{ include "ceph-mon.image" $ }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy | quote }}
+          env:
+            - name: BIND_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: MON_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.cluster.configSecretName }}
+                  key: {{ $.Values.cluster.monHostKey }}
+            - name: MON_INITIAL_MEMBERS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.cluster.configSecretName }}
+                  key: {{ $.Values.cluster.monInitialMembersKey }}
+          {{- if $.Values.containerSecurityContext.enabled }}
+          securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" (omit $.Values.containerSecurityContext "enabled") "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if $.Values.diagnosticMode.enabled }}
+          command: ["sleep"]
+          args: ["infinity"]
+          {{- else }}
+          command:
+            - sh
+            - -ec
+            - |
+              FSID="{{ $.Values.cluster.fsid }}"
+              if [ -z "$FSID" ]; then
+                FSID="$(cat /etc/ceph-cluster/fsid)"
+              fi
+              exec ceph-mon \
+                --fsid="$FSID" \
+                --keyring=/etc/ceph/keyring-store/{{ $.Values.cluster.keyringSecretKey }} \
+                --default-log-to-stderr=true \
+                --default-err-to-stderr=true \
+                --default-mon-cluster-log-to-stderr=true \
+                --default-log-stderr-prefix=debug \
+                --default-log-to-file=false \
+                --default-mon-cluster-log-to-file=false \
+                --mon-host="$MON_HOST" \
+                --mon-initial-members="$MON_INITIAL_MEMBERS" \
+                --id={{ $mon.name }} \
+                --setuser=ceph \
+                --setgroup=ceph \
+                --foreground \
+                --public-addr={{ $mon.vip }} \
+                --public-bind-addr="$BIND_IP" \
+                --mon-data=/var/lib/ceph/mon/ceph-{{ $mon.name }} \
+                --setuser-match-path=/var/lib/ceph/mon/ceph-{{ $mon.name }}/store.db \
+                {{- if $.Values.msgr2Only }}
+                --ms-bind-msgr1=false \
+                {{- end }}
+                {{- range $.Values.extraArgs }}
+                {{ . }} \
+                {{- end }}
+
+          {{- end }}
+          ports:
+            - name: tcp-msgr2
+              containerPort: {{ $.Values.monPort }}
+              protocol: TCP
+          {{- if not $.Values.diagnosticMode.enabled }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ $.Values.monPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            tcpSocket:
+              port: {{ $.Values.monPort }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          {{- end }}
+          {{- if $.Values.resources }}
+          resources: {{- toYaml $.Values.resources | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: keyring
+              mountPath: /etc/ceph/keyring-store
+              readOnly: true
+            {{- if not $.Values.cluster.fsid }}
+            - name: cluster-info
+              mountPath: /etc/ceph-cluster
+              readOnly: true
+            {{- end }}
+            - name: mon-data
+              mountPath: /var/lib/ceph/mon/ceph-{{ $mon.name }}
+      volumes:
+        - name: keyring
+          secret:
+            secretName: {{ $.Values.cluster.keyringSecretName }}
+        {{- if not $.Values.cluster.fsid }}
+        - name: cluster-info
+          secret:
+            secretName: {{ $.Values.cluster.monSecretName }}
+            items:
+              - key: fsid
+                path: fsid
+        {{- end }}
+        - name: mon-data
+          hostPath:
+            path: {{ $.Values.persistence.hostPath }}/{{ $mon.name }}
+            type: DirectoryOrCreate
+---
+{{- end }}

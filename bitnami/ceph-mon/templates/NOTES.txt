@@ -36,8 +36,9 @@ config) once they are in quorum.
 ** Removing a mon ** (reverse order, one at a time):
 
   1. remove its ID from CephCluster spec.mon.externalMonIDs
+     (Rook then removes it from the monmap and endpoints by itself within ~45s;
+      steps 2 and 4 are fallbacks)
   2. kubectl -n {{ .Values.cluster.namespace }} exec deploy/rook-ceph-tools -- ceph mon rm <name>
   3. helm upgrade with the entry removed from `mons` (or uninstall)
-  4. Rook does NOT purge removed mons from the rook-ceph-mon-endpoints ConfigMap —
-     edit it manually if a stale entry remains
+  4. check the rook-ceph-mon-endpoints ConfigMap; edit manually only if a stale entry remains
   5. wipe {{ .Values.persistence.hostPath }}/<name> on the node

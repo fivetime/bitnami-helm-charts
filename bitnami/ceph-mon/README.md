@@ -132,16 +132,36 @@ long-lived but reconnect automatically; expect a seconds-long blip). Old
 `<persistence.hostPath>/<name>` directories left on previous nodes are harmless and can
 be wiped at leisure.
 
+## Failure tolerance
+
+Verified 2026-08-18 by stopping both chart mons while their IDs stayed registered:
+Ceph reports `MON_DOWN` (HEALTH_WARN) and the remaining majority keeps serving; the
+monmap is left untouched. After ~3 minutes Rook's health checker only drops the
+unreachable mons from `rook-ceph-mon-endpoints` and the CSI config (so CSI clients
+stop dialing dead addresses) — it does **not** touch the monmap, attempt a failover,
+or restart any daemon. When the pods return, the existing stores rejoin quorum in
+seconds and Rook re-publishes the endpoints. Worst case is a transient warning.
+
 ## Removing a mon
 
 Reverse order, one at a time, quorum stays odd:
 
-1. Remove the ID from `CephCluster spec.mon.externalMonIDs`.
-2. `ceph mon rm <name>` from the toolbox.
+1. Remove the ID from `CephCluster spec.mon.externalMonIDs`. Rook's health checker
+   (45 s interval) then removes the mon from the monmap by itself
+   (`external mon ... not in quorum: removing it`) and cleans it out of
+   `rook-ceph-mon-endpoints` — verified 2026-08-18; steps 2 and 4 are only a
+   fallback in case that automation does not kick in.
+2. `ceph mon rm <name>` from the toolbox (usually reports "already been removed").
 3. `helm upgrade` with the entry removed (or `helm uninstall`).
-4. Rook does **not** purge removed mons from `rook-ceph-mon-endpoints` — edit the
-   ConfigMap manually if a stale entry remains.
+4. Check `rook-ceph-mon-endpoints` for a stale entry; edit manually only if one remains.
 5. Wipe `<persistence.hostPath>/<name>` on the node.
+
+A full uninstall of a foreign-cluster deployment was verified 2026-08-18 with zero
+impact on the source cluster (quorum re-elected in seconds, no OSD/CSI disturbance).
+Scope the cleanup to what the chart owns: the Helm release, the copied
+`rook-ceph-mons-keyring`, the hostPath stores, and the chart files — leave any
+consumer-sync machinery (`rook-ceph-config`, `rook-ceph-mon`, the endpoints
+ConfigMap, sync CronJobs) alone.
 
 ## Parameters
 

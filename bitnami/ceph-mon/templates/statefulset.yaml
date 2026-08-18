@@ -3,6 +3,16 @@ Copyright fivetime.
 SPDX-License-Identifier: Apache-2.0
 */}}
 
+{{- /* All chart-managed VIPs, prepended to mon_host at runtime: these addresses are
+stable by design, so bootstrap keeps working even if the config secret goes stale.
+Names are deliberately NOT added to mon_initial_members (that list controls who may
+form a brand-new quorum; keeping our mons out of it prevents a same-fsid split-brain
+when every other bootstrap address is dead). */}}
+{{- $selfHosts := list }}
+{{- range .Values.mons }}
+{{- $selfHosts = append $selfHosts (printf "v2:%s:%d" .vip (int $.Values.monPort)) }}
+{{- end }}
+{{- $selfMonHost := join "," $selfHosts }}
 {{- range $mon := .Values.mons }}
 {{- $instanceFullname := include "ceph-mon.instanceFullname" (dict "mon" $mon "context" $) }}
 apiVersion: {{ include "common.capabilities.statefulset.apiVersion" $ }}
@@ -82,7 +92,7 @@ spec:
               if [ ! -f /var/lib/ceph/mon/ceph-{{ $mon.name }}/store.db/CURRENT ]; then
                 ceph-mon --mkfs --id={{ $mon.name }} --fsid="$FSID" \
                   --keyring=/etc/ceph/keyring-store/{{ $.Values.cluster.keyringSecretKey }} \
-                  --mon-host="$MON_HOST" \
+                  --mon-host="{{ $selfMonHost }},$MON_HOST" \
                   --mon-initial-members="$MON_INITIAL_MEMBERS" \
                   --public-addr={{ $mon.vip }} --public-bind-addr="$BIND_IP" \
                   --mon-data=/var/lib/ceph/mon/ceph-{{ $mon.name }}
@@ -145,7 +155,7 @@ spec:
                 --default-log-stderr-prefix=debug \
                 --default-log-to-file=false \
                 --default-mon-cluster-log-to-file=false \
-                --mon-host="$MON_HOST" \
+                --mon-host="{{ $selfMonHost }},$MON_HOST" \
                 --mon-initial-members="$MON_INITIAL_MEMBERS" \
                 --id={{ $mon.name }} \
                 --setuser=ceph \

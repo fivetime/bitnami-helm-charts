@@ -102,16 +102,23 @@ cluster's Kubernetes API:
      | kubectl --context target -n ceph-mon apply -f -
    ```
 
-2. Create the mon address source. Include this chart's own VIPs so the secret
-   **never goes stale** (VIPs are the whole point):
+2. Create the mon address source with the **source cluster's current mon addresses**:
 
    ```bash
    kubectl --context target -n ceph-mon create secret generic rook-ceph-config \
-     --from-literal=mon_host='[v2:10.224.18.21:3300],[v2:10.224.18.22:3300],[v2:10.32.16.2:3300]' \
-     --from-literal=mon_initial_members='ext1,ext2,e'
+     --from-literal=mon_host='[v2:10.32.16.2:3300],[v2:10.32.16.4:3300],[v2:10.32.16.3:3300]' \
+     --from-literal=mon_initial_members='e,f,g'
    ```
 
    (Or reuse a ceph-consumer-style sync CronJob.)
+
+   The chart automatically prepends its **own VIPs** to `--mon-host` at pod creation,
+   so a recreated pod can always bootstrap through a surviving sibling even if this
+   secret has gone stale — you do not need to (but harmlessly may) list the VIPs here.
+   **Never list this chart's mon names in `mon_initial_members`**: that field controls
+   who may form a brand-new quorum, and keeping the chart's mons out of it means a
+   fresh mon can only ever *join* the existing cluster, never found a same-fsid
+   split-brain when all other bootstrap addresses are dead.
 
 3. Set `cluster.fsid` explicitly in values — this drops the dependency on the
    `rook-ceph-mon` secret entirely.
@@ -156,8 +163,12 @@ Reverse order, one at a time, quorum stays odd:
 4. Check `rook-ceph-mon-endpoints` for a stale entry; edit manually only if one remains.
 5. Wipe `<persistence.hostPath>/<name>` on the node.
 
-A full uninstall of a foreign-cluster deployment was verified 2026-08-18 with zero
-impact on the source cluster (quorum re-elected in seconds, no OSD/CSI disturbance).
+A full uninstall of a foreign-cluster deployment was verified 2026-08-18: quorum
+re-elects in seconds, CSI is untouched, and nothing rolled immediately. Note however
+that any monmap change leaves the OSD deployments' mon-address env stale, and the
+operator syncs it by updating OSD deployments one by one (respecting ok-to-stop) at
+the **next** full reconcile — possibly hours later. Treat every monmap change as a
+scheduled, non-disruptive OSD rolling restart even if nothing rolls immediately.
 Scope the cleanup to what the chart owns: the Helm release, the copied
 `rook-ceph-mons-keyring`, the hostPath stores, and the chart files — leave any
 consumer-sync machinery (`rook-ceph-config`, `rook-ceph-mon`, the endpoints
@@ -177,9 +188,10 @@ See `values.yaml` — all parameters are documented inline in Bitnami `@param` s
 - The Rook cluster must keep at least one Rook-managed mon (`mon.count >= 1`;
   Rook resets `count: 0` back to 3).
 - `requireMsgr2: true` clusters must keep `msgr2Only: true` (default).
-- **Changing `spec.mon.externalMonIDs` (and any monmap change) triggers a full
-  CephCluster reconcile in which Rook rolling-restarts every mon, rgw and OSD
-  deployment.** Observed 2026-08-17: one patch rolled all 21 OSDs within two minutes;
+- **Changing `spec.mon.externalMonIDs` (and any monmap change) schedules a
+  rolling restart of every OSD deployment — immediately if a full reconcile runs
+  right away, otherwise at the next one (operator restart / any CR change), which
+  can be hours later.** Observed 2026-08-17: one patch rolled all 21 OSDs within two minutes;
   the old/new OSD overlap caused transient `MemoryPressure` on the storage nodes and
   kubelet evicted the burstable pods there (MDS / exporter / crashcollector), leaving
   MDS rescheduled onto unintended nodes (their placement is only a *preferred*

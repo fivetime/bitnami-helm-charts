@@ -419,6 +419,42 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/ceph-consumer-0.1.4/ceph-consumer-0.1.4.tgz
     version: 0.1.4
+  ceph-mon:
+  - annotations:
+      category: Storage
+      licenses: Apache-2.0
+    apiVersion: v2
+    appVersion: 20.2.3
+    created: "2026-08-18T03:05:38.373216054Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 2.x.x
+    description: External Ceph monitors with stable per-instance LoadBalancer (VIP)
+      addresses, coexisting with a Rook-managed cluster via spec.mon.externalMonIDs
+    digest: d59417545bd61f76d41ee00eaecbd0d462753be6399e68f699734ce5165c52a1
+    home: https://ceph.io
+    icon: https://ceph.io/assets/bitmaps/Ceph_Logo_Standard_RGB_120411_fa.png
+    keywords:
+    - storage
+    - ceph
+    - mon
+    - monitor
+    - rook
+    - vip
+    - loadbalancer
+    kubeVersion: '>=1.25.0-0'
+    maintainers:
+    - name: fivetime
+      url: https://github.com/fivetime
+    name: ceph-mon
+    sources:
+    - https://github.com/ceph/ceph
+    - https://github.com/rook/rook
+    type: application
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/ceph-mon-0.1.0/ceph-mon-0.1.0.tgz
+    version: 0.1.0
   cert-manager:
   - annotations:
       images: |
@@ -4806,6 +4842,53 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/opensearch-2.0.11/opensearch-2.0.11.tgz
     version: 2.0.11
+  ovn-chassis:
+  - annotations:
+      images: |
+        - name: ovn
+          image: quay.io/airshipit/ovn:ubuntu_noble
+      licenses: Apache-2.0
+      tanzuCategory: clusterUtility
+    apiVersion: v2
+    appVersion: 24.03.6
+    created: "2026-08-18T03:05:38.915259488Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: Turns Kubernetes nodes into OVN chassis that join an EXTERNAL OVN
+      control plane. It runs ovn-controller (and, optionally, Open vSwitch) as a host-network
+      DaemonSet and points it at a Southbound database you already operate - DevStack,
+      OpenStack-Helm, a distro OVN, or an ovsdb-relay fan-out. It deploys no Northbound,
+      no Southbound and no northd, so several Kubernetes clusters can share one OVN
+      without any of them owning it.
+    digest: 507277122e5b3c75a6939a841ce1719a17b74dbe6d7b165dda4055bd7deb8a9a
+    home: https://www.ovn.org
+    icon: https://www.ovn.org/images/ovn-logo.png
+    keywords:
+    - ovn
+    - openvswitch
+    - ovs
+    - chassis
+    - openstack
+    - neutron
+    - networking
+    - sdn
+    - multus
+    - kubetron
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: ovn-chassis
+    sources:
+    - https://github.com/ovn-org/ovn
+    - https://github.com/bitnami/charts/tree/main/bitnami/ovn-chassis
+    type: application
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/ovn-chassis-1.0.0/ovn-chassis-1.0.0.tgz
+    version: 1.0.0
   ovs-cni:
   - annotations:
       images: |
@@ -7082,4 +7165,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-07-23T02:08:32.607976145Z"
+generated: "2026-08-18T03:05:38.915336188Z"

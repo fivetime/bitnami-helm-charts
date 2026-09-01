@@ -4052,6 +4052,47 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 8.0.13
+    created: "2026-09-01T17:14:16.457693898Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: MongoDB(R) is an open source NoSQL database that uses JSON for data
+      storage. MongoDB(TM) Sharded improves scalability and reliability for large
+      datasets by distributing data across multiple machines.
+    digest: 112467080caa802b716c332d0d01516f5d2f58e5f054e83b3f3bfe2af2f95bd6
+    home: https://bitnami.com
+    icon: https://dyltqmyl993wv.cloudfront.net/assets/stacks/mongodb/img/mongodb-stack-220x234.png
+    keywords:
+    - mongodb
+    - database
+    - nosql
+    - cluster
+    - replicaset
+    - replication
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: mongodb-sharded
+    sources:
+    - https://github.com/bitnami/charts/tree/main/bitnami/mongodb-sharded
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/mongodb-sharded-9.4.15/mongodb-sharded-9.4.15.tgz
+    version: 9.4.15
+  - annotations:
+      images: |
+        - name: mongodb-exporter
+          image: docker.io/bitnami/mongodb-exporter:0.47.0-debian-12-r1
+        - name: mongodb-sharded
+          image: docker.io/bitnami/mongodb-sharded:8.0.13-debian-12-r0
+        - name: os-shell
+          image: docker.io/bitnami/os-shell:12-debian-12-r51
+      licenses: Apache-2.0
+      tanzuCategory: service
+    apiVersion: v2
+    appVersion: 8.0.13
     created: "2026-05-12T11:39:50.047435931Z"
     dependencies:
     - name: common
@@ -7165,4 +7206,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-08-18T03:05:38.915336188Z"
+generated: "2026-09-01T17:14:16.457831436Z"

@@ -91,9 +91,14 @@ kubectl -n rook-ceph get cm rook-ceph-mon-endpoints -o jsonpath='{.data.data}'  
 
 ## Deploying into a different Kubernetes cluster
 
-This is exactly the upstream use case for Rook's external mons (a tie-breaker in a
-third failure domain). The mons only need Ceph-level connectivity, not the Rook
-cluster's Kubernetes API:
+Deployment priority: **provider cluster first** (Rook maintains `rook-ceph-config`
+natively — zero config), **consumer cluster second** (a cluster already consuming
+this Ceph externally: its Rook-external operator plus a consumer-sync CronJob keep
+`rook-ceph-config` maintained, so the only extra step is copying the mon keyring).
+Do not deploy into a cluster that is neither — a mon there has no purpose and no
+maintained address source.
+
+For the consumer-cluster case:
 
 1. Copy the mon keyring to the target cluster (sensitive: `[mon.]` + `[client.admin]`):
 
@@ -102,15 +107,12 @@ cluster's Kubernetes API:
      | kubectl --context target -n ceph-mon apply -f -
    ```
 
-2. Create the mon address source with the **source cluster's current mon addresses**:
-
-   ```bash
-   kubectl --context target -n ceph-mon create secret generic rook-ceph-config \
-     --from-literal=mon_host='[v2:10.32.16.2:3300],[v2:10.32.16.4:3300],[v2:10.32.16.3:3300]' \
-     --from-literal=mon_initial_members='e,f,g'
-   ```
-
-   (Or reuse a ceph-consumer-style sync CronJob.)
+2. Address source: on a consumer cluster `rook-ceph-config` already exists
+   (maintained by the local Rook-external operator from the synced endpoints) —
+   nothing to create. Its value may lag behind the live monmap; that is fine,
+   bootstrap only needs one live address. Only in the theoretical no-Rook case
+   would you hand-create it (`mon_host` = the source mon VIPs, which never change;
+   `mon_initial_members` = source mon names only).
 
    The chart automatically prepends its **own VIPs** to `--mon-host` at pod creation,
    so a recreated pod can always bootstrap through a surviving sibling even if this

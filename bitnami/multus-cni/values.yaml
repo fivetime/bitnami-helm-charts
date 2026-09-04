@@ -188,9 +188,12 @@ metrics:
 ## ref: https://github.com/k8snetworkplumbingwg/multus-cni/blob/master/docs/thick-plugin.md
 ##
 thick:
-  ## @param thick.hostRunDir Host directory containing the multus-daemon socket. Keep this scoped to the Multus runtime directory so the daemon pod does not inherit unrelated host mounts through `/run`.
+  ## @param thick.hostRunDir Host directory containing the multus-daemon runtime directory. Keep this scoped so the daemon pod does not inherit unrelated host mounts through `/run`.
   ##
   hostRunDir: /run/multus
+  ## @param thick.hostRunMountPath Container mount point for `thick.hostRunDir`. This must be the parent of `thick.daemonConfig.socketDir`, not the socket directory itself, because multus-daemon removes and recreates its socket directory during startup.
+  ##
+  hostRunMountPath: /host/run/multus
   daemonConfig:
     ## @param thick.daemonConfig.chrootDir Container path that bind-mounts the host root. multus-daemon `chroot`s here when invoking delegate CNIs so they see the real host filesystem.
     ##
@@ -213,9 +216,9 @@ thick:
     ## @param thick.daemonConfig.multusConfigFile `auto` to generate from the default delegate, or a path to a static conflist
     ##
     multusConfigFile: auto
-    ## @param thick.daemonConfig.socketDir Unix-socket dir for multus-daemon (must match the shim's compiled-in path; do not change unless you understand the implications)
+    ## @param thick.daemonConfig.socketDir Unix-socket directory inside the multus-daemon container. It must be a child of `thick.hostRunMountPath` so the daemon can remove and recreate it.
     ##
-    socketDir: /host/run/multus/
+    socketDir: /host/run/multus/socket/
 ## @param updateStrategy.type Update strategy - only really applicable for deployments with RWO PVs attached
 ## If replicas = 1, an update can get "stuck", as the previous pod remains attached to the
 ## PV, and the "incoming" pod can never start. Changing the strategy to "Recreate" will

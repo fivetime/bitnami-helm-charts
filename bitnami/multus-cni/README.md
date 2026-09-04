@@ -60,7 +60,8 @@ containerd 和 CRI-O 现在都统一使用 `/opt/cni/bin` 作为默认的 CNI �
 | 参数 | 描述 | 默认值 |
 |------|------|--------|
 | `mode` | 部署模式：`thin` 或 `thick` | `thin` |
-| `thick.hostRunDir` | 宿主机上的 Multus socket 目录；仅将该目录挂入 daemon，避免通过整个 `/run` 继承 containerd 和工作负载挂载 | `/run/multus` |
+| `thick.hostRunDir` | 宿主机上的 Multus 运行时父目录；仅将该目录挂入 daemon，避免通过整个 `/run` 继承 containerd 和工作负载挂载 | `/run/multus` |
+| `thick.hostRunMountPath` | `thick.hostRunDir` 在 daemon 容器内的挂载点；必须是 socket 目录的父目录 | `/host/run/multus` |
 | `thick.daemonConfig.chrootDir` | 容器内挂载宿主机 root 的路径（执行 delegate CNI 时 chroot 到这里） | `/hostroot` |
 | `thick.daemonConfig.cniVersion` | 生成 conflist 的 CNI 版本 | `0.3.1` |
 | `thick.daemonConfig.logLevel` | `multus-daemon` 日志级别 | `verbose` |
@@ -68,7 +69,7 @@ containerd 和 CRI-O 现在都统一使用 `/opt/cni/bin` 作为默认的 CNI �
 | `thick.daemonConfig.cniConfigDir` | daemon 容器内的 CNI 配置目录 | `/host/etc/cni/net.d` |
 | `thick.daemonConfig.multusAutoconfigDir` | daemon 监听的自动配置目录 | `/host/etc/cni/net.d` |
 | `thick.daemonConfig.multusConfigFile` | `auto` 自动生成 conflist，或指定路径 | `auto` |
-| `thick.daemonConfig.socketDir` | `multus-daemon` 监听 Unix socket 的目录 | `/host/run/multus/` |
+| `thick.daemonConfig.socketDir` | daemon 容器内可在启动时删除并重建的 socket 子目录 | `/host/run/multus/socket/` |
 
 ### Metrics 配置（`mode=thick` 专属）
 

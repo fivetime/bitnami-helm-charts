@@ -5,6 +5,15 @@ SPDX-License-Identifier: APACHE-2.0
 
 {{- if eq .Values.mode "thick" }}
 {{- $config := deepCopy .Values.thick.daemonConfig -}}
+{{- $hostRunDir := trimSuffix "/" .Values.thick.hostRunDir -}}
+{{- $hostRunMountPath := trimSuffix "/" .Values.thick.hostRunMountPath -}}
+{{- $socketDir := trimSuffix "/" $config.socketDir -}}
+{{- $socketPrefix := printf "%s/" $hostRunMountPath -}}
+{{- if not (hasPrefix $socketPrefix $socketDir) -}}
+{{- fail "thick.daemonConfig.socketDir must be a child of thick.hostRunMountPath; multus-daemon removes and recreates the socket directory during startup" -}}
+{{- end -}}
+{{- $socketRelativePath := trimPrefix $socketPrefix $socketDir -}}
+{{- $_ := set $config "daemonSocketDir" (printf "%s/%s/" $hostRunDir $socketRelativePath) -}}
 {{- if .Values.metrics.enabled }}
 {{- $_ := set $config "metricsPort" (int .Values.metrics.port) -}}
 {{- end }}

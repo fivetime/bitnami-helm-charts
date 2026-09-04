@@ -90,6 +90,11 @@ cluster:
 ##   vip: the stable address this mon ADVERTISES (--public-addr) and the Service requests
 ##        (spec.loadBalancerIP). Must be known up front: a mon cannot start without its
 ##        advertised address, so auto-allocated LB IPs are not supported.
+##        Write it bare, without brackets, in either family; the chart adds the brackets
+##        an IPv6 literal needs wherever Ceph parses it. Note that an IPv6 vip also needs
+##        an IPv6-capable Service (spec.ipFamilies), which this chart does not set, and
+##        that a v6-reachable mon does not by itself make Ceph usable from IPv6-only
+##        clients -- see the IPv6 caveat in README.md.
 ##   serviceAnnotations: optional per-instance Service annotations (e.g. io.cilium/lb-ipam-ips)
 ##   serviceLabels: optional per-instance Service labels (e.g. io.cilium/ip-pool-private: "true")
 ## e.g.:

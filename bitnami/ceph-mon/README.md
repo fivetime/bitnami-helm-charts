@@ -189,6 +189,35 @@ See `values.yaml` — all parameters are documented inline in Bitnami `@param` s
   mon by its **bind address** is rejected — the VIP is its one true identity.
 - The Rook cluster must keep at least one Rook-managed mon (`mon.count >= 1`;
   Rook resets `count: 0` back to 3).
+- `--public-addr` (and therefore a changed `vip`) only takes effect on a mon that is
+  **not yet in the monmap**: `ceph_mon.cc` takes its addresses from the monmap when the
+  ID is already there and ignores the flag. Changing a live mon's advertised address
+  means `ceph mon set-addrs <id> <addrvec>`, after which that mon respawns once and
+  converges (the new monmap is stashed in `mon_sync/temp_newer_monmap` before the
+  respawn). Never do this to Rook's own host-network mons: they get no
+  `--public-bind-addr`, so they would try to bind an address the node does not have
+  and exit.
+- **IPv6**: `vip` may be an IPv6 literal — write it bare and the chart brackets it
+  wherever Ceph parses an address. This matters because an unbracketed
+  `v2:fc00:c:1:2:3::21:3300` does **not** fail: `entity_addr_t::parse`
+  (`ceph src/msg/msg_types.cc`) scans the colons and hex digits into the address
+  itself, `inet_pton()` succeeds, and you silently get `fc00:c:1:2:3:0:21:3300`
+  with port 0. Correct formatting is necessary but nowhere near sufficient for
+  serving IPv6-only clients, and this chart is not the lever for that:
+  - The Service is not made dual-stack here (`spec.ipFamilies` is unset), so an
+    IPv6 `vip` needs that added first.
+  - A mon can *advertise* both families in one addrvec (msgr2 validates the address
+    the client dialled against the advertised vector, not against the bound socket)
+    but can only *bind* one: `public_bind_addr` is a single address and there is no
+    `public_bind_addrv`.
+  - An IPv6-only extra mon cannot join an IPv4 quorum at all — mon↔mon traffic goes
+    through the same connect path as everything else.
+  - That connect path (`AsyncMessenger::create_connect`) takes the **first** address
+    of a peer's addrvec and never falls back to another, and RBD needs a session to
+    every OSD. So RBD from an IPv6-only client requires the whole cluster — OSDs
+    included — to change address family; mon reachability alone leaves the first I/O
+    hanging. Upstream `cephadm` forces `ms_bind_ipv4=false` when IPv6 is enabled and
+    notes that Ceph does not fully support dual stack.
 - `requireMsgr2: true` clusters must keep `msgr2Only: true` (default).
 - **Changing `spec.mon.externalMonIDs` (and any monmap change) schedules a
   rolling restart of every OSD deployment — immediately if a full reconcile runs

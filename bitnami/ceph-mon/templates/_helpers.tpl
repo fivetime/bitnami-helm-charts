@@ -33,6 +33,23 @@ ceph-mon.fivetime.io/mon: {{ .mon.name | quote }}
 {{- end -}}
 
 {{/*
+Format an address the way Ceph's entity_addr_t parser expects: an IPv6 literal
+MUST be bracketed. Without brackets the parser's IPv6 character scan swallows a
+trailing ":<port>" into the address itself, inet_pton() still succeeds, and you
+silently get a DIFFERENT address with port 0 -- no error is reported anywhere
+("v2:fc00:c:1:2:3::21:3300" parses as fc00:c:1:2:3:0:21:3300 port 0).
+See entity_addr_t::parse in ceph src/msg/msg_types.cc.
+Usage: include "ceph-mon.cephAddr" $vip
+*/}}
+{{- define "ceph-mon.cephAddr" -}}
+{{- if contains ":" . -}}
+[{{ . }}]
+{{- else -}}
+{{ . }}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Compile all warnings into a single message.
 */}}
 {{- define "ceph-mon.validateValues" -}}

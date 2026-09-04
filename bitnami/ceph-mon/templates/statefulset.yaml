@@ -10,7 +10,7 @@ form a brand-new quorum; keeping our mons out of it prevents a same-fsid split-b
 when every other bootstrap address is dead). */}}
 {{- $selfHosts := list }}
 {{- range .Values.mons }}
-{{- $selfHosts = append $selfHosts (printf "v2:%s:%d" .vip (int $.Values.monPort)) }}
+{{- $selfHosts = append $selfHosts (printf "v2:%s:%d" (include "ceph-mon.cephAddr" .vip) (int $.Values.monPort)) }}
 {{- end }}
 {{- $selfMonHost := join "," $selfHosts }}
 {{- range $mon := .Values.mons }}
@@ -94,7 +94,7 @@ spec:
                   --keyring=/etc/ceph/keyring-store/{{ $.Values.cluster.keyringSecretKey }} \
                   --mon-host="{{ $selfMonHost }},$MON_HOST" \
                   --mon-initial-members="$MON_INITIAL_MEMBERS" \
-                  --public-addr={{ $mon.vip }} --public-bind-addr="$BIND_IP" \
+                  --public-addr="{{ include "ceph-mon.cephAddr" $mon.vip }}" --public-bind-addr="$BIND_IP" \
                   --mon-data=/var/lib/ceph/mon/ceph-{{ $mon.name }}
                 chown -R ceph:ceph /var/lib/ceph/mon/ceph-{{ $mon.name }}
                 echo "mkfs done"
@@ -161,7 +161,7 @@ spec:
                 --setuser=ceph \
                 --setgroup=ceph \
                 --foreground \
-                --public-addr={{ $mon.vip }} \
+                --public-addr="{{ include "ceph-mon.cephAddr" $mon.vip }}" \
                 --public-bind-addr="$BIND_IP" \
                 --mon-data=/var/lib/ceph/mon/ceph-{{ $mon.name }} \
                 --setuser-match-path=/var/lib/ceph/mon/ceph-{{ $mon.name }}/store.db \

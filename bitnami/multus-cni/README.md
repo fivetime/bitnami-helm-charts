@@ -60,6 +60,7 @@ containerd 和 CRI-O 现在都统一使用 `/opt/cni/bin` 作为默认的 CNI �
 | 参数 | 描述 | 默认值 |
 |------|------|--------|
 | `mode` | 部署模式：`thin` 或 `thick` | `thin` |
+| `thick.hostRunDir` | 宿主机上的 Multus socket 目录；仅将该目录挂入 daemon，避免通过整个 `/run` 继承 containerd 和工作负载挂载 | `/run/multus` |
 | `thick.daemonConfig.chrootDir` | 容器内挂载宿主机 root 的路径（执行 delegate CNI 时 chroot 到这里） | `/hostroot` |
 | `thick.daemonConfig.cniVersion` | 生成 conflist 的 CNI 版本 | `0.3.1` |
 | `thick.daemonConfig.logLevel` | `multus-daemon` 日志级别 | `verbose` |

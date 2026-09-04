@@ -188,6 +188,9 @@ metrics:
 ## ref: https://github.com/k8snetworkplumbingwg/multus-cni/blob/master/docs/thick-plugin.md
 ##
 thick:
+  ## @param thick.hostRunDir Host directory containing the multus-daemon socket. Keep this scoped to the Multus runtime directory so the daemon pod does not inherit unrelated host mounts through `/run`.
+  ##
+  hostRunDir: /run/multus
   daemonConfig:
     ## @param thick.daemonConfig.chrootDir Container path that bind-mounts the host root. multus-daemon `chroot`s here when invoking delegate CNIs so they see the real host filesystem.
     ##

@@ -4215,6 +4215,40 @@ entries:
       tanzuCategory: clusterUtility
     apiVersion: v2
     appVersion: 4.2.3
+    created: "2026-09-04T04:29:38.821574603Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: Multus is a CNI plugin for Kubernetes clusters. Written in Go, features
+      adding multiple network interfaces to pods.
+    digest: 771a5714fdadec749c58c49599a277c1eb8d16c55303a195ff3075dc43f21ee8
+    home: https://bitnami.com
+    icon: https://dyltqmyl993wv.cloudfront.net/assets/stacks/multus-cni/img/multus-cni-stack-220x234.png
+    keywords:
+    - multus-cni
+    - cni
+    - kubernetes
+    - networking
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: multus-cni
+    sources:
+    - https://github.com/bitnami/charts/tree/main/bitnami/multus-cni
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/multus-cni-2.3.5/multus-cni-2.3.5.tgz
+    version: 2.3.5
+  - annotations:
+      images: |
+        - name: multus-cni
+          image: ghcr.io/k8snetworkplumbingwg/multus-cni:stable
+      licenses: Apache-2.0
+      tanzuCategory: clusterUtility
+    apiVersion: v2
+    appVersion: 4.2.3
     created: "2026-09-04T04:14:17.008792268Z"
     dependencies:
     - name: common
@@ -7240,4 +7274,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-09-04T04:14:17.008917985Z"
+generated: "2026-09-04T04:29:38.821686401Z"

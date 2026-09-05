@@ -306,3 +306,60 @@ redis: sentinel.masterService.enabled
 {{- end }}
 {{- end }}
 {{- end }}
+
+{{/*
+Fork patch: shell helper shim so the chart also runs on non-Bitnami Redis images
+(e.g. docker.io/library/redis). The start/prestop scripts call
+info/warn/error/debug/is_boolean_yes/retry_while/replace_in_file, which normally
+come from /opt/bitnami/scripts/lib{os,log,validations,file}.sh and only exist in
+Bitnami images. (start-replica.sh calls error() without sourcing anything at all
+upstream, so it gets the shim too.) Source those libs when present (Bitnami images:
+unchanged behaviour), otherwise define POSIX-compatible fallbacks.
+Keep in sync when upstream changes the sourced libs or adds helper calls.
+*/}}
+{{- define "redis.bitnamiCompatShim" -}}
+for _lib in libos liblog libvalidations libfile; do
+    [ -f "/opt/bitnami/scripts/${_lib}.sh" ] && . "/opt/bitnami/scripts/${_lib}.sh"
+done
+unset _lib
+
+# Fallbacks — only defined when the Bitnami libs were absent.
+declare -F stderr_print >/dev/null || stderr_print() { printf "%b\n" "${*}" >&2; }
+declare -F log >/dev/null || log() { stderr_print "${MODULE:-redis} $(date "+%T.%2N ") ${*}"; }
+declare -F info >/dev/null || info() { log "INFO  ==> ${*}"; }
+declare -F warn >/dev/null || warn() { log "WARN  ==> ${*}"; }
+declare -F error >/dev/null || error() { log "ERROR ==> ${*}"; }
+declare -F is_boolean_yes >/dev/null || is_boolean_yes() {
+    local -r bool="${1:-}"
+    if [[ "$bool" = 1 || "$bool" =~ ^(yes|Yes|YES|true|True|TRUE|y|Y)$ ]]; then true; else false; fi
+}
+declare -F debug >/dev/null || debug() {
+    if is_boolean_yes "${BITNAMI_DEBUG:-false}"; then log "DEBUG ==> ${*}"; fi
+}
+declare -F retry_while >/dev/null || retry_while() {
+    local cmd="${1:?cmd is missing}"
+    local retries="${2:-12}"
+    local sleep_time="${3:-5}"
+    local return_value=1
+    read -r -a command <<< "$cmd"
+    for ((i = 1 ; i <= retries ; i+=1 )); do
+        "${command[@]}" && return_value=0 && break
+        sleep "$sleep_time"
+    done
+    return $return_value
+}
+declare -F replace_in_file >/dev/null || replace_in_file() {
+    local filename="${1:?filename is required}"
+    local match_regex="${2:?match regex is required}"
+    local substitute_regex="${3:?substitute regex is required}"
+    local posix_regex=${4:-true}
+    local result
+    local -r del=$'\001'
+    if [[ $posix_regex = true ]]; then
+        result="$(sed -E "s${del}${match_regex}${del}${substitute_regex}${del}g" "$filename")"
+    else
+        result="$(sed "s${del}${match_regex}${del}${substitute_regex}${del}g" "$filename")"
+    fi
+    echo "$result" > "$filename"
+}
+{{- end -}}

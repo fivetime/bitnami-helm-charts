@@ -17,9 +17,7 @@ data:
   start-node.sh: |
     #!/bin/bash
 
-    . /opt/bitnami/scripts/libos.sh
-    . /opt/bitnami/scripts/liblog.sh
-    . /opt/bitnami/scripts/libvalidations.sh
+{{- include "redis.bitnamiCompatShim" . | nindent 4 }}
 
     get_port() {
         hostname="$1"
@@ -304,9 +302,7 @@ data:
   start-sentinel.sh: |
     #!/bin/bash
 
-    . /opt/bitnami/scripts/libos.sh
-    . /opt/bitnami/scripts/libvalidations.sh
-    . /opt/bitnami/scripts/libfile.sh
+{{- include "redis.bitnamiCompatShim" . | nindent 4 }}
 
     HEADLESS_SERVICE="{{ template "common.names.fullname" . }}-headless.{{ include "common.names.namespace" . }}.svc.{{ .Values.clusterDomain }}"
     REDIS_SERVICE="{{ template "common.names.fullname" . }}.{{ include "common.names.namespace" . }}.svc.{{ .Values.clusterDomain }}"
@@ -379,7 +375,14 @@ data:
         echo $'\n'"$@" >> "/opt/bitnami/redis-sentinel/etc/prepare-sentinel.conf"
     }
     host_id() {
-        echo "$1" | openssl sha1 | awk '{print $2}'
+        # Fork patch: non-Bitnami images (docker.io/library/redis) ship no openssl.
+        # sha1sum is coreutils and yields the identical digest; note the field index
+        # differs (openssl prints "(stdin)= <hex>", sha1sum prints "<hex>  -").
+        if command -v openssl >/dev/null 2>&1; then
+            echo "$1" | openssl sha1 | awk '{print $2}'
+        else
+            echo "$1" | sha1sum | awk '{print $1}'
+        fi
     }
     get_sentinel_master_info() {
         if is_boolean_yes "$REDIS_SENTINEL_TLS_ENABLED"; then
@@ -548,8 +551,7 @@ data:
   prestop-sentinel.sh: |
     #!/bin/bash
 
-    . /opt/bitnami/scripts/libvalidations.sh
-    . /opt/bitnami/scripts/libos.sh
+{{- include "redis.bitnamiCompatShim" . | nindent 4 }}
 
     {{- if and .Values.sentinel.externalAccess.enabled .Values.sentinel.externalAccess.service.loadBalancerIP }}
 
@@ -672,8 +674,7 @@ data:
   prestop-redis.sh: |
     #!/bin/bash
 
-    . /opt/bitnami/scripts/libvalidations.sh
-    . /opt/bitnami/scripts/libos.sh
+{{- include "redis.bitnamiCompatShim" . | nindent 4 }}
 
     run_redis_command() {
         local args=("-h" "127.0.0.1")
@@ -890,6 +891,8 @@ data:
   {{- if eq .Values.architecture "replication" }}
   start-replica.sh: |
     #!/bin/bash
+
+{{- include "redis.bitnamiCompatShim" . | nindent 4 }}
 
     get_port() {
         hostname="$1"

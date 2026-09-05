@@ -425,6 +425,41 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: 20.2.3
+    created: "2026-09-05T03:14:24.948587165Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 2.x.x
+    description: External Ceph monitors with stable per-instance LoadBalancer (VIP)
+      addresses, coexisting with a Rook-managed cluster via spec.mon.externalMonIDs
+    digest: 2ade07ed497e25ed95f899ae6a3c8fc813b0973401eac4e94ab8e2549d40919c
+    home: https://ceph.io
+    icon: https://ceph.io/assets/bitmaps/Ceph_Logo_Standard_RGB_120411_fa.png
+    keywords:
+    - storage
+    - ceph
+    - mon
+    - monitor
+    - rook
+    - vip
+    - loadbalancer
+    kubeVersion: '>=1.25.0-0'
+    maintainers:
+    - name: fivetime
+      url: https://github.com/fivetime
+    name: ceph-mon
+    sources:
+    - https://github.com/ceph/ceph
+    - https://github.com/rook/rook
+    type: application
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/ceph-mon-0.2.0/ceph-mon-0.2.0.tgz
+    version: 0.2.0
+  - annotations:
+      category: Storage
+      licenses: Apache-2.0
+    apiVersion: v2
+    appVersion: 20.2.3
     created: "2026-08-18T03:05:38.373216054Z"
     dependencies:
     - name: common
@@ -7316,4 +7351,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-09-05T03:05:09.172798247Z"
+generated: "2026-09-05T03:14:24.948712319Z"

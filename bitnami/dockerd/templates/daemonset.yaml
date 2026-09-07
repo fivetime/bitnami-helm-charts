@@ -23,9 +23,11 @@ spec:
     metadata:
       labels: {{- include "common.labels.standard" ( dict "customLabels" $podLabels "context" $ ) | nindent 8 }}
       annotations:
-        {{- if .Values.daemonConfig }}
+        {{- if and .Values.daemonConfig (not .Values.existingConfigmap) }}
         # Roll the daemons when daemon.json changes. dockerd reads it at startup, so without
         # this the ConfigMap updates and every node keeps running the old configuration.
+        # Only possible for the ConfigMap this chart renders: Helm cannot see inside an
+        # existingConfigmap, so that case is rolled by hand with `kubectl rollout restart`.
         checksum/daemon-config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         {{- end }}
         {{- if .Values.commonAnnotations }}
@@ -194,7 +196,7 @@ spec:
               readOnly: true
             - name: cgroup
               mountPath: /sys/fs/cgroup
-            {{- if .Values.daemonConfig }}
+            {{- if include "dockerd.hasDaemonConfig" . }}
             - name: daemon-config
               mountPath: /etc/docker/daemon.json
               subPath: daemon.json
@@ -283,7 +285,7 @@ spec:
             type: DirectoryOrCreate
         {{- end }}
         {{- end }}
-        {{- if .Values.daemonConfig }}
+        {{- if include "dockerd.hasDaemonConfig" . }}
         - name: daemon-config
           configMap:
             name: {{ include "dockerd.configMapName" . }}

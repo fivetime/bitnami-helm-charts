@@ -65,6 +65,7 @@ built locally will still try to pull it. Push it to a registry, or import it:
 {{- include "dockerd.checkNodeSelector" . }}
 {{- include "dockerd.checkHostNetwork" . }}
 {{- include "dockerd.checkHostPID" . }}
+{{- include "dockerd.checkExistingConfigmap" . }}
 {{- include "dockerd.checkPrivileged" . }}
 {{- include "dockerd.checkStorageDriver" . }}
 

@@ -168,6 +168,15 @@ daemonConfig:
 
 dockerd refuses to start when a setting appears both as a flag and in that file, so the chart validates against the flags it passes (`containerd`, `containerd-namespace`, `containerd-plugins-namespace`, `data-root`, `hosts`) and tells you which key to move. Changing `daemonConfig` rolls the DaemonSet, because dockerd only reads the file at startup.
 
+#### Managing daemon.json outside the release
+
+Editing the chart-owned ConfigMap by hand works exactly once. The next `helm upgrade` renders it back from `daemonConfig` without rolling anything — the `checksum/daemon-config` annotation is computed from the template, not from the live object, so it does not change — and the running daemons keep the edited config until something restarts them. They then revert silently, possibly weeks later.
+
+If the file has to live outside the release, point `existingConfigmap` at a ConfigMap the chart does not own (it needs a `daemon.json` key). The chart then renders no ConfigMap of its own and mounts yours instead; `daemonConfig` is ignored. Two consequences, both called out in the install notes:
+
+- **Nothing rolls automatically.** Helm cannot see inside a ConfigMap it does not render, so after each edit run `kubectl rollout restart daemonset/<release>-dockerd`.
+- **Nothing is validated.** The flag-collision check above only covers the rendered ConfigMap; with your own, a duplicated setting shows up as a daemon that refuses to start.
+
 ### Host networking
 
 On by default and load-bearing. dockerd creates `docker0`, programs NAT and publishes container ports; in a pod network namespace all of that happens inside the pod, so `docker run -p 80:80` binds a port nothing on the node can reach and containers are invisible to everything outside. The chart warns rather than refuses if you turn it off, because there are niche reasons to — but a daemon that starts and behaves nothing like the node-level Docker it replaces is worse than one that does not start.
@@ -253,6 +262,7 @@ The `resources` you set here bound the **daemon**, not the containers it starts 
 | `dnsPolicy`                  | Pod DNS policy. ClusterFirstWithHostNet is required for name resolution to work on host network                                                   | `ClusterFirstWithHostNet`               |
 | `hostPluginDirs`             | Node directories holding plugin specs, mounted read-only into the daemon                                                                          | `[]`                                    |
 | `daemonConfig`               | Contents of /etc/docker/daemon.json, as a map. The shipped default is in values.yaml, annotated setting by setting                                | `{...}`                                 |
+| `existingConfigmap`          | Name of an existing ConfigMap holding daemon.json. Mutually exclusive with `daemonConfig`                                                         | `""`                                    |
 | `extraArgs`                  | Extra flags appended to the `dockerd` command line                                                                                                | `[]`                                    |
 | `command`                    | Override default container command. Skips the image entrypoint, and with it the iptables detection and docker-init injection it performs          | `[]`                                    |
 | `args`                       | Override the whole dockerd argument list. Takes precedence over every flag this chart builds                                                      | `[]`                                    |

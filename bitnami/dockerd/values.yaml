@@ -305,6 +305,28 @@ daemonConfig:
   ##
   features:
     containerd-snapshotter: false
+## Take daemon.json out of Helm's hands instead.
+##
+## Point this at a ConfigMap the chart does not own and it is mounted in place of the one
+## rendered from `daemonConfig`, which is then not rendered at all. The two are mutually
+## exclusive.
+##
+## Use it when the file has to be editable outside a release: with the chart-owned ConfigMap,
+## editing the live object works until the next `helm upgrade` quietly renders it back, and
+## the running daemons keep the edited config until something restarts them - at which point
+## they revert, weeks later, with nothing to point at.
+##
+## The trade-off is that the daemons no longer roll by themselves. The `checksum/daemon-config`
+## annotation is computed from the rendered template, and Helm cannot see inside a ConfigMap it
+## does not render, so after editing yours run:
+##
+##   kubectl rollout restart daemonset/<release>-dockerd
+##
+## The ConfigMap must have a `daemon.json` key.
+##
+## @param existingConfigmap Name of an existing ConfigMap holding daemon.json. Mutually exclusive with `daemonConfig`
+##
+existingConfigmap: ""
 ## @param extraArgs Extra flags appended to the `dockerd` command line
 ## E.g.
 ## extraArgs:

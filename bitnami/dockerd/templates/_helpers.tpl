@@ -39,7 +39,18 @@ Create the name of the ServiceAccount to use
 Name of the daemon.json ConfigMap
 */}}
 {{- define "dockerd.configMapName" -}}
+{{- if .Values.existingConfigmap -}}
+{{- include "common.tplvalues.render" (dict "value" .Values.existingConfigmap "context" $) -}}
+{{- else -}}
 {{- printf "%s-daemon-config" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Whether a daemon.json is mounted at all, from either source.
+*/}}
+{{- define "dockerd.hasDaemonConfig" -}}
+{{- if or .Values.daemonConfig .Values.existingConfigmap -}}true{{- end -}}
 {{- end -}}
 
 {{/*
@@ -204,6 +215,26 @@ Warnings that do not justify refusing to render
     Even as a control plane, the daemon programs iptables, mounts overlay filesystems and
     prepares the rootfs that the node's containerd runs. On a stock runtime it will not
     start without a privileged container.
+{{- end -}}
+{{- end -}}
+
+{{- define "dockerd.checkExistingConfigmap" -}}
+{{- if .Values.existingConfigmap }}
+
+⚠ NOTE: daemon.json comes from the ConfigMap {{ .Values.existingConfigmap }}, which this chart does not own.
+
+    Two things follow from that. The daemons will not roll when you edit it - Helm cannot
+    see inside a ConfigMap it does not render, so there is no checksum to change. After
+    every edit:
+
+        kubectl rollout restart daemonset/{{ include "common.names.fullname" . }} -n {{ include "common.names.namespace" . }}
+
+    And its contents are not validated against the flags this chart passes ({{ join ", " (list "containerd" "containerd-namespace" "containerd-plugins-namespace" "data-root" "hosts") }}).
+    dockerd refuses to start if a setting appears in both places.
+{{- if .Values.daemonConfig }}
+
+    daemonConfig is set as well and is being ignored.
+{{- end }}
 {{- end -}}
 {{- end -}}
 

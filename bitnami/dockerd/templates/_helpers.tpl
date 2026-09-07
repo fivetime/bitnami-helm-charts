@@ -84,6 +84,9 @@ getting the second one, which is the part worth keeping.
 {{- /* Always passed, even when empty: the daemon's own default resolves `docker` inside the
      container image, where that group is GID 2375 and unrelated to the node's. */ -}}
 {{- $args = append $args (printf "--group=%v" .Values.dockerSocketGroup) -}}
+{{- if .Values.metrics.enabled -}}
+{{- $args = append $args (printf "--metrics-addr=%v:%v" .Values.metrics.bindAddress .Values.metrics.port) -}}
+{{- end -}}
 {{- if .Values.image.debug -}}
 {{- $args = append $args "--debug" -}}
 {{- end -}}
@@ -167,6 +170,7 @@ dockerd: daemonConfig must be a map, got {{ kindOf .Values.daemonConfig }}.
 {{- else -}}
 {{- $cfg := .Values.daemonConfig | default dict -}}
 {{- $conflicts := list "containerd" "containerd-namespace" "containerd-plugins-namespace" "data-root" "group" "hosts" -}}
+{{- if .Values.metrics.enabled -}}{{- $conflicts = append $conflicts "metrics-addr" -}}{{- end -}}
 {{- $found := list -}}
 {{- range $k := $conflicts -}}
 {{- if hasKey $cfg $k -}}

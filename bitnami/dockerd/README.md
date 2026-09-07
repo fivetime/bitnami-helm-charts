@@ -69,6 +69,14 @@ Point `hostPluginDirs` at the directories the node actually uses and they are mo
 
 The plugins' runtime sockets live under `/run/docker/plugins` and are already shared through `hostRunDir`; only these spec directories need adding.
 
+### Metrics
+
+`metrics.enabled` turns on the daemon's own Prometheus endpoint and creates a headless Service plus, optionally, a ServiceMonitor. What it reports is the engine's view — container and image counts, builder timings, health-check durations — and that is worth having here for a reason specific to this architecture: these containers live in containerd's `moby` namespace, so the kubelet and cAdvisor do not see them at all. Nothing else in the cluster is reporting on them.
+
+The Service is headless on purpose. Every pod runs on the node's network, so each endpoint is a node address; a cluster IP would balance scrapes across nodes and file one node's numbers under all of their names.
+
+Note where the port lands. With `hostNetwork` there is no pod network to hide in, so `metrics.port` is a real port on every targeted node, unauthenticated, naming images and containers. `metrics.bindAddress` defaults to `0.0.0.0` because a Prometheus running elsewhere has to reach it; set it to `127.0.0.1` if you would rather scrape from something node-local.
+
 ### Prerequisites
 
 - Kubernetes 1.23+ and Helm 3.8.0+
@@ -272,6 +280,26 @@ The `resources` you set here bound the **daemon**, not the containers it starts 
 | `extraEnvVarsCM`             | Name of existing ConfigMap containing extra env vars                                                                                              | `""`                                    |
 | `extraEnvVarsSecret`         | Name of existing Secret containing extra env vars                                                                                                 | `""`                                    |
 
+### Metrics parameters
+
+| Name                                       | Description                                                                                                             | Value       |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- | ----------- |
+| `metrics.enabled`                          | Serve Prometheus metrics from the daemon                                                                                | `false`     |
+| `metrics.port`                             | Port for the metrics endpoint. Occupies this port on the node                                                           | `9323`      |
+| `metrics.bindAddress`                      | Address the metrics endpoint binds to. 127.0.0.1 keeps it node-local, and unreachable by a Prometheus running elsewhere | `0.0.0.0`   |
+| `metrics.service.enabled`                  | Create a headless Service for the metrics endpoint                                                                      | `true`      |
+| `metrics.service.type`                     | Metrics service type                                                                                                    | `ClusterIP` |
+| `metrics.service.annotations`              | Additional custom annotations for the metrics service                                                                   | `{}`        |
+| `metrics.serviceMonitor.enabled`           | Create a ServiceMonitor for the Prometheus Operator                                                                     | `false`     |
+| `metrics.serviceMonitor.namespace`         | Namespace for the ServiceMonitor. Defaults to the release namespace                                                     | `""`        |
+| `metrics.serviceMonitor.labels`            | Extra labels for the ServiceMonitor, usually what your Prometheus selects on                                            | `{}`        |
+| `metrics.serviceMonitor.jobLabel`          | Service label to use as the job name                                                                                    | `""`        |
+| `metrics.serviceMonitor.honorLabels`       | Keep the target's labels when they collide with the server's                                                            | `false`     |
+| `metrics.serviceMonitor.interval`          | Scrape interval. Prometheus' own default when empty                                                                     | `""`        |
+| `metrics.serviceMonitor.scrapeTimeout`     | Scrape timeout. Prometheus' own default when empty                                                                      | `""`        |
+| `metrics.serviceMonitor.relabelings`       | RelabelConfigs applied before scraping                                                                                  | `[]`        |
+| `metrics.serviceMonitor.metricRelabelings` | MetricRelabelConfigs applied before ingestion                                                                           | `[]`        |
+
 ### Garbage collector parameters
 
 | Name                                                   | Description                                                                                                                                                                                                             | Value                                                                     |
@@ -397,6 +425,8 @@ helm install my-release -f values.yaml oci://REGISTRY_NAME/REPOSITORY_NAME/docke
 **The daemon crash-loops immediately with "directives are specified both as a flag and in the configuration file".** A key in `daemonConfig` collides with a flag. The chart validates the five it passes, so this means a key it does not know about — remove it from `daemonConfig` or from `extraArgs`.
 
 **`docker` cannot see images the kubelet pulled, or vice versa.** Working as intended: different containerd namespaces. See the section above.
+
+**Published ports stop answering for ~25 seconds during a rollout.** `docker-proxy` is a child of the daemon, so here it lives in the pod and dies with it, while the DNAT rules it complements live in the node's network namespace and survive. The gap is the new pod starting and re-spawning the proxy. `daemonConfig.userland-proxy` is `false` by default for this reason, which takes the same measurement from 24.5s to 1s; if you turn it back on, expect the gap. The containers themselves keep running either way — that is `live-restore`.
 
 **Builds are killed during an upgrade.** They will be: the daemon cancels in-flight builds on SIGTERM and a longer `terminationGracePeriodSeconds` does not change that — it only bounds how long a *hung* shutdown is tolerated. Containers that are already running do survive, because `live-restore` is on by default. If builds must not be interrupted, gate when the rollout happens rather than how long it waits, and keep `updateStrategy.rollingUpdate.maxUnavailable` at 1 so only one node is affected at a time.
 

@@ -317,6 +317,21 @@ daemonConfig:
   ## running containers with it.
   ##
   live-restore: true
+  ## Publish ports with iptables alone, no docker-proxy process.
+  ##
+  ## This matters more here than on an ordinary node. docker-proxy is a child of the daemon,
+  ## so in this chart it lives in the pod's cgroup and mount namespace and dies with the pod;
+  ## the DNAT rules it complements live in the node's network namespace and do not. Measured
+  ## on a rolling restart with a published port under continuous probing: 24.5s of refused
+  ## connections with the proxy, 1s without it - and in both cases the container itself never
+  ## restarted, because of live-restore above. The 24s is the new pod starting and re-spawning
+  ## a proxy that had gone with the old one; the 1s is iptables being reprogrammed.
+  ##
+  ## The historical objection to this - that 127.0.0.1:<published> stops working - does not
+  ## apply to current versions; both the loopback and the node address were verified reachable
+  ## with it off.
+  ##
+  userland-proxy: false
   ## Leave the graph on Docker's own overlay2 driver under `dataRoot`.
   ##
   ## Turning it on would move images into containerd's snapshotter and content store - still
@@ -370,6 +385,60 @@ extraEnvVars: []
 extraEnvVarsCM: ""
 extraEnvVarsSecret: ""
 
+## @section Metrics parameters
+
+## Prometheus metrics from the daemon itself.
+##
+## What it exposes is the daemon's own view - engine info, container/image counts, builder
+## and health-check timings - not per-container resource usage. cAdvisor and the kubelet do
+## not see these containers at all, since they live in containerd's `moby` namespace, so this
+## endpoint is the only thing that reports on them.
+##
+## Note where the port lands: with `hostNetwork` there is no pod network to hide in, so this
+## binds a real port on every targeted node. Keep `bindAddress` at 0.0.0.0 only if reaching
+## it from the Prometheus pod matters - the endpoint is unauthenticated, and it names images
+## and containers.
+##
+## @param metrics.enabled Serve Prometheus metrics from the daemon
+## @param metrics.port Port for the metrics endpoint. Occupies this port on the node
+## @param metrics.bindAddress Address the metrics endpoint binds to. 127.0.0.1 keeps it node-local, and unreachable by a Prometheus running elsewhere
+##
+metrics:
+  enabled: false
+  port: 9323
+  bindAddress: 0.0.0.0
+  ## Headless service fronting the metrics port.
+  ##
+  ## @param metrics.service.enabled Create a headless Service for the metrics endpoint
+  ## @param metrics.service.type Metrics service type
+  ## @param metrics.service.annotations Additional custom annotations for the metrics service
+  ##
+  service:
+    enabled: true
+    type: ClusterIP
+    annotations: {}
+  ## Prometheus Operator ServiceMonitor.
+  ##
+  ## @param metrics.serviceMonitor.enabled Create a ServiceMonitor for the Prometheus Operator
+  ## @param metrics.serviceMonitor.namespace Namespace for the ServiceMonitor. Defaults to the release namespace
+  ## @param metrics.serviceMonitor.labels Extra labels for the ServiceMonitor, usually what your Prometheus selects on
+  ## @param metrics.serviceMonitor.jobLabel Service label to use as the job name
+  ## @param metrics.serviceMonitor.honorLabels Keep the target's labels when they collide with the server's
+  ## @param metrics.serviceMonitor.interval Scrape interval. Prometheus' own default when empty
+  ## @param metrics.serviceMonitor.scrapeTimeout Scrape timeout. Prometheus' own default when empty
+  ## @param metrics.serviceMonitor.relabelings RelabelConfigs applied before scraping
+  ## @param metrics.serviceMonitor.metricRelabelings MetricRelabelConfigs applied before ingestion
+  ##
+  serviceMonitor:
+    enabled: false
+    namespace: ""
+    labels: {}
+    jobLabel: ""
+    honorLabels: false
+    interval: ""
+    scrapeTimeout: ""
+    relabelings: []
+    metricRelabelings: []
 ## @section Garbage collector parameters
 ##
 

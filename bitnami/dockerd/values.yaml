@@ -164,6 +164,27 @@ dataRoot: /var/lib/docker
 ## @param dockerSocket Node path for the Docker API socket. Must be under `hostRunDir`
 ##
 dockerSocket: /run/docker.sock
+## Group that owns the API socket on the node.
+##
+## Leave it empty and the socket is root-owned, mode 0660 - only root on the node can use
+## `docker`. To let a group in, this has to be the group's NUMERIC GID, because the daemon
+## resolves the name inside its own container: the official -dind image ships a `docker`
+## group at GID 2375, so the daemon's own default (`docker`) chowns the node's socket to a
+## GID that means nothing on the node, and the node's docker group is locked out anyway.
+##
+## Read the number off a target node and pass that:
+##
+##   getent group docker      # e.g. docker:x:987:  ->  dockerSocketGroup: "987"
+##
+## GIDs are assigned per machine on Debian/Ubuntu, so check that the whole set of nodes this
+## DaemonSet targets agrees on the number before relying on it.
+##
+## Note that this grants what membership of the docker group always grants: the socket takes
+## requests to start privileged containers, so it is root on the node by another route.
+##
+## @param dockerSocketGroup Numeric GID to own the API socket. Empty leaves it root-only
+##
+dockerSocketGroup: ""
 ## @param hostRunDir Node directory holding runtime sockets, mounted so that both the containerd socket above and the published Docker socket are shared with the node
 ##
 hostRunDir: /run
@@ -251,7 +272,7 @@ hostPluginDirs: []
 ##
 ## Note that dockerd REFUSES TO START when a setting appears both here and on the command line,
 ## and this chart passes `containerd`, `containerd-namespace`, `containerd-plugins-namespace`,
-## `data-root` and `hosts` as flags. Configure everything else here. Changing this rolls the
+## `data-root`, `group` and `hosts` as flags. Configure everything else here. Changing this rolls the
 ## DaemonSet, because dockerd reads the file only at startup.
 ##
 ## @param daemonConfig [default: {...}] Contents of /etc/docker/daemon.json, as a map. The shipped default is in values.yaml, annotated setting by setting
@@ -463,9 +484,18 @@ podAnnotations: {}
 ## @param automountServiceAccountToken Mount Service Account token in pod. Nothing in this chart calls the Kubernetes API
 ##
 automountServiceAccountToken: false
-## @param terminationGracePeriodSeconds Grace period. On SIGTERM the daemon stops accepting work but lets running containers finish, so anything shorter than your longest build kills builds mid-flight
+## Grace period on SIGTERM.
 ##
-terminationGracePeriodSeconds: 3600
+## Short on purpose. The daemon does not wait for work to finish: with `live-restore` it
+## detaches from running containers and exits, and without it, it stops them bounded by the
+## daemon's own `shutdown-timeout` (15s by default). In-flight builds are cancelled either
+## way. So a long grace period buys nothing, and costs something real - if the daemon ever
+## hangs on shutdown, `kubectl drain` and every rollout wait out the whole period before
+## SIGKILL. This leaves room for a slow disk and little else.
+##
+## @param terminationGracePeriodSeconds Grace period on SIGTERM. The daemon does not wait for running work, so this only bounds a hung shutdown
+##
+terminationGracePeriodSeconds: 120
 ## Pod-level security context
 ## @param podSecurityContext.enabled Enable pod security context
 ## @param podSecurityContext.fsGroup Group ID for the pod's volumes

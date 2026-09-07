@@ -81,6 +81,9 @@ getting the second one, which is the part worth keeping.
 {{- $args = append $args (printf "--containerd-namespace=%s" .Values.containerd.namespace) -}}
 {{- $args = append $args (printf "--containerd-plugins-namespace=%s" .Values.containerd.pluginNamespace) -}}
 {{- $args = append $args (printf "--data-root=%s" .Values.dataRoot) -}}
+{{- /* Always passed, even when empty: the daemon's own default resolves `docker` inside the
+     container image, where that group is GID 2375 and unrelated to the node's. */ -}}
+{{- $args = append $args (printf "--group=%v" .Values.dockerSocketGroup) -}}
 {{- if .Values.image.debug -}}
 {{- $args = append $args "--debug" -}}
 {{- end -}}
@@ -163,7 +166,7 @@ dockerd: daemonConfig must be a map, got {{ kindOf .Values.daemonConfig }}.
     empty map in a values file.
 {{- else -}}
 {{- $cfg := .Values.daemonConfig | default dict -}}
-{{- $conflicts := list "containerd" "containerd-namespace" "containerd-plugins-namespace" "data-root" "hosts" -}}
+{{- $conflicts := list "containerd" "containerd-namespace" "containerd-plugins-namespace" "data-root" "group" "hosts" -}}
 {{- $found := list -}}
 {{- range $k := $conflicts -}}
 {{- if hasKey $cfg $k -}}
@@ -229,7 +232,7 @@ Warnings that do not justify refusing to render
 
         kubectl rollout restart daemonset/{{ include "common.names.fullname" . }} -n {{ include "common.names.namespace" . }}
 
-    And its contents are not validated against the flags this chart passes ({{ join ", " (list "containerd" "containerd-namespace" "containerd-plugins-namespace" "data-root" "hosts") }}).
+    And its contents are not validated against the flags this chart passes ({{ join ", " (list "containerd" "containerd-namespace" "containerd-plugins-namespace" "data-root" "group" "hosts") }}).
     dockerd refuses to start if a setting appears in both places.
 {{- if .Values.daemonConfig }}
 

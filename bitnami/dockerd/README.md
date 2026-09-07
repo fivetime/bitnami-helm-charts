@@ -166,7 +166,7 @@ daemonConfig:
     max-file: "3"
 ```
 
-dockerd refuses to start when a setting appears both as a flag and in that file, so the chart validates against the flags it passes (`containerd`, `containerd-namespace`, `containerd-plugins-namespace`, `data-root`, `hosts`) and tells you which key to move. Changing `daemonConfig` rolls the DaemonSet, because dockerd only reads the file at startup.
+dockerd refuses to start when a setting appears both as a flag and in that file, so the chart validates against the flags it passes (`containerd`, `containerd-namespace`, `containerd-plugins-namespace`, `data-root`, `group`, `hosts`) and tells you which key to move. Changing `daemonConfig` rolls the DaemonSet, because dockerd only reads the file at startup.
 
 #### Managing daemon.json outside the release
 
@@ -189,7 +189,7 @@ Restarting containerd on a node now disrupts both the kubelet's pods and Docker'
 
 The daemon container is privileged, which is root on the node — and unlike the usual privileged pod, its API is deliberately reachable: anything on the node that can open `/run/docker.sock` can start a privileged container, and from there the node's block devices and a writable `/proc/sys` are one step away. That is the same exposure a node-level Docker install has; delivering it as a pod does not add to it, but it does not reduce it either.
 
-What that means in practice: the socket's file permissions are the access control (root-owned, `docker` group semantics if you set them up), so treat "who can reach this node's socket" the same way you would treat "who is in the `docker` group on this machine". The pod itself has no Kubernetes API access — no RBAC objects, `automountServiceAccountToken: false` — so a compromised daemon does not become a cluster-wide problem on its own.
+What that means in practice: the socket's file permissions are the access control. By default it is root-owned and mode 0660, so only root on the node can use `docker`. To admit a group, `dockerSocketGroup` must be that group's **numeric GID** — the daemon resolves a group *name* inside its own container, where the official `-dind` image has a `docker` group at GID 2375 that has nothing to do with the node's. Read the number off a node with `getent group docker`, and check the whole target set agrees on it, because Debian and Ubuntu assign these per machine. Whatever you admit, treat it the way you would treat membership of the `docker` group on that machine: the socket accepts requests to start privileged containers, so it is root on the node by another route. The pod itself has no Kubernetes API access — no RBAC objects, `automountServiceAccountToken: false` — so a compromised daemon does not become a cluster-wide problem on its own.
 
 The client install adds a second write path onto the node: `hostCli.binDir` is mounted read-write so the init container can place `docker` there, which means anything able to create pods with this chart's values can drop a binary into a directory on the node's PATH. It is not new exposure — the daemon container is already root on the node — but it is worth knowing about if `binDir` is somewhere shared. Set `hostCli.enabled=false` to remove that mount entirely.
 
@@ -251,6 +251,7 @@ The `resources` you set here bound the **daemon**, not the containers it starts 
 | `containerd.pluginNamespace` | containerd namespace for Docker's plugins                                                                                                         | `plugins.moby`                          |
 | `dataRoot`                   | Node directory for Docker's data (images, layers, volumes, build cache)                                                                           | `/var/lib/docker`                       |
 | `dockerSocket`               | Node path for the Docker API socket. Must be under `hostRunDir`                                                                                   | `/run/docker.sock`                      |
+| `dockerSocketGroup`          | Numeric GID to own the API socket. Empty leaves it root-only                                                                                      | `""`                                    |
 | `hostRunDir`                 | Node directory holding runtime sockets, mounted so that both the containerd socket above and the published Docker socket are shared with the node | `/run`                                  |
 | `hostCli.enabled`            | Copy the Docker client out of the daemon image onto the node                                                                                      | `true`                                  |
 | `hostCli.binDir`             | Node directory to place the `docker` binary in. It must be on the node's PATH; use /opt/bin on Flatcar and other images whose /usr is read-only   | `/usr/local/bin`                        |
@@ -314,7 +315,7 @@ The `resources` you set here bound the **daemon**, not the containers it starts 
 | `podLabels`                                         | Extra labels for pods                                                                                                                                                                                             | `{}`            |
 | `podAnnotations`                                    | Extra annotations for pods                                                                                                                                                                                        | `{}`            |
 | `automountServiceAccountToken`                      | Mount Service Account token in pod. Nothing in this chart calls the Kubernetes API                                                                                                                                | `false`         |
-| `terminationGracePeriodSeconds`                     | Grace period. On SIGTERM the daemon stops accepting work but lets running containers finish, so anything shorter than your longest build kills builds mid-flight                                                  | `3600`          |
+| `terminationGracePeriodSeconds`                     | Grace period on SIGTERM. The daemon does not wait for running work, so this only bounds a hung shutdown                                                                                                           | `120`           |
 | `podSecurityContext.enabled`                        | Enable pod security context                                                                                                                                                                                       | `true`          |
 | `podSecurityContext.fsGroup`                        | Group ID for the pod's volumes                                                                                                                                                                                    | `0`             |
 | `containerSecurityContext.enabled`                  | Enable container security context                                                                                                                                                                                 | `true`          |
@@ -397,7 +398,7 @@ helm install my-release -f values.yaml oci://REGISTRY_NAME/REPOSITORY_NAME/docke
 
 **`docker` cannot see images the kubelet pulled, or vice versa.** Working as intended: different containerd namespaces. See the section above.
 
-**Builds are killed during an upgrade.** `terminationGracePeriodSeconds` defaults to 3600 so in-flight work finishes; also raise `updateStrategy.rollingUpdate.maxUnavailable` only as far as you can afford nodes losing their socket at once.
+**Builds are killed during an upgrade.** They will be: the daemon cancels in-flight builds on SIGTERM and a longer `terminationGracePeriodSeconds` does not change that — it only bounds how long a *hung* shutdown is tolerated. Containers that are already running do survive, because `live-restore` is on by default. If builds must not be interrupted, gate when the rollout happens rather than how long it waits, and keep `updateStrategy.rollingUpdate.maxUnavailable` at 1 so only one node is affected at a time.
 
 **The pod will not start on a privileged-restricted cluster.** Bind its ServiceAccount to a policy that permits privileged containers (on OpenShift, the `privileged` SCC). Do not relax the namespace default instead.
 

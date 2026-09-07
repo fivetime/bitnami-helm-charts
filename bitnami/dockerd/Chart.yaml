@@ -1,0 +1,44 @@
+# Copyright Broadcom, Inc. All Rights Reserved.
+# SPDX-License-Identifier: APACHE-2.0
+
+annotations:
+  images: |
+    - name: docker-dind
+      image: docker.io/docker:29.7.2-dind
+    - name: drone-gc
+      image: docker.io/drone/gc:latest
+  licenses: Apache-2.0
+  tanzuCategory: clusterUtility
+apiVersion: v2
+appVersion: 29.7.2
+dependencies:
+- name: common
+  repository: oci://registry-1.docker.io/bitnamicharts
+  tags:
+  - bitnami-common
+  version: 2.x.x
+description: Delivers the Docker daemon to selected nodes as a DaemonSet instead of installing
+  it on each of them. The daemon runs as a pure control plane - it drives the containerd that
+  is already on the node rather than nesting one of its own - and publishes its socket at the
+  usual host path, so anything on the node that expects Docker finds it there. An optional
+  garbage collector reclaims the layer cache before it fills the node's disk.
+home: https://hub.docker.com/_/docker
+icon: https://raw.githubusercontent.com/docker-library/docs/c350af05d3fac7b5c3f6327ac82fe4d990d8729c/docker/logo.png
+keywords:
+- docker
+- dockerd
+- containerd
+- daemonset
+- node-agent
+- ci
+- build
+- container-runtime
+maintainers:
+- name: Broadcom, Inc. All Rights Reserved.
+  url: https://github.com/bitnami/charts
+name: dockerd
+sources:
+- https://github.com/docker-library/docker
+- https://github.com/peterwwillis/helm-docker-in-docker
+- https://github.com/bitnami/charts/tree/main/bitnami/dockerd
+version: 1.0.0

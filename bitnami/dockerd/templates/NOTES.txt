@@ -1,0 +1,82 @@
+CHART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+A Docker daemon is now running on {{ if .Values.nodeSelector }}every node matching your nodeSelector{{ else }}EVERY schedulable node{{ end }}.
+
+It is a control plane only: it builds images and serves the Docker API, while the containerd
+already on the node starts the processes.
+
+    API socket on the node : {{ .Values.dockerSocket }}
+    containerd it drives   : {{ .Values.containerd.socket }} (namespace {{ .Values.containerd.namespace }})
+    data on the node       : {{ .Values.dataRoot }}
+
+## Use it from the node
+
+{{- if .Values.hostCli.enabled }}
+
+The client was copied out of the daemon image onto the node, so there is nothing to install
+and nothing to configure - {{ .Values.dockerSocket }} is where every Docker client looks by
+default. On the node:
+
+    docker info
+    docker build -t myimage .
+
+The binary is at {{ .Values.hostCli.binDir }}/docker, which has to be on your PATH.
+{{- if or .Values.hostCli.plugins.buildx .Values.hostCli.plugins.compose }} Also installed in {{ .Values.hostCli.plugins.dir }}:
+{{- if .Values.hostCli.plugins.buildx }} `docker buildx`{{ if .Values.hostCli.plugins.compose }} and{{ end }}{{ end }}
+{{- if .Values.hostCli.plugins.compose }} `docker compose`{{ end }}.
+{{- else }} No CLI plugins were installed, so `docker buildx` and `docker compose` are not available; enable them with `hostCli.plugins.buildx` / `hostCli.plugins.compose`.
+{{- end }}
+{{- else }}
+
+hostCli.enabled is false, so these nodes have a daemon but no client. Until docker-cli is
+installed on each of them by hand - most of what this chart exists to avoid - the only way to
+reach the socket is from inside the pod:
+
+    kubectl exec -it -n {{ include "common.names.namespace" . }} ds/{{ include "common.names.fullname" . }} -c dockerd -- docker info
+{{- end }}
+
+## Check it worked
+
+1. One pod per targeted node, all Ready. Readiness runs `docker info` through the socket,
+   which passes only if the daemon can also reach the node's containerd:
+
+     kubectl get pods -n {{ include "common.names.namespace" . }} -l app.kubernetes.io/instance={{ .Release.Name }} -o wide
+
+2. The daemon reports the node's containerd, not one of its own:
+
+     kubectl exec -n {{ include "common.names.namespace" . }} ds/{{ include "common.names.fullname" . }} -c dockerd -- docker info --format '{{ "{{.ContainerdCommit.ID}} {{.DefaultRuntime}}" }}'
+
+3. Docker's containers appear in containerd's `{{ .Values.containerd.namespace }}` namespace, and the kubelet's stay in
+   `k8s.io`. Run this on the node:
+
+     ctr namespace ls
+     ctr -n {{ .Values.containerd.namespace }} containers ls
+
+## Images built here are not visible to the kubelet
+
+That is the flip side of the namespace separation above: `docker build` writes into
+`{{ .Values.containerd.namespace }}`, while Pods are started from `k8s.io`. A Pod referring to an image you just
+built locally will still try to pull it. Push it to a registry, or import it:
+
+    docker save myimage | ctr -n k8s.io images import -
+
+{{- include "dockerd.checkNodeSelector" . }}
+{{- include "dockerd.checkHostNetwork" . }}
+{{- include "dockerd.checkHostPID" . }}
+{{- include "dockerd.checkPrivileged" . }}
+{{- include "dockerd.checkStorageDriver" . }}
+
+{{- if not .Values.gc.enabled }}
+
+## Nothing is reclaiming disk
+
+The garbage collector is disabled and {{ .Values.dataRoot }} only grows. It sits on the node's
+own disk, next to the kubelet's, so when it fills up the eviction manager starts killing pods
+that have nothing to do with Docker.
+{{- end }}
+
+{{- include "common.warnings.rollingTag" .Values.image }}
+{{- include "common.warnings.rollingTag" .Values.gc.image }}
+{{- include "common.warnings.resources" (dict "sections" (list "" "gc") "context" $) }}

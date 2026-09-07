@@ -1,0 +1,585 @@
+# Copyright Broadcom, Inc. All Rights Reserved.
+# SPDX-License-Identifier: APACHE-2.0
+
+## @section Global parameters
+## Global Docker image parameters
+## Please, note that this will override the image parameters, including dependencies, configured to use the global value
+## Current available global Docker image parameters: imageRegistry, imagePullSecrets and storageClass
+##
+
+## @param global.imageRegistry Global Docker image registry
+## @param global.imagePullSecrets Global Docker registry secret names as an array
+##
+global:
+  imageRegistry: ""
+  ## E.g.
+  ## imagePullSecrets:
+  ##   - myRegistryKeySecretName
+  ##
+  imagePullSecrets: []
+  ## Compatibility adaptations for Kubernetes platforms
+  ##
+  compatibility:
+    ## Compatibility adaptations for Openshift
+    ##
+    openshift:
+      ## @param global.compatibility.openshift.adaptSecurityContext Adapt the securityContext sections of the deployment to make them compatible with Openshift restricted-v2 SCC: remove runAsUser, runAsGroup and fsGroup and let the platform use their allowed default IDs. Possible values: auto (apply if the detected running cluster is Openshift), force (perform the adaptation always), disabled (do not perform adaptation)
+      ## NOTE: this daemon needs a privileged container whatever this is set to. On Openshift, bind its ServiceAccount to the `privileged` SCC
+      ##
+      adaptSecurityContext: auto
+
+## @section Common parameters
+##
+
+## @param kubeVersion Override Kubernetes version
+##
+kubeVersion: ""
+## @param nameOverride String to partially override common.names.fullname
+##
+nameOverride: ""
+## @param fullnameOverride String to fully override common.names.fullname
+##
+fullnameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+##
+namespaceOverride: ""
+## @param commonLabels Labels to add to all deployed objects
+##
+commonLabels: {}
+## @param commonAnnotations Annotations to add to all deployed objects
+##
+commonAnnotations: {}
+## @param extraDeploy Array of extra objects to deploy with the release
+##
+extraDeploy: []
+## Enable diagnostic mode in the DaemonSet
+##
+diagnosticMode:
+  ## @param diagnosticMode.enabled Enable diagnostic mode (all probes will be disabled and the command will be overridden)
+  ##
+  enabled: false
+  ## @param diagnosticMode.command Command to override all containers in the DaemonSet
+  ##
+  command:
+    - sleep
+  ## @param diagnosticMode.args Args to override all containers in the DaemonSet
+  ##
+  args:
+    - infinity
+
+## @section Node targeting
+##
+
+## Which nodes get a Docker daemon.
+##
+## An empty selector means EVERY schedulable node, which is rarely what you want: the point of
+## delivering Docker this way is to give it to the nodes that need it and leave the rest alone.
+## Label the nodes you want and select on that label, e.g.
+##
+##   kubectl label node worker-1 docker.io/daemon=true
+##   --set nodeSelector."docker\.io/daemon"=true
+##
+## @param nodeSelector Node labels for pod assignment. Empty targets every schedulable node
+##
+nodeSelector: {}
+## @param tolerations Tolerations for pod assignment
+##
+tolerations: []
+## @param affinity Affinity for pod assignment. Overrides nodeSelector when both are set
+##
+affinity: {}
+## @param priorityClassName Priority class name. `system-node-critical` is defensible here: workloads on the node may depend on this socket existing
+##
+priorityClassName: ""
+
+## @section Docker daemon parameters
+##
+
+## Docker image. It MUST be a `-dind` flavour, because that is the only official image that
+## ships `dockerd` itself; the plain `docker` image has only the client.
+##
+## The containerd and runc binaries baked into that image go unused in this chart - the daemon
+## drives the node's containerd instead - but they cost only disk.
+##
+## @param image.registry [default: REGISTRY_NAME] Docker image registry
+## @param image.repository [default: REPOSITORY_NAME/docker] Docker image repository
+## @param image.tag Docker image tag. Must be a `-dind` tag
+## @param image.digest Docker image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+## @param image.pullPolicy Docker image pull policy
+## @param image.pullSecrets Docker image pull secrets
+## @param image.debug Enable image debug mode. Passes `--debug` to dockerd
+##
+image:
+  registry: docker.io
+  repository: docker
+  tag: 29.7.2-dind
+  digest: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+  debug: false
+
+## The whole point of this chart.
+##
+## `dockerd --containerd=<addr>` means "do not start a containerd, use this one" (moby's own
+## wording: "the address used to connect to containerd if we're not starting it ourselves").
+## The daemon then only builds images, manages the graph and speaks the Docker API, while the
+## containerd the kubelet already runs actually starts the processes.
+##
+## Docker's containers live in the containerd namespace `moby` and Kubernetes' live in
+## `k8s.io`, so the two share a containerd without seeing each other. That isolation is also
+## the catch: images built here are NOT visible to the kubelet. To run one as a Pod, push it
+## to a registry, or import it with `ctr -n k8s.io images import`.
+##
+containerd:
+  ## @param containerd.socket Path on the node to the containerd socket the daemon should drive
+  ##
+  socket: /run/containerd/containerd.sock
+  ## @param containerd.namespace containerd namespace for Docker's containers. Keep it away from `k8s.io`, which is the kubelet's
+  ## @param containerd.pluginNamespace containerd namespace for Docker's plugins
+  ##
+  namespace: moby
+  pluginNamespace: plugins.moby
+
+## Where the daemon keeps images, layers and build cache ON THE NODE.
+##
+## This is a hostPath, and it must be mounted at the same absolute path inside the pod as it
+## has on the node. That is not tidiness: with an external containerd, dockerd prepares the
+## container rootfs under this directory and hands containerd an absolute path to it. If the
+## two disagree about that path, containerd cannot find the rootfs and every `docker run`
+## fails with an error that says nothing about mount paths.
+##
+## @param dataRoot Node directory for Docker's data (images, layers, volumes, build cache)
+##
+dataRoot: /var/lib/docker
+## Where the API socket is published on the node.
+##
+## It must live under `hostRunDir`, because that mount is how the socket reaches the node at
+## all - and the default is deliberately `/run/docker.sock` rather than the more familiar
+## `/var/run/docker.sock`. On the node the two are the same file (`/var/run` is a symlink to
+## `/run` on any systemd host), so `docker info` and every CI script still find it where they
+## expect. Writing it as `/var/run/...` would instead depend on the same symlink existing
+## *inside the container image*: if it does not, the daemon creates its socket in the
+## container's own /var/run, nothing appears on the node, and the pod still reports Ready.
+##
+## @param dockerSocket Node path for the Docker API socket. Must be under `hostRunDir`
+##
+dockerSocket: /run/docker.sock
+## @param hostRunDir Node directory holding runtime sockets, mounted so that both the containerd socket above and the published Docker socket are shared with the node
+##
+hostRunDir: /run
+## Installing the client on the node.
+##
+## Publishing the socket is only half of a node-level Docker install. Without a `docker`
+## binary on the node there is nothing to talk to it with, and "no per-node install" would
+## still mean installing docker-cli on every node. The daemon image already carries the
+## official client, so an init container copies it out onto the node - the same move the
+## multus-cni chart makes to place its CNI binary.
+##
+## What gets copied are the static Go builds from Docker's own release tarballs, so they run
+## on any distribution whatever its libc. They are refreshed on every pod start, which is what
+## keeps the client in step with the daemon across chart upgrades.
+##
+## This is the one thing the chart leaves on the node: `helm uninstall` removes the DaemonSet
+## and the socket, but not the copied binaries. Remove them by hand if that matters.
+##
+## @param hostCli.enabled Copy the Docker client out of the daemon image onto the node
+## @param hostCli.binDir Node directory to place the `docker` binary in. It must be on the node's PATH; use /opt/bin on Flatcar and other images whose /usr is read-only
+##
+hostCli:
+  enabled: true
+  binDir: /usr/local/bin
+  ## CLI plugins, off by default.
+  ##
+  ## The client is what makes the socket usable at all, so it is installed unconditionally.
+  ## The plugins are not: a node that hosts this daemon is usually somewhere builds are
+  ## *executed*, not somewhere anyone sits and runs `docker buildx` or `docker compose`.
+  ## Turn on whichever one you actually use.
+  ##
+  ## Without buildx, `docker buildx ...` and multi-platform builds are unavailable; plain
+  ## `docker build` still works, through the client's own build path.
+  ##
+  ## @param hostCli.plugins.buildx Install the buildx CLI plugin on the node
+  ## @param hostCli.plugins.compose Install the compose CLI plugin on the node
+  ## @param hostCli.plugins.dir Node directory for CLI plugins. The client searches this path regardless of where its own binary sits
+  ##
+  plugins:
+    buildx: false
+    compose: false
+    dir: /usr/local/libexec/docker/cli-plugins
+## Host networking, on by default and load-bearing.
+##
+## dockerd programs iptables/NAT, creates the docker0 bridge and publishes container ports. In
+## a pod network namespace all of that happens inside the pod: `docker run -p 80:80` would bind
+## a port nothing on the node can reach, and containers would be invisible to the rest of the
+## node. Turning this off gives you a daemon that starts and then behaves nothing like the
+## node-level Docker it is meant to replace.
+##
+## The node's PID namespace is required, not a debugging convenience.
+##
+## Every container is started by the node's containerd, so its process lives in the node's PID
+## namespace. dockerd then has to set up that container's networking by bind-mounting
+## /proc/<pid>/ns/net - and with a private PID namespace that path does not exist for it. The
+## daemon starts, `docker build` works, and then every `docker run` fails with
+## `bind-mount /proc/<pid>/ns/net -> /var/run/docker/netns/...: no such file or directory`.
+##
+## @param hostNetwork Run the daemon in the node's network namespace
+## @param hostPID Share the node's PID namespace. Required - the daemon resolves container PIDs that only exist there
+## @param dnsPolicy Pod DNS policy. ClusterFirstWithHostNet is required for name resolution to work on host network
+##
+hostNetwork: true
+hostPID: true
+dnsPolicy: ClusterFirstWithHostNet
+## Node directories where legacy plugins are registered.
+##
+## Docker discovers libnetwork and volume plugins from `/etc/docker/plugins`,
+## `/usr/lib/docker/plugins` and `/usr/libexec/docker/plugins` on the machine it runs on -
+## which, for a containerized daemon, is the container. A plugin registered on the node is
+## therefore invisible, and the daemon logs `Unable to locate plugin: <name>` and then fails
+## any network or volume that depends on it. Their runtime sockets under /run are already
+## shared through `hostRunDir`; it is only these spec directories that need adding.
+##
+## Empty by default because most nodes register nothing. Set it if the node does - an
+## OpenStack Kuryr install, for instance, registers under /usr/lib/docker/plugins:
+##
+##   hostPluginDirs:
+##     - /usr/lib/docker/plugins
+##
+## @param hostPluginDirs Node directories holding plugin specs, mounted read-only into the daemon
+##
+hostPluginDirs: []
+## Contents of /etc/docker/daemon.json, rendered into a ConfigMap and mounted into the daemon.
+##
+## Note that dockerd REFUSES TO START when a setting appears both here and on the command line,
+## and this chart passes `containerd`, `containerd-namespace`, `containerd-plugins-namespace`,
+## `data-root` and `hosts` as flags. Configure everything else here. Changing this rolls the
+## DaemonSet, because dockerd reads the file only at startup.
+##
+## @param daemonConfig [default: {...}] Contents of /etc/docker/daemon.json, as a map. The shipped default is in values.yaml, annotated setting by setting
+##
+daemonConfig:
+  ## Docker's own bridge and its address pools, moved into link-local space.
+  ##
+  ## The usual 172.17/16 default collides with real networks often enough that the collision
+  ## is the reason most people ever open this file. Link-local has no such traffic to clash
+  ## with. Note that the pool stops at 169.254.127.255, which leaves the cloud metadata
+  ## endpoint at 169.254.169.254 outside it - taking a /16 here would black-hole it.
+  ##
+  bip: 169.254.0.1/22
+  default-address-pools:
+    - base: 169.254.0.0/17
+      size: 24
+  ## Kata Containers, declared in the shimv2 form (`runtimeType` + `options`, which moby
+  ## documents as mutually exclusive with the legacy `path`/`runtimeArgs` pair).
+  ##
+  ## With an external containerd these shims are resolved by the NODE's containerd, not by
+  ## this pod: `containerd-shim-kata-v2` must be on the node's PATH and the ConfigPath below
+  ## is read on the node. Nothing kata-related needs to exist inside the container image -
+  ## which is the good kind of consequence of running Docker as a control plane.
+  ##
+  runtimes:
+    kata-qemu:
+      runtimeType: io.containerd.kata.v2
+      options:
+        ConfigPath: /opt/kata/share/defaults/kata-containers/configuration-qemu.toml
+    kata-clh:
+      runtimeType: io.containerd.kata.v2
+      options:
+        ConfigPath: /opt/kata/share/defaults/kata-containers/configuration-clh.toml
+  log-driver: json-file
+  log-opts:
+    max-size: 50m
+    max-file: "3"
+  ## Keeps containers running while the daemon is not.
+  ##
+  ## It earns its place here more than it would on a normal host: this daemon restarts on
+  ## every `helm upgrade`, and without live-restore each rollout would take the node's
+  ## running containers with it.
+  ##
+  live-restore: true
+  ## Leave the graph on Docker's own overlay2 driver under `dataRoot`.
+  ##
+  ## Turning it on would move images into containerd's snapshotter and content store - still
+  ## in the `moby` namespace, so the kubelet still would not see them - and would move where
+  ## layers physically live from `dataRoot` to containerd's root. Read the storage notes in
+  ## the README before changing it: `dataRoot` would stop being where the data is.
+  ##
+  features:
+    containerd-snapshotter: false
+## @param extraArgs Extra flags appended to the `dockerd` command line
+## E.g.
+## extraArgs:
+##   - --live-restore
+##
+extraArgs: []
+## @param command Override default container command. Skips the image entrypoint, and with it the iptables detection and docker-init injection it performs
+## @param args Override the whole dockerd argument list. Takes precedence over every flag this chart builds
+##
+command: []
+args: []
+## @param lifecycleHooks for the Docker container(s) to automate configuration before or after startup
+##
+lifecycleHooks: {}
+## @param extraEnvVars Array with extra environment variables to add to the Docker container
+## @param extraEnvVarsCM Name of existing ConfigMap containing extra env vars
+## @param extraEnvVarsSecret Name of existing Secret containing extra env vars
+##
+extraEnvVars: []
+extraEnvVarsCM: ""
+extraEnvVarsSecret: ""
+
+## @section Garbage collector parameters
+##
+
+## `drone-gc` runs alongside the daemon and, every `gc.interval`, sweeps the resources a build
+## leaves behind - exited containers, dangling images, unused volumes and networks. It then
+## evicts images until the cache is back under `gc.cache`, choosing what to drop by an LRFU
+## policy, so the base images your builds actually reuse are the last to go.
+##
+## It matters more here than in a self-contained dind: the cache now lives on the node's own
+## disk, next to the kubelet's, and a full disk there evicts pods that have nothing to do with
+## Docker.
+##
+gc:
+  ## @param gc.enabled Deploy the Drone garbage collector as a sidecar
+  ##
+  enabled: true
+  ## @param gc.image.registry [default: REGISTRY_NAME] Drone GC image registry
+  ## @param gc.image.repository [default: REPOSITORY_NAME/drone/gc] Drone GC image repository
+  ## @param gc.image.tag Drone GC image tag. Upstream only ever published one semver tag (1.0.0, from 2019), so this points at `latest` - see the digest below
+  ## @param gc.image.digest Drone GC image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+  ## @param gc.image.pullPolicy Drone GC image pull policy
+  ## @param gc.image.pullSecrets Drone GC image pull secrets
+  ##
+  ## The digest is what actually gets deployed, and it is set on purpose: `latest` is a rolling
+  ## tag, so without it two installs a month apart could run different binaries with no change
+  ## anywhere in this chart. The pin below is the 2023-01-31 build of drone-gc (source revision
+  ## 217e09f), which is the newest one upstream published.
+  ##
+  image:
+    registry: docker.io
+    repository: drone/gc
+    tag: latest
+    digest: sha256:92265ac9bdeb3a0b897c91d108089d3161695a04755808bf60766dfe15d41799
+    pullPolicy: IfNotPresent
+    pullSecrets: []
+  ## @param gc.interval How often to collect. Accepts a Go duration
+  ##
+  interval: 5m
+  ## @param gc.cache Maximum image cache size. Images are evicted, least-frequently-used first, until the cache fits. Size it against the node's free disk, not against the whole disk
+  ##
+  cache: 5gb
+  ## @param gc.ignoreImages Images never removed, comma-separated. Globs are supported. Useful for base images every build starts from
+  ## @param gc.ignoreContainers Container names never removed, comma-separated. Globs are supported
+  ##
+  ignoreImages: ""
+  ignoreContainers: ""
+  ## @param gc.debug Enable debug logging in the collector
+  ## @param gc.debugPretty Pretty-print the collector logs
+  ## @param gc.debugColor Colourise the collector logs
+  ##
+  debug: false
+  debugPretty: false
+  debugColor: false
+  ## @param gc.extraEnvVars Array with extra environment variables to add to the collector container
+  ## @param gc.extraVolumeMounts Optionally specify extra list of additional volumeMounts for the collector container
+  ##
+  extraEnvVars: []
+  extraVolumeMounts: []
+  ## @param gc.resourcesPreset Set container resources according to one common preset (allowed values: none, nano, micro, small, medium, large, xlarge, 2xlarge). This is ignored if gc.resources is set (gc.resources is recommended for production).
+  ## @param gc.resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+  ##
+  resourcesPreset: "nano"
+  resources: {}
+  ## The collector reaches the daemon through the same socket everything else does, so it needs
+  ## no privilege of its own - only the ability to read that socket, which is why it runs as
+  ## root but with nothing else.
+  ##
+  ## @param gc.containerSecurityContext.enabled Enabled containers' Security Context
+  ## @param gc.containerSecurityContext.seLinuxOptions [object,nullable] Set SELinux options in container
+  ## @param gc.containerSecurityContext.runAsUser Set containers' Security Context runAsUser. Must be able to read the Docker socket, which is root-owned
+  ## @param gc.containerSecurityContext.runAsNonRoot Set container's Security Context runAsNonRoot
+  ## @param gc.containerSecurityContext.privileged Set container's Security Context privileged
+  ## @param gc.containerSecurityContext.readOnlyRootFilesystem Set container's Security Context readOnlyRootFilesystem
+  ## @param gc.containerSecurityContext.allowPrivilegeEscalation Set container's Security Context allowPrivilegeEscalation
+  ## @param gc.containerSecurityContext.capabilities.drop List of capabilities to be dropped
+  ## @param gc.containerSecurityContext.seccompProfile.type Set container's Security Context seccomp profile
+  ##
+  containerSecurityContext:
+    enabled: true
+    seLinuxOptions: {}
+    runAsUser: 0
+    runAsNonRoot: false
+    privileged: false
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+    seccompProfile:
+      type: "RuntimeDefault"
+
+## @section DaemonSet parameters
+##
+
+## @param updateStrategy.type DaemonSet update strategy
+## @param updateStrategy.rollingUpdate.maxUnavailable Maximum number of nodes updated at once. Each restart briefly removes the Docker socket from that node
+##
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+## @param revisionHistoryLimit The number of old history to retain to allow rollback
+##
+revisionHistoryLimit: 10
+## @param hostAliases Pod host aliases
+##
+hostAliases: []
+## @param podLabels Extra labels for pods
+## @param podAnnotations Extra annotations for pods
+##
+podLabels: {}
+podAnnotations: {}
+## @param automountServiceAccountToken Mount Service Account token in pod. Nothing in this chart calls the Kubernetes API
+##
+automountServiceAccountToken: false
+## @param terminationGracePeriodSeconds Grace period. On SIGTERM the daemon stops accepting work but lets running containers finish, so anything shorter than your longest build kills builds mid-flight
+##
+terminationGracePeriodSeconds: 3600
+## Pod-level security context
+## @param podSecurityContext.enabled Enable pod security context
+## @param podSecurityContext.fsGroup Group ID for the pod's volumes
+##
+podSecurityContext:
+  enabled: true
+  fsGroup: 0
+## The daemon needs real privilege and there is no useful way around it: it programs iptables,
+## mounts overlay filesystems and prepares the rootfs that the node's containerd then runs.
+## `privileged: true` is what lets it do that. A privileged container is root on the node - see
+## the README before deciding which nodes get one.
+##
+## @param containerSecurityContext.enabled Enable container security context
+## @param containerSecurityContext.seLinuxOptions [object,nullable] Set SELinux options in container
+## @param containerSecurityContext.runAsUser User ID for the container
+## @param containerSecurityContext.runAsNonRoot Run container as non-root
+## @param containerSecurityContext.privileged Run container as privileged. The daemon does not start without it
+## @param containerSecurityContext.readOnlyRootFilesystem Mount the container root filesystem read-only
+## @param containerSecurityContext.allowPrivilegeEscalation Allow privilege escalation
+##
+containerSecurityContext:
+  enabled: true
+  seLinuxOptions: {}
+  runAsUser: 0
+  runAsNonRoot: false
+  privileged: true
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: true
+## @param resourcesPreset Set container resources according to one common preset (allowed values: none, nano, micro, small, medium, large, xlarge, 2xlarge). This is ignored if resources is set (resources is recommended for production).
+## @param resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+## Note that a limit here bounds the DAEMON, not the containers it starts - those are the node's
+## containerd's children and are accounted outside this pod.
+##
+resourcesPreset: "medium"
+resources: {}
+## Probes run `docker info` through the socket, which is the only check that proves the whole
+## path works: the daemon is up AND it can still reach the node's containerd. A process check
+## would stay green while every `docker run` failed.
+##
+## @param startupProbe.enabled Enable startupProbe
+## @param startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
+## @param startupProbe.periodSeconds Period seconds for startupProbe
+## @param startupProbe.timeoutSeconds Timeout seconds for startupProbe
+## @param startupProbe.failureThreshold Failure threshold for startupProbe
+## @param startupProbe.successThreshold Success threshold for startupProbe
+##
+startupProbe:
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 10
+  failureThreshold: 30
+  successThreshold: 1
+## @param livenessProbe.enabled Enable livenessProbe
+## @param livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+## @param livenessProbe.periodSeconds Period seconds for livenessProbe
+## @param livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+## @param livenessProbe.failureThreshold Failure threshold for livenessProbe
+## @param livenessProbe.successThreshold Success threshold for livenessProbe
+##
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  timeoutSeconds: 15
+  failureThreshold: 5
+  successThreshold: 1
+## @param readinessProbe.enabled Enable readinessProbe
+## @param readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+## @param readinessProbe.periodSeconds Period seconds for readinessProbe
+## @param readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+## @param readinessProbe.failureThreshold Failure threshold for readinessProbe
+## @param readinessProbe.successThreshold Success threshold for readinessProbe
+##
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 15
+  periodSeconds: 15
+  timeoutSeconds: 10
+  failureThreshold: 5
+  successThreshold: 1
+## @param customStartupProbe Custom startupProbe that overrides the default one
+## @param customLivenessProbe Custom livenessProbe that overrides the default one
+## @param customReadinessProbe Custom readinessProbe that overrides the default one
+##
+customStartupProbe: {}
+customLivenessProbe: {}
+customReadinessProbe: {}
+## @param extraVolumes Optionally specify extra list of additional volumes for the pods
+## @param extraVolumeMounts Optionally specify extra list of additional volumeMounts for the Docker container
+##
+extraVolumes: []
+extraVolumeMounts: []
+## @param initContainers Add additional init containers to the pods
+## @param sidecars Add additional sidecar containers to the pods
+##
+initContainers: []
+sidecars: []
+## @param extraPodSpec Optionally specify extra PodSpec
+##
+extraPodSpec: {}
+
+## @section Other Parameters
+##
+
+## Vertical autoscaling. Horizontal makes no sense for a DaemonSet - the replica count is the
+## number of matching nodes - but right-sizing the daemon from observed usage does.
+## @param autoscaling.vpa.enabled Enable VPA
+## @param autoscaling.vpa.annotations Annotations for VPA resource
+## @param autoscaling.vpa.controlledResources VPA List of resources that the vertical pod autoscaler can control. Defaults to cpu and memory
+## @param autoscaling.vpa.maxAllowed VPA Max allowed resources for the pod
+## @param autoscaling.vpa.minAllowed VPA Min allowed resources for the pod
+##
+autoscaling:
+  vpa:
+    enabled: false
+    annotations: {}
+    controlledResources: []
+    maxAllowed: {}
+    minAllowed: {}
+    updatePolicy:
+      ## @param autoscaling.vpa.updatePolicy.updateMode Autoscaling update policy Specifies whether recommended updates are applied when a Pod is started and whether recommended updates are applied during the life of a Pod
+      ## Possible values are "Off", "Initial", "Recreate", and "Auto".
+      ##
+      ## `Auto` evicts the pod to resize it, which here means the node loses its Docker socket
+      ## and every container the daemon is running. `Off` or `Initial` is the safer choice.
+      ##
+      updateMode: Auto
+## Service Account
+## @param serviceAccount.create Enable creation of ServiceAccount for the pods
+## @param serviceAccount.name The name of the ServiceAccount to use. If not set and create is true, a name is generated using the common.names.fullname template
+## @param serviceAccount.annotations Additional custom annotations for the ServiceAccount
+## @param serviceAccount.automountServiceAccountToken Allows auto mount of ServiceAccountToken on the serviceAccount created
+##
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automountServiceAccountToken: false

@@ -1,0 +1,302 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- include "dockerd.validateValues" . }}
+apiVersion: {{ include "common.capabilities.daemonset.apiVersion" . }}
+kind: DaemonSet
+metadata:
+  name: {{ include "common.names.fullname" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- $podLabels := include "common.tplvalues.merge" ( dict "values" ( list .Values.podLabels .Values.commonLabels ) "context" . ) }}
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" ( dict "customLabels" $podLabels "context" $ ) | nindent 6 }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  updateStrategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" ( dict "customLabels" $podLabels "context" $ ) | nindent 8 }}
+      annotations:
+        {{- if .Values.daemonConfig }}
+        # Roll the daemons when daemon.json changes. dockerd reads it at startup, so without
+        # this the ConfigMap updates and every node keeps running the old configuration.
+        checksum/daemon-config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if .Values.commonAnnotations }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podAnnotations }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.podAnnotations "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "dockerd.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "dockerd.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      hostNetwork: {{ .Values.hostNetwork }}
+      hostPID: {{ .Values.hostPID }}
+      dnsPolicy: {{ .Values.dnsPolicy }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
+      {{- if .Values.hostAliases }}
+      hostAliases: {{- include "common.tplvalues.render" (dict "value" .Values.hostAliases "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.affinity }}
+      affinity: {{- include "common.tplvalues.render" (dict "value" .Values.affinity "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.nodeSelector "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.tolerations "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.podSecurityContext.enabled }}
+      securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.podSecurityContext "context" $) | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- $plugins := list -}}
+      {{- if .Values.hostCli.plugins.buildx }}{{- $plugins = append $plugins "docker-buildx" -}}{{- end -}}
+      {{- if .Values.hostCli.plugins.compose }}{{- $plugins = append $plugins "docker-compose" -}}{{- end -}}
+      {{- if or .Values.hostCli.enabled .Values.initContainers }}
+      initContainers:
+        {{- if .Values.hostCli.enabled }}
+        # Put the client on the node. Copying rather than symlinking, because the pod's
+        # filesystem is gone the moment the pod is: a link would dangle on every restart.
+        # Writing to a temporary name and renaming keeps the swap atomic, so a `docker` that
+        # someone is running right now is never truncated under them.
+        - name: install-cli
+          image: {{ include "dockerd.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              install -m 0755 /usr/local/bin/docker /host/bin/.docker.tmp
+              mv -f /host/bin/.docker.tmp /host/bin/docker
+              echo "installed docker client to {{ .Values.hostCli.binDir }}/docker"
+              {{- if $plugins }}
+              for p in {{ join " " $plugins }}; do
+                src="/usr/local/libexec/docker/cli-plugins/$p"
+                [ -f "$src" ] || { echo "skipping $p, not present in image"; continue; }
+                install -m 0755 "$src" "/host/cli-plugins/.$p.tmp"
+                mv -f "/host/cli-plugins/.$p.tmp" "/host/cli-plugins/$p"
+                echo "installed $p to {{ .Values.hostCli.plugins.dir }}/$p"
+              done
+              {{- end }}
+          resources: {{- include "common.resources.preset" (dict "type" "nano") | nindent 12 }}
+          volumeMounts:
+            # Mounted under /host rather than at their node paths on purpose: binding the
+            # node's bin directory over the container's would hide the very binaries this
+            # container is here to copy.
+            - name: host-bin
+              mountPath: /host/bin
+            {{- if $plugins }}
+            - name: host-cli-plugins
+              mountPath: /host/cli-plugins
+            {{- end }}
+        {{- end }}
+        {{- if .Values.initContainers }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.initContainers "context" $) | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      containers:
+        - name: dockerd
+          image: {{ include "dockerd.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.containerSecurityContext "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.diagnosticMode.enabled }}
+          command: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 12 }}
+          args: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 12 }}
+          {{- else }}
+          {{- if .Values.command }}
+          command: {{- include "common.tplvalues.render" (dict "value" .Values.command "context" $) | nindent 12 }}
+          {{- end }}
+          args: {{- include "dockerd.args" . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "common.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+          env:
+            {{- /*
+            Empty, not absent: the image sets DOCKER_TLS_CERTDIR=/certs by default, and a
+            non-empty value makes the entrypoint mint certificates for a TCP listener this
+            chart never opens.
+            */}}
+            - name: DOCKER_TLS_CERTDIR
+              value: ""
+            {{- include "dockerd.clientEnv" . | nindent 12 }}
+            {{- if .Values.extraEnvVars }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
+            {{- end }}
+          {{- include "dockerd.envFrom" . | nindent 10 }}
+          {{- if not .Values.diagnosticMode.enabled }}
+          {{- if .Values.customStartupProbe }}
+          startupProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customStartupProbe "context" $) | nindent 12 }}
+          {{- else if .Values.startupProbe.enabled }}
+          startupProbe:
+            exec:
+              command: ["docker", "info"]
+            {{- include "common.tplvalues.render" (dict "value" (omit .Values.startupProbe "enabled") "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.customLivenessProbe }}
+          livenessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customLivenessProbe "context" $) | nindent 12 }}
+          {{- else if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            exec:
+              command: ["docker", "info"]
+            {{- include "common.tplvalues.render" (dict "value" (omit .Values.livenessProbe "enabled") "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.customReadinessProbe }}
+          readinessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customReadinessProbe "context" $) | nindent 12 }}
+          {{- else if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            exec:
+              command: ["docker", "info"]
+            {{- include "common.tplvalues.render" (dict "value" (omit .Values.readinessProbe "enabled") "context" $) | nindent 12 }}
+          {{- end }}
+          {{- end }}
+          {{- if .Values.resources }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          {{- else if ne .Values.resourcesPreset "none" }}
+          resources: {{- include "common.resources.preset" (dict "type" .Values.resourcesPreset) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            {{- /*
+            Same absolute path on both sides, and Bidirectional propagation. dockerd prepares
+            the container rootfs under this directory and hands the node's containerd an
+            absolute path to it; if containerd cannot resolve that exact path, or cannot see
+            the overlay mounts made under it, every `docker run` fails.
+            */}}
+            - name: docker-data
+              mountPath: {{ .Values.dataRoot }}
+              mountPropagation: Bidirectional
+            {{- /*
+            Carries two things at once: the containerd socket inward, and the Docker socket
+            outward to the node - which is what makes this a drop-in for a node-level install.
+            */}}
+            - name: host-run
+              mountPath: {{ .Values.hostRunDir }}
+              mountPropagation: Bidirectional
+            - name: lib-modules
+              mountPath: /lib/modules
+              readOnly: true
+            - name: cgroup
+              mountPath: /sys/fs/cgroup
+            {{- if .Values.daemonConfig }}
+            - name: daemon-config
+              mountPath: /etc/docker/daemon.json
+              subPath: daemon.json
+              readOnly: true
+            {{- end }}
+            {{- range $i, $p := .Values.hostPluginDirs }}
+            - name: {{ printf "plugin-dir-%d" $i }}
+              mountPath: {{ $p }}
+              readOnly: true
+            {{- end }}
+            {{- if .Values.extraVolumeMounts }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+            {{- end }}
+        {{- if .Values.gc.enabled }}
+        - name: gc
+          image: {{ include "dockerd.gc.image" . }}
+          imagePullPolicy: {{ .Values.gc.image.pullPolicy | quote }}
+          {{- if .Values.gc.containerSecurityContext.enabled }}
+          securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.gc.containerSecurityContext "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.diagnosticMode.enabled }}
+          command: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 12 }}
+          args: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 12 }}
+          {{- end }}
+          env:
+            {{- include "dockerd.clientEnv" . | nindent 12 }}
+            - name: GC_INTERVAL
+              value: {{ .Values.gc.interval | quote }}
+            - name: GC_CACHE
+              value: {{ .Values.gc.cache | quote }}
+            - name: GC_IGNORE_IMAGES
+              value: {{ .Values.gc.ignoreImages | quote }}
+            - name: GC_IGNORE_CONTAINERS
+              value: {{ .Values.gc.ignoreContainers | quote }}
+            - name: GC_DEBUG
+              value: {{ .Values.gc.debug | quote }}
+            - name: GC_DEBUG_PRETTY
+              value: {{ .Values.gc.debugPretty | quote }}
+            - name: GC_DEBUG_COLOR
+              value: {{ .Values.gc.debugColor | quote }}
+            {{- if .Values.gc.extraEnvVars }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.gc.extraEnvVars "context" $) | nindent 12 }}
+            {{- end }}
+          {{- include "dockerd.envFrom" . | nindent 10 }}
+          {{- if .Values.gc.resources }}
+          resources: {{- toYaml .Values.gc.resources | nindent 12 }}
+          {{- else if ne .Values.gc.resourcesPreset "none" }}
+          resources: {{- include "common.resources.preset" (dict "type" .Values.gc.resourcesPreset) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: host-run
+              mountPath: {{ .Values.hostRunDir }}
+            {{- if .Values.gc.extraVolumeMounts }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.gc.extraVolumeMounts "context" $) | nindent 12 }}
+            {{- end }}
+        {{- end }}
+        {{- if .Values.sidecars }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.sidecars "context" $) | nindent 8 }}
+        {{- end }}
+      volumes:
+        - name: docker-data
+          hostPath:
+            path: {{ .Values.dataRoot }}
+            type: DirectoryOrCreate
+        - name: host-run
+          hostPath:
+            path: {{ .Values.hostRunDir }}
+            type: Directory
+        - name: lib-modules
+          hostPath:
+            path: /lib/modules
+            type: Directory
+        - name: cgroup
+          hostPath:
+            path: /sys/fs/cgroup
+            type: Directory
+        {{- if .Values.hostCli.enabled }}
+        - name: host-bin
+          hostPath:
+            path: {{ .Values.hostCli.binDir }}
+            type: DirectoryOrCreate
+        {{- if and .Values.hostCli.enabled (or .Values.hostCli.plugins.buildx .Values.hostCli.plugins.compose) }}
+        - name: host-cli-plugins
+          hostPath:
+            path: {{ .Values.hostCli.plugins.dir }}
+            type: DirectoryOrCreate
+        {{- end }}
+        {{- end }}
+        {{- if .Values.daemonConfig }}
+        - name: daemon-config
+          configMap:
+            name: {{ include "dockerd.configMapName" . }}
+        {{- end }}
+        {{- range $i, $p := .Values.hostPluginDirs }}
+        - name: {{ printf "plugin-dir-%d" $i }}
+          hostPath:
+            path: {{ $p }}
+            type: Directory
+        {{- end }}
+        {{- if .Values.extraVolumes }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumes "context" $) | nindent 8 }}
+        {{- end }}
+      {{- if .Values.extraPodSpec }}
+      {{- include "common.tplvalues.render" (dict "value" .Values.extraPodSpec "context" $) | nindent 6 }}
+      {{- end }}

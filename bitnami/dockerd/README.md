@@ -59,15 +59,9 @@ Set `hostCli.enabled=false` if the nodes already have a client you would rather 
 
 ### Plugins registered on the node
 
-Docker finds libnetwork and volume plugins by reading `/etc/docker/plugins`, `/usr/lib/docker/plugins` and `/usr/libexec/docker/plugins` — on the machine the daemon runs on, which here is the container. Anything registered on the node is therefore invisible: the daemon logs `Unable to locate plugin: <name>`, retries with backoff, and any network or volume using that driver fails.
+Docker finds libnetwork and volume plugins by reading `/etc/docker/plugins` and `/usr/lib/docker/plugins` — on the machine the daemon runs on, which here is the container. Without help, anything registered on the node would be invisible: the daemon logs `Unable to locate plugin: <name>`, retries with backoff, and any network or volume using that driver fails.
 
-Point `hostPluginDirs` at the directories the node actually uses and they are mounted read-only into the daemon. An OpenStack Kuryr install, for example, registers under `/usr/lib/docker/plugins`:
-
-```console
---set hostPluginDirs[0]=/usr/lib/docker/plugins
-```
-
-The plugins' runtime sockets live under `/run/docker/plugins` and are already shared through `hostRunDir`; only these spec directories need adding.
+So `hostPluginDirs` mounts both of Docker's default spec directories by default, read-only, and a plugin registered the way it would be for a node-level Docker works with no configuration. This was found on an OpenStack Kuryr node, which registers under `/usr/lib/docker/plugins`. The directories are created on the node if they are missing, which keeps a node with no plugins from stalling the pod and lets a plugin installed later be found — discovery reads the directory when the plugin is first used. The plugins' sockets live under `/run/docker/plugins` and already reach the daemon through `hostRunDir`. Set `hostPluginDirs: []` to mount nothing, or add paths if a plugin registers somewhere non-standard.
 
 ### Metrics
 
@@ -99,7 +93,7 @@ helm install my-release oci://REGISTRY_NAME/REPOSITORY_NAME/dockerd \
 helm delete my-release
 ```
 
-The socket disappears from the node and anything using it breaks immediately. Two things are **not** removed, because both are outside Helm's knowledge: `dataRoot` on each node, so images and build cache survive an uninstall and a reinstall; and the client binaries copied to `hostCli.binDir` and `hostCli.plugins.dir`, which are then a `docker` that points at a socket no longer there. Clean up both by hand if you mean to.
+The socket disappears from the node and anything using it breaks immediately. Some things are **not** removed, because they are outside Helm's knowledge: `dataRoot` on each node, so images and build cache survive an uninstall and a reinstall; the client binaries copied to `hostCli.binDir` and `hostCli.plugins.dir`, which are then a `docker` that points at a socket no longer there; and the plugin spec directories in `hostPluginDirs`, if the chart had to create them (they are left empty). Clean them up by hand if you mean to.
 
 ## Configuration and installation details
 
@@ -245,40 +239,40 @@ The `resources` you set here bound the **daemon**, not the containers it starts 
 
 ### Docker daemon parameters
 
-| Name                         | Description                                                                                                                                       | Value                                   |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| `image.registry`             | Docker image registry                                                                                                                             | `REGISTRY_NAME`                         |
-| `image.repository`           | Docker image repository                                                                                                                           | `REPOSITORY_NAME/docker`                |
-| `image.tag`                  | Docker image tag. Must be a `-dind` tag                                                                                                           | `29.7.2-dind`                           |
-| `image.digest`               | Docker image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag                                            | `""`                                    |
-| `image.pullPolicy`           | Docker image pull policy                                                                                                                          | `IfNotPresent`                          |
-| `image.pullSecrets`          | Docker image pull secrets                                                                                                                         | `[]`                                    |
-| `image.debug`                | Enable image debug mode. Passes `--debug` to dockerd                                                                                              | `false`                                 |
-| `containerd.socket`          | Path on the node to the containerd socket the daemon should drive                                                                                 | `/run/containerd/containerd.sock`       |
-| `containerd.namespace`       | containerd namespace for Docker's containers. Keep it away from `k8s.io`, which is the kubelet's                                                  | `moby`                                  |
-| `containerd.pluginNamespace` | containerd namespace for Docker's plugins                                                                                                         | `plugins.moby`                          |
-| `dataRoot`                   | Node directory for Docker's data (images, layers, volumes, build cache)                                                                           | `/var/lib/docker`                       |
-| `dockerSocket`               | Node path for the Docker API socket. Must be under `hostRunDir`                                                                                   | `/run/docker.sock`                      |
-| `dockerSocketGroup`          | Numeric GID to own the API socket. Empty leaves it root-only                                                                                      | `""`                                    |
-| `hostRunDir`                 | Node directory holding runtime sockets, mounted so that both the containerd socket above and the published Docker socket are shared with the node | `/run`                                  |
-| `hostCli.enabled`            | Copy the Docker client out of the daemon image onto the node                                                                                      | `true`                                  |
-| `hostCli.binDir`             | Node directory to place the `docker` binary in. It must be on the node's PATH; use /opt/bin on Flatcar and other images whose /usr is read-only   | `/usr/local/bin`                        |
-| `hostCli.plugins.buildx`     | Install the buildx CLI plugin on the node                                                                                                         | `false`                                 |
-| `hostCli.plugins.compose`    | Install the compose CLI plugin on the node                                                                                                        | `false`                                 |
-| `hostCli.plugins.dir`        | Node directory for CLI plugins. The client searches this path regardless of where its own binary sits                                             | `/usr/local/libexec/docker/cli-plugins` |
-| `hostNetwork`                | Run the daemon in the node's network namespace                                                                                                    | `true`                                  |
-| `hostPID`                    | Share the node's PID namespace. Required - the daemon resolves container PIDs that only exist there                                               | `true`                                  |
-| `dnsPolicy`                  | Pod DNS policy. ClusterFirstWithHostNet is required for name resolution to work on host network                                                   | `ClusterFirstWithHostNet`               |
-| `hostPluginDirs`             | Node directories holding plugin specs, mounted read-only into the daemon                                                                          | `[]`                                    |
-| `daemonConfig`               | Contents of /etc/docker/daemon.json, as a map. The shipped default is in values.yaml, annotated setting by setting                                | `{...}`                                 |
-| `existingConfigmap`          | Name of an existing ConfigMap holding daemon.json. Mutually exclusive with `daemonConfig`                                                         | `""`                                    |
-| `extraArgs`                  | Extra flags appended to the `dockerd` command line                                                                                                | `[]`                                    |
-| `command`                    | Override default container command. Skips the image entrypoint, and with it the iptables detection and docker-init injection it performs          | `[]`                                    |
-| `args`                       | Override the whole dockerd argument list. Takes precedence over every flag this chart builds                                                      | `[]`                                    |
-| `lifecycleHooks`             | for the Docker container(s) to automate configuration before or after startup                                                                     | `{}`                                    |
-| `extraEnvVars`               | Array with extra environment variables to add to the Docker container                                                                             | `[]`                                    |
-| `extraEnvVarsCM`             | Name of existing ConfigMap containing extra env vars                                                                                              | `""`                                    |
-| `extraEnvVarsSecret`         | Name of existing Secret containing extra env vars                                                                                                 | `""`                                    |
+| Name                         | Description                                                                                                                                       | Value                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `image.registry`             | Docker image registry                                                                                                                             | `REGISTRY_NAME`                                     |
+| `image.repository`           | Docker image repository                                                                                                                           | `REPOSITORY_NAME/docker`                            |
+| `image.tag`                  | Docker image tag. Must be a `-dind` tag                                                                                                           | `29.7.2-dind`                                       |
+| `image.digest`               | Docker image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag                                            | `""`                                                |
+| `image.pullPolicy`           | Docker image pull policy                                                                                                                          | `IfNotPresent`                                      |
+| `image.pullSecrets`          | Docker image pull secrets                                                                                                                         | `[]`                                                |
+| `image.debug`                | Enable image debug mode. Passes `--debug` to dockerd                                                                                              | `false`                                             |
+| `containerd.socket`          | Path on the node to the containerd socket the daemon should drive                                                                                 | `/run/containerd/containerd.sock`                   |
+| `containerd.namespace`       | containerd namespace for Docker's containers. Keep it away from `k8s.io`, which is the kubelet's                                                  | `moby`                                              |
+| `containerd.pluginNamespace` | containerd namespace for Docker's plugins                                                                                                         | `plugins.moby`                                      |
+| `dataRoot`                   | Node directory for Docker's data (images, layers, volumes, build cache)                                                                           | `/var/lib/docker`                                   |
+| `dockerSocket`               | Node path for the Docker API socket. Must be under `hostRunDir`                                                                                   | `/run/docker.sock`                                  |
+| `dockerSocketGroup`          | Numeric GID to own the API socket. Empty leaves it root-only                                                                                      | `""`                                                |
+| `hostRunDir`                 | Node directory holding runtime sockets, mounted so that both the containerd socket above and the published Docker socket are shared with the node | `/run`                                              |
+| `hostCli.enabled`            | Copy the Docker client out of the daemon image onto the node                                                                                      | `true`                                              |
+| `hostCli.binDir`             | Node directory to place the `docker` binary in. It must be on the node's PATH; use /opt/bin on Flatcar and other images whose /usr is read-only   | `/usr/local/bin`                                    |
+| `hostCli.plugins.buildx`     | Install the buildx CLI plugin on the node                                                                                                         | `false`                                             |
+| `hostCli.plugins.compose`    | Install the compose CLI plugin on the node                                                                                                        | `false`                                             |
+| `hostCli.plugins.dir`        | Node directory for CLI plugins. The client searches this path regardless of where its own binary sits                                             | `/usr/local/libexec/docker/cli-plugins`             |
+| `hostNetwork`                | Run the daemon in the node's network namespace                                                                                                    | `true`                                              |
+| `hostPID`                    | Share the node's PID namespace. Required - the daemon resolves container PIDs that only exist there                                               | `true`                                              |
+| `dnsPolicy`                  | Pod DNS policy. ClusterFirstWithHostNet is required for name resolution to work on host network                                                   | `ClusterFirstWithHostNet`                           |
+| `hostPluginDirs`             | Node directories holding plugin specs, mounted read-only into the daemon. Defaults to Docker's own search paths                                   | `["/etc/docker/plugins","/usr/lib/docker/plugins"]` |
+| `daemonConfig`               | Contents of /etc/docker/daemon.json, as a map. The shipped default is in values.yaml, annotated setting by setting                                | `{...}`                                             |
+| `existingConfigmap`          | Name of an existing ConfigMap holding daemon.json. Mutually exclusive with `daemonConfig`                                                         | `""`                                                |
+| `extraArgs`                  | Extra flags appended to the `dockerd` command line                                                                                                | `[]`                                                |
+| `command`                    | Override default container command. Skips the image entrypoint, and with it the iptables detection and docker-init injection it performs          | `[]`                                                |
+| `args`                       | Override the whole dockerd argument list. Takes precedence over every flag this chart builds                                                      | `[]`                                                |
+| `lifecycleHooks`             | for the Docker container(s) to automate configuration before or after startup                                                                     | `{}`                                                |
+| `extraEnvVars`               | Array with extra environment variables to add to the Docker container                                                                             | `[]`                                                |
+| `extraEnvVarsCM`             | Name of existing ConfigMap containing extra env vars                                                                                              | `""`                                                |
+| `extraEnvVarsSecret`         | Name of existing Secret containing extra env vars                                                                                                 | `""`                                                |
 
 ### Metrics parameters
 

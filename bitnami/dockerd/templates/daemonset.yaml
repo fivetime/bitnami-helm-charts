@@ -300,7 +300,10 @@ spec:
         - name: {{ printf "plugin-dir-%d" $i }}
           hostPath:
             path: {{ $p }}
-            type: Directory
+            # Created if missing, so a node that registers no plugins does not leave the pod
+            # stuck in ContainerCreating, and a plugin installed later finds its directory
+            # already there instead of waiting on a daemon that is waiting on it.
+            type: DirectoryOrCreate
         {{- end }}
         {{- if .Values.extraVolumes }}
         {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumes "context" $) | nindent 8 }}

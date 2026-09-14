@@ -252,22 +252,24 @@ hostPID: true
 dnsPolicy: ClusterFirstWithHostNet
 ## Node directories where legacy plugins are registered.
 ##
-## Docker discovers libnetwork and volume plugins from `/etc/docker/plugins`,
-## `/usr/lib/docker/plugins` and `/usr/libexec/docker/plugins` on the machine it runs on -
-## which, for a containerized daemon, is the container. A plugin registered on the node is
-## therefore invisible, and the daemon logs `Unable to locate plugin: <name>` and then fails
-## any network or volume that depends on it. Their runtime sockets under /run are already
-## shared through `hostRunDir`; it is only these spec directories that need adding.
+## Docker discovers libnetwork and volume plugins by reading /etc/docker/plugins and
+## /usr/lib/docker/plugins (moby's pkg/plugins specsPaths) on the machine it runs on - which,
+## for a containerized daemon, is the container. Without these mounts a plugin registered on
+## the node is invisible: the daemon logs `Unable to locate plugin: <name>`, retries with
+## backoff, and fails any network or volume using it. The plugins' sockets under
+## /run/docker/plugins already reach the daemon through `hostRunDir`.
 ##
-## Empty by default because most nodes register nothing. Set it if the node does - an
-## OpenStack Kuryr install, for instance, registers under /usr/lib/docker/plugins:
+## Both default paths are mounted by default, so a plugin registered the way it would be for
+## a node-level Docker - an OpenStack Kuryr install, for instance - works with no
+## configuration. They are created on the node if missing (empty, read-only to the daemon),
+## which also means a plugin installed after the daemon starts is still found: discovery
+## reads the directory when the plugin is first used. Set `[]` to mount nothing.
 ##
-##   hostPluginDirs:
-##     - /usr/lib/docker/plugins
+## @param hostPluginDirs Node directories holding plugin specs, mounted read-only into the daemon. Defaults to Docker's own search paths
 ##
-## @param hostPluginDirs Node directories holding plugin specs, mounted read-only into the daemon
-##
-hostPluginDirs: []
+hostPluginDirs:
+  - /etc/docker/plugins
+  - /usr/lib/docker/plugins
 ## Contents of /etc/docker/daemon.json, rendered into a ConfigMap and mounted into the daemon.
 ##
 ## Note that dockerd REFUSES TO START when a setting appears both here and on the command line,

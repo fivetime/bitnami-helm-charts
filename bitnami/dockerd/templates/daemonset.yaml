@@ -30,6 +30,7 @@ spec:
         # existingConfigmap, so that case is rolled by hand with `kubectl rollout restart`.
         checksum/daemon-config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         {{- end }}
+        checksum/scripts: {{ pick ( include (print $.Template.BasePath "/scripts-configmap.yaml") . | fromYaml ) "data" | toYaml | sha256sum }}
         {{- if .Values.commonAnnotations }}
         {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 8 }}
         {{- end }}
@@ -202,6 +203,12 @@ spec:
               readOnly: true
             - name: cgroup
               mountPath: /sys/fs/cgroup
+            # Shadows the image's dind wrapper, whose cgroup nesting step would otherwise rewrite
+            # the node's root cgroup. See scripts-configmap.yaml.
+            - name: scripts
+              mountPath: /usr/local/bin/dind
+              subPath: dind
+              readOnly: true
             {{- if include "dockerd.hasDaemonConfig" . }}
             - name: daemon-config
               mountPath: /etc/docker/daemon.json
@@ -275,6 +282,10 @@ spec:
           hostPath:
             path: /lib/modules
             type: Directory
+        - name: scripts
+          configMap:
+            name: {{ printf "%s-scripts" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" }}
+            defaultMode: 0755
         - name: cgroup
           hostPath:
             path: /sys/fs/cgroup

@@ -1,0 +1,52 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-scripts" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  # Replaces /usr/local/bin/dind from the image, which the image's entrypoint runs before
+  # dockerd whenever that file exists. It is the upstream script with one block removed:
+  # "cgroup v2: enable nesting", which creates /sys/fs/cgroup/init, moves every process out of
+  # the root cgroup into it and writes the root's cgroup.subtree_control. That is correct when
+  # /sys/fs/cgroup is the container's own cgroup. Here it is not - the daemon runs in the node's
+  # cgroup namespace (and the chart mounts the node's hierarchy on top) - so the block acted
+  # on the node's root cgroup, moving the node's kernel threads into a new "init" cgroup that
+  # outlives the release. Nothing in this chart needs nesting: containers are placed in
+  # cgroups by the node's containerd and runc, not by this daemon.
+  dind: |-
+    #!/bin/sh
+    set -e
+
+    # Tell dockerd it is inside a container, which it uses for AppArmor detection.
+    export container=docker
+
+    if [ -d /sys/kernel/security ] && ! mountpoint -q /sys/kernel/security; then
+    	mount -t securityfs none /sys/kernel/security || {
+    		echo >&2 'Could not mount /sys/kernel/security.'
+    		echo >&2 'AppArmor detection and --privileged mode might break.'
+    	}
+    fi
+
+    if ! mountpoint -q /tmp; then
+    	mount -t tmpfs none /tmp
+    fi
+
+    # (upstream "cgroup v2: enable nesting" block intentionally omitted - see above)
+
+    mount --make-rshared /
+
+    if [ $# -gt 0 ]; then
+    	exec "$@"
+    fi
+
+    echo >&2 'ERROR: No command specified.'
+    exit 1

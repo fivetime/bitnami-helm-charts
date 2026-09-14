@@ -408,6 +408,13 @@ helm install my-release -f values.yaml oci://REGISTRY_NAME/REPOSITORY_NAME/docke
 
 ## Troubleshooting
 
+**Nodes that ran chart 1.4.2 or earlier have a `/sys/fs/cgroup/init` cgroup holding kernel threads.** The image's `dind` wrapper, which its entrypoint runs before the daemon, has a "cgroup v2: enable nesting" step that moves every process out of the root cgroup into a new `init` cgroup. It assumes `/sys/fs/cgroup` is the container's own; here the daemon shares the node's cgroup namespace, so the step rewrote the node's root cgroup instead (and filled the daemon log with `echo: write error: Invalid argument` for the threads it could not move). From 1.4.3 the chart replaces the wrapper with a copy that omits that step. Nothing depends on the leftover cgroup, but to remove it after upgrading, on each affected node:
+
+```console
+for p in $(cat /sys/fs/cgroup/init/cgroup.procs); do echo "$p" > /sys/fs/cgroup/cgroup.procs; done
+rmdir /sys/fs/cgroup/init
+```
+
 **`docker build` works but every `docker run` fails with `bind-mount /proc/<pid>/ns/net -> /var/run/docker/netns/...: no such file or directory`.** `hostPID` is off. The container's process was created by the node's containerd and lives in the node's PID namespace; the daemon cannot see that PID from a private one, and networking setup is where it notices. Set `hostPID=true` — it is required by this architecture, not a debugging aid.
 
 **The daemon logs `Failed to find nft tool` at startup.** Harmless when `docker info` reports `firewall=iptables`, which is the default: the message comes from the daemon clearing rules belonging to the *nftables* firewall backend it is not using, and the `-dind` image ships only `iptables`. If you deliberately run the nftables backend, that image is not enough.

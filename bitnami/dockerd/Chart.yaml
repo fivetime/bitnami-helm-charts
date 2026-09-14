@@ -4,13 +4,13 @@
 annotations:
   images: |
     - name: docker-dind
-      image: docker.io/docker:29.7.2-dind
+      image: docker.io/docker:29.8.0-dind
     - name: drone-gc
       image: docker.io/drone/gc:latest
   licenses: Apache-2.0
   tanzuCategory: clusterUtility
 apiVersion: v2
-appVersion: 29.7.2
+appVersion: 29.8.0
 dependencies:
 - name: common
   repository: oci://registry-1.docker.io/bitnamicharts
@@ -41,4 +41,4 @@ sources:
 - https://github.com/docker-library/docker
 - https://github.com/peterwwillis/helm-docker-in-docker
 - https://github.com/bitnami/charts/tree/main/bitnami/dockerd
-version: 1.4.0
+version: 1.4.1

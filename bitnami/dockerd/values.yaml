@@ -112,7 +112,7 @@ priorityClassName: ""
 image:
   registry: docker.io
   repository: docker
-  tag: 29.7.2-dind
+  tag: 29.8.0-dind
   digest: ""
   pullPolicy: IfNotPresent
   pullSecrets: []

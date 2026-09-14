@@ -28,7 +28,7 @@ spec:
         # this the ConfigMap updates and every node keeps running the old configuration.
         # Only possible for the ConfigMap this chart renders: Helm cannot see inside an
         # existingConfigmap, so that case is rolled by hand with `kubectl rollout restart`.
-        checksum/daemon-config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/daemon-config: {{ pick ( include (print $.Template.BasePath "/configmap.yaml") . | fromYaml ) "data" | toYaml | sha256sum }}
         {{- end }}
         checksum/scripts: {{ pick ( include (print $.Template.BasePath "/scripts-configmap.yaml") . | fromYaml ) "data" | toYaml | sha256sum }}
         {{- if .Values.commonAnnotations }}

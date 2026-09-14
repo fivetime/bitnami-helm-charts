@@ -38,9 +38,15 @@ spec:
       {{- if .Values.metrics.serviceMonitor.honorLabels }}
       honorLabels: {{ .Values.metrics.serviceMonitor.honorLabels }}
       {{- end }}
-      {{- if .Values.metrics.serviceMonitor.relabelings }}
-      relabelings: {{- toYaml .Values.metrics.serviceMonitor.relabelings | nindent 8 }}
-      {{- end }}
+      relabelings:
+        # One target per node is what this DaemonSet is, so every series carries the node it
+        # came from. `node` is the label kube-state-metrics, the kubelet and cAdvisor already
+        # use, which lets these metrics join theirs; the instance label is only a node IP.
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: node
+        {{- if .Values.metrics.serviceMonitor.relabelings }}
+        {{- toYaml .Values.metrics.serviceMonitor.relabelings | nindent 8 }}
+        {{- end }}
       {{- if .Values.metrics.serviceMonitor.metricRelabelings }}
       metricRelabelings: {{- toYaml .Values.metrics.serviceMonitor.metricRelabelings | nindent 8 }}
       {{- end }}

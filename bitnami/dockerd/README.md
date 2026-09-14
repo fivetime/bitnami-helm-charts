@@ -67,6 +67,8 @@ So `hostPluginDirs` mounts both of Docker's default spec directories by default,
 
 `metrics.enabled` turns on the daemon's own Prometheus endpoint and creates a headless Service plus, optionally, a ServiceMonitor. What it reports is the engine's view — container and image counts, builder timings, health-check durations — and that is worth having here for a reason specific to this architecture: these containers live in containerd's `moby` namespace, so the kubelet and cAdvisor do not see them at all. Nothing else in the cluster is reporting on them.
 
+Every series carries a `node` label with the name of the node it came from — the label kube-state-metrics, the kubelet and cAdvisor use, so these metrics join theirs. The ServiceMonitor adds it itself; `metrics.serviceMonitor.relabelings` runs after it.
+
 The Service is headless on purpose. Every pod runs on the node's network, so each endpoint is a node address; a cluster IP would balance scrapes across nodes and file one node's numbers under all of their names.
 
 Note where the port lands. With `hostNetwork` there is no pod network to hide in, so `metrics.port` is a real port on every targeted node, unauthenticated, naming images and containers. `metrics.bindAddress` defaults to `0.0.0.0` because a Prometheus running elsewhere has to reach it; set it to `127.0.0.1` if you would rather scrape from something node-local.
@@ -291,7 +293,7 @@ The `resources` you set here bound the **daemon**, not the containers it starts 
 | `metrics.serviceMonitor.honorLabels`       | Keep the target's labels when they collide with the server's                                                            | `false`     |
 | `metrics.serviceMonitor.interval`          | Scrape interval. Prometheus' own default when empty                                                                     | `""`        |
 | `metrics.serviceMonitor.scrapeTimeout`     | Scrape timeout. Prometheus' own default when empty                                                                      | `""`        |
-| `metrics.serviceMonitor.relabelings`       | RelabelConfigs applied before scraping                                                                                  | `[]`        |
+| `metrics.serviceMonitor.relabelings`       | RelabelConfigs applied before scraping, after the chart's own rule that adds a `node` label                             | `[]`        |
 | `metrics.serviceMonitor.metricRelabelings` | MetricRelabelConfigs applied before ingestion                                                                           | `[]`        |
 
 ### Garbage collector parameters

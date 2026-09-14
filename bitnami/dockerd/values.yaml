@@ -436,7 +436,7 @@ metrics:
   ## @param metrics.serviceMonitor.honorLabels Keep the target's labels when they collide with the server's
   ## @param metrics.serviceMonitor.interval Scrape interval. Prometheus' own default when empty
   ## @param metrics.serviceMonitor.scrapeTimeout Scrape timeout. Prometheus' own default when empty
-  ## @param metrics.serviceMonitor.relabelings RelabelConfigs applied before scraping
+  ## @param metrics.serviceMonitor.relabelings RelabelConfigs applied before scraping, after the chart's own rule that adds a `node` label
   ## @param metrics.serviceMonitor.metricRelabelings MetricRelabelConfigs applied before ingestion
   ##
   serviceMonitor:

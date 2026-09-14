@@ -134,6 +134,7 @@ Validate the values that cannot be defaulted or recovered from
 {{- $messages = append $messages (include "dockerd.validateValues.containerdSocket" .) -}}
 {{- $messages = append $messages (include "dockerd.validateValues.daemonConfig" .) -}}
 {{- $messages = append $messages (include "dockerd.validateValues.paths" .) -}}
+{{- $messages = append $messages (include "dockerd.validateValues.image" .) -}}
 {{- $messages = without $messages "" -}}
 {{- $message := join "\n" $messages -}}
 {{- if $message -}}
@@ -188,6 +189,27 @@ dockerd: daemonConfig sets keys this chart already passes as flags: {{ join ", "
     Set these through their own values (containerd.socket, containerd.namespace,
     containerd.pluginNamespace, dataRoot, dockerSocket) and keep daemonConfig for the rest.
 {{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "dockerd.validateValues.image" -}}
+{{- $tag := toString .Values.image.tag -}}
+{{- if not .Values.image.repository -}}
+dockerd: image.repository is empty.
+
+    It would render as "{{ .Values.image.registry }}/:{{ $tag }}", which no registry can
+    serve, and the pods would sit in ImagePullBackOff.
+{{- else if and (not .Values.image.digest) (hasSuffix "-cli" $tag) -}}
+dockerd: image.tag "{{ $tag }}" is a client-only image.
+
+    The -cli variants have the docker client but no dockerd, so the container would exit
+    immediately. Use the plain version tag or its -dind alias instead - in the official
+    image, "29.8.0" and "29.8.0-dind" are the same image.
+{{- else if and (not .Values.image.digest) (contains "rootless" $tag) -}}
+dockerd: image.tag "{{ $tag }}" is a rootless variant.
+
+    It runs the daemon as an unprivileged user, which cannot drive the node's containerd,
+    program the node's iptables or create containers there. Use the plain version tag.
 {{- end -}}
 {{- end -}}
 

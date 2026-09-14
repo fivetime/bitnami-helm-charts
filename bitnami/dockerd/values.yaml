@@ -95,15 +95,23 @@ priorityClassName: ""
 ## @section Docker daemon parameters
 ##
 
-## Docker image. It MUST be a `-dind` flavour, because that is the only official image that
-## ships `dockerd` itself; the plain `docker` image has only the client.
+## Docker image. It has to be one that ships `dockerd`. In the official image that is the plain
+## version tags and their `-dind` aliases - `29.8.0`, `29.8.0-dind`, `dind` and `latest` are all
+## the same image - but not `-cli`, which has only the client, and not `-dind-rootless`, which
+## runs the daemon as an unprivileged user and cannot drive the node's containerd. Both are
+## rejected at install time.
+##
+## Pin an exact version, ideally with `digest`. A floating tag such as `latest` combined with
+## `pullPolicy: IfNotPresent` lets every node sit on whichever version it happened to pull
+## first, and a node that later pulls a newer one hands its /var/lib/docker to a newer daemon
+## without anyone deciding to upgrade.
 ##
 ## The containerd and runc binaries baked into that image go unused in this chart - the daemon
 ## drives the node's containerd instead - but they cost only disk.
 ##
 ## @param image.registry [default: REGISTRY_NAME] Docker image registry
 ## @param image.repository [default: REPOSITORY_NAME/docker] Docker image repository
-## @param image.tag Docker image tag. Must be a `-dind` tag
+## @param image.tag Docker image tag. Any tag that ships dockerd; not `-cli` or `-dind-rootless`
 ## @param image.digest Docker image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
 ## @param image.pullPolicy Docker image pull policy
 ## @param image.pullSecrets Docker image pull secrets

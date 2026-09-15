@@ -87,6 +87,19 @@ getting the second one, which is the part worth keeping.
 {{- if .Values.metrics.enabled -}}
 {{- $args = append $args (printf "--metrics-addr=%v:%v" .Values.metrics.bindAddress .Values.metrics.port) -}}
 {{- end -}}
+{{- if .Values.tcp.enabled -}}
+{{- $bind := .Values.tcp.bindAddress | default "$(NODE_IP)" -}}
+{{- $args = append $args (printf "--host=tcp://%s:%v" $bind .Values.tcp.port) -}}
+{{- if .Values.tcp.tls.enabled -}}
+{{- $args = append $args "--tlsverify" -}}
+{{- $args = append $args "--tlscacert=/etc/docker/tls/ca.crt" -}}
+{{- $args = append $args "--tlscert=/etc/docker/tls/tls.crt" -}}
+{{- $args = append $args "--tlskey=/etc/docker/tls/tls.key" -}}
+{{- else -}}
+{{- /* Explicit, so dockerd does not stall startup for 15s asking whether plaintext was meant. */ -}}
+{{- $args = append $args "--tls=false" -}}
+{{- end -}}
+{{- end -}}
 {{- if .Values.image.debug -}}
 {{- $args = append $args "--debug" -}}
 {{- end -}}
@@ -135,6 +148,7 @@ Validate the values that cannot be defaulted or recovered from
 {{- $messages = append $messages (include "dockerd.validateValues.daemonConfig" .) -}}
 {{- $messages = append $messages (include "dockerd.validateValues.paths" .) -}}
 {{- $messages = append $messages (include "dockerd.validateValues.image" .) -}}
+{{- $messages = append $messages (include "dockerd.validateValues.tcp" .) -}}
 {{- $messages = without $messages "" -}}
 {{- $message := join "\n" $messages -}}
 {{- if $message -}}
@@ -172,6 +186,7 @@ dockerd: daemonConfig must be a map, got {{ kindOf .Values.daemonConfig }}.
 {{- $cfg := .Values.daemonConfig | default dict -}}
 {{- $conflicts := list "containerd" "containerd-namespace" "containerd-plugins-namespace" "data-root" "group" "hosts" -}}
 {{- if .Values.metrics.enabled -}}{{- $conflicts = append $conflicts "metrics-addr" -}}{{- end -}}
+{{- if .Values.tcp.enabled -}}{{- $conflicts = concat $conflicts (list "tls" "tlsverify" "tlscacert" "tlscert" "tlskey") -}}{{- end -}}
 {{- $found := list -}}
 {{- range $k := $conflicts -}}
 {{- if hasKey $cfg $k -}}
@@ -210,6 +225,43 @@ dockerd: image.tag "{{ $tag }}" is a rootless variant.
 
     It runs the daemon as an unprivileged user, which cannot drive the node's containerd,
     program the node's iptables or create containers there. Use the plain version tag.
+{{- end -}}
+{{- end -}}
+
+{{- define "dockerd.validateValues.tcp" -}}
+{{- if and .Values.tcp.enabled .Values.tcp.tls.enabled -}}
+{{- if and .Values.tcp.tls.existingCASecret .Values.tcp.tls.existingSecret -}}
+dockerd: tcp.tls.existingCASecret and tcp.tls.existingSecret are both set.
+
+    Pick one: a CA to issue each node its own certificate from, or one ready-made
+    certificate shared by every node.
+{{- else if not (or .Values.tcp.tls.existingCASecret .Values.tcp.tls.existingSecret) -}}
+dockerd: tcp.enabled with tcp.tls.enabled needs certificates.
+
+    Set tcp.tls.existingCASecret to a Secret holding ca.crt and ca.key (each node's server
+    certificate is then issued at startup), or tcp.tls.existingSecret to one holding ca.crt,
+    tls.crt and tls.key. To run the listener without TLS instead, set tcp.tls.enabled=false -
+    see the warning that comes with it.
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Where the daemon's TLS material comes from: an emptyDir the issuing init container fills,
+or the user's server certificate Secret mounted directly.
+*/}}
+{{- define "dockerd.tlsVolumeName" -}}
+{{- if .Values.tcp.tls.existingCASecret -}}tls-issued{{- else -}}tls-server{{- end -}}
+{{- end -}}
+
+{{- define "dockerd.checkTCP" -}}
+{{- if and .Values.tcp.enabled (not .Values.tcp.tls.enabled) }}
+
+⚠ WARNING: the Docker API is listening on TCP port {{ .Values.tcp.port }} without TLS.
+
+    Anyone who can reach {{ .Values.tcp.bindAddress | default "the node's IP" }}:{{ .Values.tcp.port }} can start a privileged container,
+    which is root on every node this chart runs on - unauthenticated. Restrict the port to
+    trusted hosts with a firewall, or turn on tcp.tls.enabled.
 {{- end -}}
 {{- end -}}
 

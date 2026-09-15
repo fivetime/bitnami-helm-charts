@@ -395,6 +395,59 @@ extraEnvVars: []
 extraEnvVarsCM: ""
 extraEnvVarsSecret: ""
 
+## @section Remote API parameters
+
+## A TCP listener for the Docker API, in addition to the node socket.
+##
+## Anything that reaches the daemon from off the node needs it: a remote `docker -H`, CI
+## runners, and OpenStack Zun, whose console, `attach`, `logs -f` and foreground `run` are
+## proxied by zun-wsproxy dialing each compute node's Docker API directly.
+##
+## The listener binds the node's own address (status.hostIP), not 0.0.0.0: on host network
+## 0.0.0.0 also answers on docker0 and every other interface the node has, including ones
+## containers can reach.
+##
+## Mutual TLS is on by default, and deliberately. Whoever can open this port can start a
+## privileged container, which is root on the node. Docker agrees: a TCP listener without
+## --tlsverify logs that it "gives root access on this machine to everyone who has access to
+## your network", stalls startup for 15 seconds, and is announced to become a hard failure in
+## a future release.
+##
+## @param tcp.enabled Open a TCP listener for the Docker API on each node
+## @param tcp.port Port for the listener. 2376 is Docker's conventional TLS port, 2375 its plaintext one
+## @param tcp.bindAddress Address to bind. Empty binds the node's own IP (status.hostIP)
+##
+tcp:
+  enabled: false
+  port: 2376
+  bindAddress: ""
+  ## Mutual TLS for the listener: clients must present a certificate signed by the same CA.
+  ##
+  ## The server certificate comes from one of two places. `existingCASecret` is the one that
+  ## scales: give the chart a CA (keys `ca.crt`, `ca.key`) and an init container issues each
+  ## node its own certificate at startup, with the node's IP and name as subject alternative
+  ## names - so a node added later needs nothing reissued. The CA key is mounted only into
+  ## that init container, never into the daemon. `existingSecret` instead takes one
+  ## ready-made server certificate (keys `ca.crt`, `tls.crt`, `tls.key`), which must then
+  ## already carry every targeted node's address as a SAN, since clients verify it.
+  ##
+  ## Setting `enabled: false` runs the listener in plaintext, passing `--tls=false` so the
+  ## choice is explicit. Only do that on a network where every host that can reach the port
+  ## is trusted with root on these nodes.
+  ##
+  ## @param tcp.tls.enabled Require mutual TLS on the listener
+  ## @param tcp.tls.existingCASecret Secret with `ca.crt` and `ca.key`; each node's server certificate is issued from it at startup
+  ## @param tcp.tls.existingSecret Secret with `ca.crt`, `tls.crt` and `tls.key` covering every node. Mutually exclusive with existingCASecret
+  ## @param tcp.tls.extraSANs Extra subject alternative names for issued certificates, e.g. a DNS name clients use (`DNS:docker.example.com`, `IP:10.0.0.5`)
+  ## @param tcp.tls.certValidityDays Validity of issued server certificates. They are reissued on every pod start
+  ##
+  tls:
+    enabled: true
+    existingCASecret: ""
+    existingSecret: ""
+    extraSANs: []
+    certValidityDays: 365
+
 ## @section Metrics parameters
 
 ## Prometheus metrics from the daemon itself.

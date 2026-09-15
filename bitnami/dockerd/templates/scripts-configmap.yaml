@@ -50,3 +50,33 @@ data:
 
     echo >&2 'ERROR: No command specified.'
     exit 1
+  {{- if and .Values.tcp.enabled .Values.tcp.tls.enabled .Values.tcp.tls.existingCASecret }}
+  # Issues this node's server certificate for the TCP listener from the CA in
+  # tcp.tls.existingCASecret. Runs on every pod start, so certificates never outlive a
+  # rollout and a node added later is covered without reissuing anything. Only the issued
+  # certificate and key reach the daemon; the CA key stays in this init container.
+  issue-tls-cert.sh: |-
+    #!/bin/sh
+    set -eu
+    out=/etc/docker/tls
+    work=$(mktemp -d)
+    trap 'rm -rf "$work"' EXIT
+    san="IP:${NODE_IP},DNS:${NODE_NAME}"
+    {{- if .Values.tcp.bindAddress }}
+    san="${san},IP:{{ .Values.tcp.bindAddress }}"
+    {{- end }}
+    {{- range .Values.tcp.tls.extraSANs }}
+    san="${san},{{ . }}"
+    {{- end }}
+    printf 'basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\nsubjectAltName=%s\n' "$san" > "$work/ext.cnf"
+    openssl ecparam -name prime256v1 -genkey -noout -out "$work/tls.key"
+    openssl req -new -key "$work/tls.key" -subj "/CN=${NODE_NAME}" -out "$work/tls.csr"
+    openssl x509 -req -in "$work/tls.csr" -CA /tls-ca/ca.crt -CAkey /tls-ca/ca.key \
+      -set_serial "0x$(openssl rand -hex 16)" -days {{ .Values.tcp.tls.certValidityDays }} \
+      -extfile "$work/ext.cnf" -out "$work/tls.crt"
+    openssl verify -CAfile /tls-ca/ca.crt "$work/tls.crt" >/dev/null
+    install -m 0644 /tls-ca/ca.crt "$out/ca.crt"
+    install -m 0644 "$work/tls.crt" "$out/tls.crt"
+    install -m 0600 "$work/tls.key" "$out/tls.key"
+    echo "issued server certificate for ${NODE_NAME} with SAN ${san}"
+  {{- end }}

@@ -66,8 +66,35 @@ spec:
       {{- $plugins := list -}}
       {{- if .Values.hostCli.plugins.buildx }}{{- $plugins = append $plugins "docker-buildx" -}}{{- end -}}
       {{- if .Values.hostCli.plugins.compose }}{{- $plugins = append $plugins "docker-compose" -}}{{- end -}}
-      {{- if or .Values.hostCli.enabled .Values.initContainers }}
+      {{- $issueTLS := and .Values.tcp.enabled .Values.tcp.tls.enabled .Values.tcp.tls.existingCASecret }}
+      {{- if or .Values.hostCli.enabled .Values.initContainers $issueTLS }}
       initContainers:
+        {{- if $issueTLS }}
+        - name: issue-tls-cert
+          image: {{ include "dockerd.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          command: ["/scripts/issue-tls-cert.sh"]
+          env:
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          resources: {{- include "common.resources.preset" (dict "type" "nano") | nindent 12 }}
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts/issue-tls-cert.sh
+              subPath: issue-tls-cert.sh
+              readOnly: true
+            - name: tls-ca
+              mountPath: /tls-ca
+              readOnly: true
+            - name: tls-issued
+              mountPath: /etc/docker/tls
+        {{- end }}
         {{- if .Values.hostCli.enabled }}
         # Put the client on the node. Copying rather than symlinking, because the pod's
         # filesystem is gone the moment the pod is: a link would dangle on every restart.
@@ -139,16 +166,30 @@ spec:
             */}}
             - name: DOCKER_TLS_CERTDIR
               value: ""
+            {{- if and .Values.tcp.enabled (not .Values.tcp.bindAddress) }}
+            # Expanded into --host=tcp://$(NODE_IP):port by the kubelet.
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            {{- end }}
             {{- include "dockerd.clientEnv" . | nindent 12 }}
             {{- if .Values.extraEnvVars }}
             {{- include "common.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
             {{- end }}
           {{- include "dockerd.envFrom" . | nindent 10 }}
-          {{- if .Values.metrics.enabled }}
+          {{- if or .Values.metrics.enabled .Values.tcp.enabled }}
           ports:
+            {{- if .Values.tcp.enabled }}
+            - name: docker-api
+              containerPort: {{ .Values.tcp.port }}
+              protocol: TCP
+            {{- end }}
+            {{- if .Values.metrics.enabled }}
             - name: metrics
               containerPort: {{ .Values.metrics.port }}
               protocol: TCP
+            {{- end }}
           {{- end }}
           {{- if not .Values.diagnosticMode.enabled }}
           {{- if .Values.customStartupProbe }}
@@ -220,6 +261,11 @@ spec:
               mountPath: {{ $p }}
               readOnly: true
             {{- end }}
+            {{- if and .Values.tcp.enabled .Values.tcp.tls.enabled }}
+            - name: {{ include "dockerd.tlsVolumeName" . }}
+              mountPath: /etc/docker/tls
+              readOnly: true
+            {{- end }}
             {{- if .Values.extraVolumeMounts }}
             {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
             {{- end }}
@@ -282,6 +328,35 @@ spec:
           hostPath:
             path: /lib/modules
             type: Directory
+        {{- if and .Values.tcp.enabled .Values.tcp.tls.enabled }}
+        {{- if .Values.tcp.tls.existingCASecret }}
+        - name: tls-ca
+          secret:
+            secretName: {{ .Values.tcp.tls.existingCASecret }}
+            items:
+              - key: ca.crt
+                path: ca.crt
+              - key: ca.key
+                path: ca.key
+            defaultMode: 0400
+        - name: tls-issued
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi
+        {{- else }}
+        - name: tls-server
+          secret:
+            secretName: {{ .Values.tcp.tls.existingSecret }}
+            items:
+              - key: ca.crt
+                path: ca.crt
+              - key: tls.crt
+                path: tls.crt
+              - key: tls.key
+                path: tls.key
+            defaultMode: 0400
+        {{- end }}
+        {{- end }}
         - name: scripts
           configMap:
             name: {{ printf "%s-scripts" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" }}

@@ -63,6 +63,26 @@ Docker finds libnetwork and volume plugins by reading `/etc/docker/plugins` and 
 
 So `hostPluginDirs` mounts both of Docker's default spec directories by default, read-only, and a plugin registered the way it would be for a node-level Docker works with no configuration. This was found on an OpenStack Kuryr node, which registers under `/usr/lib/docker/plugins`. The directories are created on the node if they are missing, which keeps a node with no plugins from stalling the pod and lets a plugin installed later be found — discovery reads the directory when the plugin is first used. The plugins' sockets live under `/run/docker/plugins` and already reach the daemon through `hostRunDir`. Set `hostPluginDirs: []` to mount nothing, or add paths if a plugin registers somewhere non-standard.
 
+### Remote API over TCP
+
+Anything that reaches the daemon from off the node needs a TCP listener: a remote `docker -H`, CI runners, and OpenStack Zun, whose console, `attach`, `logs -f` and foreground `run` are relayed by zun-wsproxy dialing each compute node's Docker API directly. Without one those commands connect and then print nothing.
+
+`tcp.enabled` opens it on the node's own IP (never `0.0.0.0`, which on host network would also answer on docker0 and every other interface), with mutual TLS on by default: clients must present a certificate signed by the same CA. The certificate for each node comes from one of two places:
+
+- **`tcp.tls.existingCASecret`** — a Secret with `ca.crt` and `ca.key`. An init container issues the node its own server certificate at every pod start, with the node IP and node name as subject alternative names, so a node added later needs nothing reissued. The CA key is mounted only into that init container, never into the daemon.
+- **`tcp.tls.existingSecret`** — a Secret with `ca.crt`, `tls.crt` and `tls.key`, one certificate shared by all nodes. It must already list every targeted node's address as a SAN, because clients check it.
+
+```console
+kubectl create secret generic dockerd-tls-ca -n <namespace> --from-file=ca.crt --from-file=ca.key
+helm upgrade my-release oci://REGISTRY_NAME/REPOSITORY_NAME/dockerd \
+  --set tcp.enabled=true --set tcp.tls.existingCASecret=dockerd-tls-ca
+docker --tlsverify --tlscacert=ca.crt --tlscert=client.crt --tlskey=client.key -H tcp://<node-ip>:2376 info
+```
+
+Client certificates need `extendedKeyUsage=clientAuth` and must be signed by the same CA; issuing them is left to you. For Zun, set `[docker] ca_file`, `cert_file`, `key_file`, `api_insecure = false` and `docker_remote_api_port = 2376` for both zun-compute and zun-wsproxy: zun-compute then records `wss://` console URLs and zun-wsproxy connects with that client certificate.
+
+Plaintext is available with `tcp.tls.enabled=false` (the chart passes `--tls=false` and the install notes carry a warning), but think of the port as root on every node for anyone who can reach it. Docker treats it that way too: without `--tlsverify` or an explicit `--tls=false` it stalls startup for 15 seconds and announces this will become a hard failure.
+
 ### Metrics
 
 `metrics.enabled` turns on the daemon's own Prometheus endpoint and creates a headless Service plus, optionally, a ServiceMonitor. What it reports is the engine's view — container and image counts, builder timings, health-check durations — and that is worth having here for a reason specific to this architecture: these containers live in containerd's `moby` namespace, so the kubelet and cAdvisor do not see them at all. Nothing else in the cluster is reporting on them.
@@ -275,6 +295,19 @@ The `resources` you set here bound the **daemon**, not the containers it starts 
 | `extraEnvVars`               | Array with extra environment variables to add to the Docker container                                                                             | `[]`                                                |
 | `extraEnvVarsCM`             | Name of existing ConfigMap containing extra env vars                                                                                              | `""`                                                |
 | `extraEnvVarsSecret`         | Name of existing Secret containing extra env vars                                                                                                 | `""`                                                |
+
+### Remote API parameters
+
+| Name                       | Description                                                                                                                    | Value   |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------- |
+| `tcp.enabled`              | Open a TCP listener for the Docker API on each node                                                                            | `false` |
+| `tcp.port`                 | Port for the listener. 2376 is Docker's conventional TLS port, 2375 its plaintext one                                          | `2376`  |
+| `tcp.bindAddress`          | Address to bind. Empty binds the node's own IP (status.hostIP)                                                                 | `""`    |
+| `tcp.tls.enabled`          | Require mutual TLS on the listener                                                                                             | `true`  |
+| `tcp.tls.existingCASecret` | Secret with `ca.crt` and `ca.key`; each node's server certificate is issued from it at startup                                 | `""`    |
+| `tcp.tls.existingSecret`   | Secret with `ca.crt`, `tls.crt` and `tls.key` covering every node. Mutually exclusive with existingCASecret                    | `""`    |
+| `tcp.tls.extraSANs`        | Extra subject alternative names for issued certificates, e.g. a DNS name clients use (`DNS:docker.example.com`, `IP:10.0.0.5`) | `[]`    |
+| `tcp.tls.certValidityDays` | Validity of issued server certificates. They are reissued on every pod start                                                   | `365`   |
 
 ### Metrics parameters
 

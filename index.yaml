@@ -1123,6 +1123,47 @@ entries:
   - annotations:
       images: |
         - name: daemonclaim
+          image: ghcr.io/fivetime/daemonclaim:0.1.0-alpha.3
+      licenses: Apache-2.0
+      tanzuCategory: clusterUtility
+    apiVersion: v2
+    appVersion: 0.1.0-alpha.3
+    created: "2026-09-16T07:53:31.039269091Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: Gives DaemonSets the per-node PersistentVolumeClaims that StatefulSets
+      get from volumeClaimTemplates. A DaemonClaim names a DaemonSet and a claim template;
+      every node the DaemonSet runs on gets its own claim, the pod on that node is
+      pointed at it when it is created, and the claim outlives pod restarts and rollouts
+      under an explicit retention policy. Works with any StorageClass that binds on
+      first consumer.
+    digest: b16eef7d7cbabaca63bbe8a47efefb602838feb46affc1ac9922e9fb4acea29b
+    home: https://github.com/fivetime/daemonclaim
+    icon: https://raw.githubusercontent.com/kubernetes/kubernetes/master/logo/logo.png
+    keywords:
+    - daemonset
+    - persistentvolumeclaim
+    - volumeclaimtemplates
+    - local-storage
+    - storage
+    - operator
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: daemonclaim
+    sources:
+    - https://github.com/fivetime/daemonclaim
+    - https://github.com/bitnami/charts/tree/main/bitnami/daemonclaim
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/daemonclaim-0.1.2/daemonclaim-0.1.2.tgz
+    version: 0.1.2
+  - annotations:
+      images: |
+        - name: daemonclaim
           image: ghcr.io/fivetime/daemonclaim:0.1.0-alpha.2
       licenses: Apache-2.0
       tanzuCategory: clusterUtility
@@ -8010,4 +8051,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-09-16T07:45:51.681798723Z"
+generated: "2026-09-16T07:53:31.039433689Z"

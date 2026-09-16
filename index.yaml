@@ -1119,6 +1119,48 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/contour-21.1.5/contour-21.1.5.tgz
     version: 21.1.5
+  daemonclaim:
+  - annotations:
+      images: |
+        - name: daemonclaim
+          image: ghcr.io/fivetime/daemonclaim:0.1.0-alpha.1
+      licenses: Apache-2.0
+      tanzuCategory: clusterUtility
+    apiVersion: v2
+    appVersion: 0.1.0-alpha.1
+    created: "2026-09-16T07:35:41.961933576Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: Gives DaemonSets the per-node PersistentVolumeClaims that StatefulSets
+      get from volumeClaimTemplates. A DaemonClaim names a DaemonSet and a claim template;
+      every node the DaemonSet runs on gets its own claim, the pod on that node is
+      pointed at it when it is created, and the claim outlives pod restarts and rollouts
+      under an explicit retention policy. Works with any StorageClass that binds on
+      first consumer.
+    digest: a85f8d4d258e819af6e4305e2b0166f876345e6004121330d5d31aca62612afc
+    home: https://github.com/fivetime/daemonclaim
+    icon: https://raw.githubusercontent.com/kubernetes/kubernetes/master/logo/logo.png
+    keywords:
+    - daemonset
+    - persistentvolumeclaim
+    - volumeclaimtemplates
+    - local-storage
+    - storage
+    - operator
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: daemonclaim
+    sources:
+    - https://github.com/fivetime/daemonclaim
+    - https://github.com/bitnami/charts/tree/main/bitnami/daemonclaim
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/daemonclaim-0.1.0/daemonclaim-0.1.0.tgz
+    version: 0.1.0
   deepspeed:
   - annotations:
       images: |
@@ -7927,4 +7969,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-09-15T04:25:04.180762479Z"
+generated: "2026-09-16T07:35:41.962116643Z"

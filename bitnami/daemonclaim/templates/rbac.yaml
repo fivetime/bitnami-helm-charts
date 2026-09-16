@@ -1,0 +1,101 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if .Values.rbac.create }}
+apiVersion: {{ include "common.capabilities.rbac.apiVersion" . }}
+kind: ClusterRole
+metadata:
+  name: {{ include "common.names.fullname.namespace" . }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+# Mirrors config/rbac/role.yaml in the daemonclaim repository, generated from the
+# controller's kubebuilder markers. The grant that matters is persistentvolumeclaims
+# create/delete in every namespace: anyone who can create a DaemonClaim can cause claims
+# to appear in their namespace, subject to that namespace's ResourceQuota.
+rules:
+  - apiGroups: [""]
+    resources: [events]
+    verbs: [create, patch]
+  - apiGroups: [""]
+    resources: [nodes]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [persistentvolumeclaims]
+    verbs: [create, delete, get, list, patch, update, watch]
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [delete, get, list, watch]
+  - apiGroups: [apps]
+    resources: [daemonsets]
+    verbs: [get, list, watch]
+  - apiGroups: [daemonclaim.fivetime.io]
+    resources: [daemonclaims]
+    verbs: [get, list, patch, update, watch]
+  - apiGroups: [daemonclaim.fivetime.io]
+    resources: [daemonclaims/finalizers]
+    verbs: [update]
+  - apiGroups: [daemonclaim.fivetime.io]
+    resources: [daemonclaims/status]
+    verbs: [get, patch, update]
+  - apiGroups: [storage.k8s.io]
+    resources: [storageclasses]
+    verbs: [get, list, watch]
+---
+apiVersion: {{ include "common.capabilities.rbac.apiVersion" . }}
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "common.names.fullname.namespace" . }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "common.names.fullname.namespace" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "daemonclaim.serviceAccountName" . }}
+    namespace: {{ include "common.names.namespace" . | quote }}
+{{- if .Values.leaderElection }}
+---
+apiVersion: {{ include "common.capabilities.rbac.apiVersion" . }}
+kind: Role
+metadata:
+  name: {{ printf "%s-leader-election" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+rules:
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [events]
+    verbs: [create, patch]
+---
+apiVersion: {{ include "common.capabilities.rbac.apiVersion" . }}
+kind: RoleBinding
+metadata:
+  name: {{ printf "%s-leader-election" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ printf "%s-leader-election" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "daemonclaim.serviceAccountName" . }}
+    namespace: {{ include "common.names.namespace" . | quote }}
+{{- end }}
+{{- end }}

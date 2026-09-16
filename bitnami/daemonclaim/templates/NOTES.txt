@@ -1,0 +1,58 @@
+CHART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+The daemonclaim controller and its admission webhooks are running in namespace {{ include "common.names.namespace" . }}.
+
+## Give a DaemonSet per-node claims
+
+1. Label the DaemonSet's pod template and point a volume at a placeholder claim:
+
+     spec:
+       template:
+         metadata:
+           labels:
+             daemonclaim.fivetime.io/enabled: "true"
+         spec:
+           volumes:
+             - name: data
+               persistentVolumeClaim:
+                 claimName: data      # replaced per node when the pod is created
+
+2. Create a DaemonClaim naming the DaemonSet and the template for that volume:
+
+     apiVersion: daemonclaim.fivetime.io/v1alpha1
+     kind: DaemonClaim
+     metadata:
+       name: my-daemonset-data
+     spec:
+       daemonSetRef:
+         name: my-daemonset
+       volumeClaimTemplates:
+         - metadata:
+             name: data                 # the volume above
+           spec:
+             accessModes: [ReadWriteOnce]
+             storageClassName: <a WaitForFirstConsumer class>
+             resources:
+               requests:
+                 storage: 10Gi
+       persistentVolumeClaimRetentionPolicy:
+         whenDeleted: Retain
+         whenUnscheduled: Retain
+
+   The order does not matter: pods admitted before the DaemonClaim existed are recreated.
+
+3. Watch the claims appear, one per node, named <daemonset>-<template>-<node>:
+
+     kubectl get daemonclaim,pvc -n <namespace>
+
+## Check the controller
+
+     kubectl get pods -n {{ include "common.names.namespace" . }} -l app.kubernetes.io/instance={{ .Release.Name }}
+     kubectl get mutatingwebhookconfiguration,validatingwebhookconfiguration {{ include "common.names.fullname.namespace" . }}
+{{- include "daemonclaim.checkFailurePolicy" . }}
+{{- include "daemonclaim.checkCertificate" . }}
+
+{{- include "common.warnings.rollingTag" .Values.image }}
+{{- include "common.warnings.resources" (dict "sections" (list "") "context" $) }}

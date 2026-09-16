@@ -81,7 +81,7 @@ diagnosticMode:
 image:
   registry: ghcr.io
   repository: fivetime/daemonclaim
-  tag: 0.1.0-alpha.2
+  tag: 0.1.0-alpha.3
   digest: ""
   pullPolicy: IfNotPresent
   ## e.g:

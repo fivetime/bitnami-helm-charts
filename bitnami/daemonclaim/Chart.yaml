@@ -4,11 +4,11 @@
 annotations:
   images: |
     - name: daemonclaim
-      image: ghcr.io/fivetime/daemonclaim:0.1.0-alpha.1
+      image: ghcr.io/fivetime/daemonclaim:0.1.0-alpha.2
   licenses: Apache-2.0
   tanzuCategory: clusterUtility
 apiVersion: v2
-appVersion: 0.1.0-alpha.1
+appVersion: 0.1.0-alpha.2
 dependencies:
 - name: common
   repository: oci://registry-1.docker.io/bitnamicharts
@@ -36,4 +36,4 @@ name: daemonclaim
 sources:
 - https://github.com/fivetime/daemonclaim
 - https://github.com/bitnami/charts/tree/main/bitnami/daemonclaim
-version: 0.1.0
+version: 0.1.1

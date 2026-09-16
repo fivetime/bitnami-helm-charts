@@ -17,7 +17,7 @@ metadata:
 # create/delete in every namespace: anyone who can create a DaemonClaim can cause claims
 # to appear in their namespace, subject to that namespace's ResourceQuota.
 rules:
-  - apiGroups: [""]
+  - apiGroups: ["", events.k8s.io]
     resources: [events]
     verbs: [create, patch]
   - apiGroups: [""]

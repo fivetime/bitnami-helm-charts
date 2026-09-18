@@ -235,6 +235,24 @@ hostCli:
     buildx: false
     compose: false
     dir: /usr/local/libexec/docker/cli-plugins
+
+## @section Init binary on the node
+##
+## `docker run --init` has the runtime mount `docker-init` into the container from the path
+## the daemon resolves it to - inside this image, /usr/local/bin/docker-init. The daemon
+## runs its containers through the node's containerd, though, so the runtime shim looks that
+## path up on the node, where it does not exist: the container fails to start with "cannot
+## stat /usr/local/bin/docker-init" (runc, crun) or "Invalid path" (Kata, which shares the
+## file into the guest from the node). An init container copies the binary to the same path
+## on the node. The path is not configurable, because it has to be the one the daemon names.
+##
+## It is Docker's own static build of tini, so it runs in any container whatever its libc.
+## Like the client, it is refreshed on every pod start and left behind by `helm uninstall`.
+##
+## @param hostInit.enabled Copy docker-init out of the daemon image to the same path on the node, so that `docker run --init` works
+##
+hostInit:
+  enabled: false
 ## Host networking, on by default and load-bearing.
 ##
 ## dockerd programs iptables/NAT, creates the docker0 bridge and publishes container ports. In

@@ -67,7 +67,7 @@ spec:
       {{- if .Values.hostCli.plugins.buildx }}{{- $plugins = append $plugins "docker-buildx" -}}{{- end -}}
       {{- if .Values.hostCli.plugins.compose }}{{- $plugins = append $plugins "docker-compose" -}}{{- end -}}
       {{- $issueTLS := and .Values.tcp.enabled .Values.tcp.tls.enabled .Values.tcp.tls.existingCASecret }}
-      {{- if or .Values.hostCli.enabled .Values.initContainers $issueTLS }}
+      {{- if or .Values.hostCli.enabled .Values.hostInit.enabled .Values.initContainers $issueTLS }}
       initContainers:
         {{- if $issueTLS }}
         - name: issue-tls-cert
@@ -134,6 +134,34 @@ spec:
             - name: host-cli-plugins
               mountPath: /host/cli-plugins
             {{- end }}
+        {{- end }}
+        {{- if .Values.hostInit.enabled }}
+        # The same path as in this image, not hostCli.binDir: the daemon names this path to the
+        # runtime, and the runtime resolves it on the node. The check fails the pod rather than
+        # place a copy at a path the daemon would never name.
+        - name: install-init
+          image: {{ include "dockerd.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              src="$(command -v docker-init)"
+              if [ "$src" != /usr/local/bin/docker-init ]; then
+                echo "docker-init is at $src in this image, not /usr/local/bin; the node copy would not be the path the daemon names" >&2
+                exit 1
+              fi
+              install -m 0755 "$src" /host/init-bin/.docker-init.tmp
+              mv -f /host/init-bin/.docker-init.tmp /host/init-bin/docker-init
+              echo "installed docker-init to /usr/local/bin/docker-init"
+          resources: {{- include "common.resources.preset" (dict "type" "nano") | nindent 12 }}
+          volumeMounts:
+            - name: host-init-bin
+              mountPath: /host/init-bin
         {{- end }}
         {{- if .Values.initContainers }}
         {{- include "common.tplvalues.render" (dict "value" .Values.initContainers "context" $) | nindent 8 }}
@@ -370,6 +398,12 @@ spec:
           hostPath:
             path: {{ .Values.hostCli.binDir }}
             type: DirectoryOrCreate
+        {{- if .Values.hostInit.enabled }}
+        - name: host-init-bin
+          hostPath:
+            path: /usr/local/bin
+            type: DirectoryOrCreate
+        {{- end }}
         {{- if and .Values.hostCli.enabled (or .Values.hostCli.plugins.buildx .Values.hostCli.plugins.compose) }}
         - name: host-cli-plugins
           hostPath:

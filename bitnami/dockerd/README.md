@@ -57,6 +57,12 @@ Two things to know. `hostCli.binDir` defaults to `/usr/local/bin`, which is on t
 
 Set `hostCli.enabled=false` if the nodes already have a client you would rather not overwrite.
 
+### `docker run --init`
+
+With `--init`, the daemon has the runtime mount `docker-init` into the container from the path it resolves the binary to — inside this image, `/usr/local/bin/docker-init`. But the daemon runs its containers through the node's containerd, so the runtime shim resolves that path on the node, where nothing is there: the container fails to start (`cannot stat /usr/local/bin/docker-init` with runc or crun, `Invalid path` with Kata, which shares the file into the guest from the node).
+
+`hostInit.enabled=true` adds an init container that copies the binary to the same path on the node. The path is fixed rather than configurable, because it has to be the one the daemon names; `hostCli.binDir` does not apply. It is Docker's static build of tini, refreshed on every pod start, and like the client it stays on the node after `helm uninstall`.
+
 ### Plugins registered on the node
 
 Docker finds libnetwork and volume plugins by reading `/etc/docker/plugins` and `/usr/lib/docker/plugins` — on the machine the daemon runs on, which here is the container. Without help, anything registered on the node would be invisible: the daemon logs `Unable to locate plugin: <name>`, retries with backoff, and any network or volume using that driver fails.
@@ -282,6 +288,7 @@ The `resources` you set here bound the **daemon**, not the containers it starts 
 | `hostCli.plugins.buildx`     | Install the buildx CLI plugin on the node                                                                                                         | `false`                                             |
 | `hostCli.plugins.compose`    | Install the compose CLI plugin on the node                                                                                                        | `false`                                             |
 | `hostCli.plugins.dir`        | Node directory for CLI plugins. The client searches this path regardless of where its own binary sits                                             | `/usr/local/libexec/docker/cli-plugins`             |
+| `hostInit.enabled`           | Copy docker-init out of the daemon image to the same path on the node, so that `docker run --init` works                                          | `false`                                             |
 | `hostNetwork`                | Run the daemon in the node's network namespace                                                                                                    | `true`                                              |
 | `hostPID`                    | Share the node's PID namespace. Required - the daemon resolves container PIDs that only exist there                                               | `true`                                              |
 | `dnsPolicy`                  | Pod DNS policy. ClusterFirstWithHostNet is required for name resolution to work on host network                                                   | `ClusterFirstWithHostNet`                           |

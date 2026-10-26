@@ -11,6 +11,51 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 3.0.5
+    created: "2026-10-26T04:04:41.181576768Z"
+    dependencies:
+    - condition: redis.enabled
+      name: redis
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 22.x.x
+    - condition: postgresql.enabled
+      name: postgresql
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 16.x.x
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: Apache Airflow is a tool to express and execute workflows as directed
+      acyclic graphs (DAGs). It includes utilities to schedule tasks, monitor task
+      progress and handle task dependencies.
+    digest: bfb4c80e0913134a9e346bf18088be9147a3947abda20b3333290575bde71983
+    home: https://bitnami.com
+    icon: https://dyltqmyl993wv.cloudfront.net/assets/stacks/airflow/img/airflow-stack-220x234.png
+    keywords:
+    - apache
+    - airflow
+    - workflow
+    - dag
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: airflow
+    sources:
+    - https://github.com/bitnami/charts/tree/main/bitnami/airflow
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/airflow-25.1.1/airflow-25.1.1.tgz
+    version: 25.1.1
+  - annotations:
+      images: |
+        - name: airflow
+          image: docker.io/bitnami/airflow:3.0.5-debian-12-r0
+        - name: statsd-exporter
+          image: docker.io/bitnami/statsd-exporter:0.28.0-debian-12-r24
+      licenses: Apache-2.0
+      tanzuCategory: service
+    apiVersion: v2
+    appVersion: 3.0.5
     created: "2026-02-05T02:55:24.830446501Z"
     dependencies:
     - condition: redis.enabled
@@ -348,6 +393,44 @@ entries:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/cadvisor-0.1.14/cadvisor-0.1.14.tgz
     version: 0.1.14
   cassandra:
+  - annotations:
+      images: |
+        - name: cassandra
+          image: docker.io/bitnami/cassandra:5.0.5-debian-12-r7
+        - name: cassandra-exporter
+          image: docker.io/bitnami/cassandra-exporter:2.3.8-debian-12-r51
+        - name: os-shell
+          image: docker.io/bitnami/os-shell:12-debian-12-r50
+      licenses: Apache-2.0
+      tanzuCategory: service
+    apiVersion: v2
+    appVersion: 5.0.5
+    created: "2026-10-26T04:04:41.374171408Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: Apache Cassandra is an open source distributed database management
+      system designed to handle large amounts of data across many servers, providing
+      high availability with no single point of failure.
+    digest: 9bc517a51be3343be7a878788fa7b0c5ec352394e9e943fcda1f9ae4d9d22072
+    home: https://bitnami.com
+    icon: https://dyltqmyl993wv.cloudfront.net/assets/stacks/cassandra/img/cassandra-stack-220x234.png
+    keywords:
+    - cassandra
+    - database
+    - nosql
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: cassandra
+    sources:
+    - https://github.com/bitnami/charts/tree/main/bitnami/cassandra
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/cassandra-12.3.14/cassandra-12.3.14.tgz
+    version: 12.3.14
   - annotations:
       images: |
         - name: cassandra
@@ -6455,6 +6538,48 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 8.2.1
+    created: "2026-10-26T04:04:41.733479827Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: Redis(R) is an open source, advanced key-value store. It is often
+      referred to as a data structure server since keys can contain strings, hashes,
+      lists, sets and sorted sets.
+    digest: 64828f1b6fd37e0d114d16ec2e91ac0cb45794ba08566e74e02e09a54254c175
+    home: https://bitnami.com
+    icon: https://dyltqmyl993wv.cloudfront.net/assets/stacks/redis/img/redis-stack-220x234.png
+    keywords:
+    - redis
+    - keyvalue
+    - database
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: redis
+    sources:
+    - https://github.com/bitnami/charts/tree/main/bitnami/redis
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/redis-23.1.3/redis-23.1.3.tgz
+    version: 23.1.3
+  - annotations:
+      images: |
+        - name: kubectl
+          image: docker.io/bitnami/kubectl:1.33.4-debian-12-r0
+        - name: os-shell
+          image: docker.io/bitnami/os-shell:12-debian-12-r51
+        - name: redis
+          image: docker.io/bitnami/redis:8.2.1-debian-12-r0
+        - name: redis-exporter
+          image: docker.io/bitnami/redis-exporter:1.76.0-debian-12-r0
+        - name: redis-sentinel
+          image: docker.io/bitnami/redis-sentinel:8.2.1-debian-12-r0
+      licenses: Apache-2.0
+      tanzuCategory: service
+    apiVersion: v2
+    appVersion: 8.2.1
     created: "2026-09-05T03:05:09.172672782Z"
     dependencies:
     - name: common
@@ -7530,6 +7655,48 @@ entries:
       tanzuCategory: service
     apiVersion: v2
     appVersion: 8.1.3
+    created: "2026-10-26T04:04:42.029763322Z"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: Valkey is an open source (BSD) high-performance key/value datastore
+      that supports a variety workloads such as caching, message queues, and can act
+      as a primary database.
+    digest: ef58cf3fe7f1bb08e49244909681c12387b776c20c5ee093e4b89c8e34743106
+    home: https://bitnami.com
+    icon: https://dyltqmyl993wv.cloudfront.net/assets/stacks/valkey/img/valkey-stack-220x234.png
+    keywords:
+    - valkey
+    - keyvalue
+    - database
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: valkey
+    sources:
+    - https://github.com/bitnami/charts/tree/main/bitnami/valkey
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/valkey-4.0.3/valkey-4.0.3.tgz
+    version: 4.0.3
+  - annotations:
+      images: |
+        - name: kubectl
+          image: docker.io/bitnami/kubectl:1.33.4-debian-12-r0
+        - name: os-shell
+          image: docker.io/bitnami/os-shell:12-debian-12-r51
+        - name: redis-exporter
+          image: docker.io/bitnami/redis-exporter:1.76.0-debian-12-r0
+        - name: valkey
+          image: docker.io/bitnami/valkey:8.1.3-debian-12-r3
+        - name: valkey-sentinel
+          image: docker.io/bitnami/valkey-sentinel:8.1.3-debian-12-r3
+      licenses: Apache-2.0
+      tanzuCategory: service
+    apiVersion: v2
+    appVersion: 8.1.3
     created: "2026-02-05T02:55:25.618324781Z"
     dependencies:
     - name: common
@@ -7950,6 +8117,56 @@ entries:
       tanzuCategory: application
     apiVersion: v2
     appVersion: 6.8.2
+    created: "2026-10-26T04:04:42.268610616Z"
+    dependencies:
+    - condition: memcached.enabled
+      name: memcached
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 7.x.x
+    - condition: mariadb.enabled
+      name: mariadb
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 22.x.x
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: WordPress is the world's most popular blogging and content management
+      platform. Powerful yet simple, everyone from students to global corporations
+      use it to build beautiful, functional websites.
+    digest: 63213b3351e390acbbcc682dc9d2c7a51d5c3cb0a088e295350380265ec1f90c
+    home: https://bitnami.com
+    icon: https://dyltqmyl993wv.cloudfront.net/assets/stacks/wordpress/img/wordpress-stack-220x234.png
+    keywords:
+    - application
+    - blog
+    - cms
+    - http
+    - php
+    - web
+    - wordpress
+    maintainers:
+    - name: Broadcom, Inc. All Rights Reserved.
+      url: https://github.com/bitnami/charts
+    name: wordpress
+    sources:
+    - https://github.com/bitnami/charts/tree/main/bitnami/wordpress
+    urls:
+    - https://github.com/fivetime/bitnami-helm-charts/releases/download/wordpress-27.0.1/wordpress-27.0.1.tgz
+    version: 27.0.1
+  - annotations:
+      images: |
+        - name: apache-exporter
+          image: docker.io/bitnami/apache-exporter:1.0.10-debian-12-r55
+        - name: os-shell
+          image: docker.io/bitnami/os-shell:12-debian-12-r50
+        - name: wordpress
+          image: docker.io/bitnami/wordpress:6.8.2-debian-12-r4
+      licenses: Apache-2.0
+      tanzuCategory: application
+    apiVersion: v2
+    appVersion: 6.8.2
     created: "2026-02-05T02:55:25.648331758Z"
     dependencies:
     - condition: memcached.enabled
@@ -8097,4 +8314,4 @@ entries:
     urls:
     - https://github.com/fivetime/bitnami-helm-charts/releases/download/zookeeper-13.8.8/zookeeper-13.8.8.tgz
     version: 13.8.8
-generated: "2026-09-18T06:08:48.152933381Z"
+generated: "2026-10-26T04:04:42.268737793Z"
